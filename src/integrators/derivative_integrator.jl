@@ -11,15 +11,14 @@ struct DerivativeIntegrator <: AbstractIntegrator
     function DerivativeIntegrator(
         traj::NamedTrajectory,
         x::Symbol,
-        ẋ::Symbol,
-        Δt::Symbol
+        ẋ::Symbol
     )
         @assert traj.dims[x] == traj.dims[ẋ]
 
         return new(
             traj.components[x],
             traj.components[ẋ],
-            traj.components[Δt][1],
+            traj.components[traj.timestep][1],
             traj.dim,
             traj.dims[x],
             traj.dims[ẋ]

@@ -14,11 +14,6 @@ Modules = [DirectCollocation.Constraints]
 Modules = [DirectCollocation.Integrators]
 ``` 
 
-## Losses
-```@autodocs
-Modules = [DirectCollocation.Losses]
-```
-
 ## Objectives
 ```@autodocs
 Modules = [DirectCollocation.Objectives]
@@ -29,14 +24,9 @@ Modules = [DirectCollocation.Objectives]
 Modules = [DirectCollocation.Dynamics]
 ```
 
-## Options
+## Solvers
 ```@autodocs
-Modules = [DirectCollocation.Options]
-```
-
-## Problem Solvers
-```@autodocs
-Modules = [DirectCollocation.ProblemSolvers]
+Modules = [DirectCollocation.IpoptSolverExt]
 ```
 
 ## Problems
@@ -44,8 +34,4 @@ Modules = [DirectCollocation.ProblemSolvers]
 Modules = [DirectCollocation.Problems]
 ```
 
-## Saving and Loading
-```@autodocs
-Modules = [DirectCollocation.SaveLoadUtils]
-```
 

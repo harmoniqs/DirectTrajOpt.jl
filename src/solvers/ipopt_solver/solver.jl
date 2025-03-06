@@ -238,7 +238,7 @@ end
 
     include("../../../test/test_utils.jl")
 
-    G, traj = bilinear_dynamics_and_trajectory()
+    G, traj = bilinear_dynamics_and_trajectory(N=100)
 
     integrators = [
         BilinearIntegrator(G, traj, :x, :u, :Δt),
@@ -251,11 +251,28 @@ end
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
 
-    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
+    g_u_norm = NonlinearKnotPointConstraint(
+        u -> -[norm(u) - 1.0], 
+        :u, 
+        traj; 
+        times=2:traj.T-1, 
+        equality=false
+    )
 
-    prob = DirectCollocationProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
+    prob = DirectCollocationProblem(
+        traj, 
+        J, 
+        integrators; 
+        constraints=AbstractConstraint[g_u_norm]
+    )
+
+    J_initial = prob.objective.L(prob.trajectory.datavec)
 
     solve!(prob; max_iter=100)
+
+    J_final = prob.objective.L(prob.trajectory.datavec)
+
+    @test J_final < J_initial
 end
 
  

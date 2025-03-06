@@ -169,21 +169,39 @@ end
     μ::AbstractVector{T}
 ) where T
 
-    evaluator.dynamics.μ∂²F!(evaluator.dynamics.μ∂²fs, Z⃗, μ[1:evaluator.n_dynamics_constraints])
+    evaluator.dynamics.μ∂²F!(
+        evaluator.dynamics.μ∂²fs, 
+        Z⃗, 
+        μ[1:evaluator.n_dynamics_constraints]
+    )
 
     ∂²ℒ = Dynamics.get_full_hessian(evaluator.dynamics, evaluator.trajectory)
 
+    # reset stored hessians
+    for μ∂²f ∈ evaluator.dynamics.μ∂²fs
+        μ∂²f .= 0.0
+    end
+
     offset = evaluator.n_dynamics_constraints
     for con ∈ evaluator.constraints
+
         con.μ∂²g!(con.μ∂²gs, Z⃗, μ[offset .+ (1:con.dim)])
+
         ∂²ℒ .+= Constraints.get_full_hessian(con, evaluator.trajectory)
+
+        # reset stored hessians
+        for μ∂²g ∈ con.μ∂²gs
+            μ∂²g .= 0.0
+        end
+        
         offset += con.dim
     end  
 
     H[1:evaluator.n_constraint_hessian_elements] = 
         [∂²ℒ[i, j] for (i, j) ∈ evaluator.hessian_structure[1:evaluator.n_constraint_hessian_elements]]
 
-    H[evaluator.n_constraint_hessian_elements+1:end] = σ * evaluator.objective.∂²L(Z⃗)
+    H[evaluator.n_constraint_hessian_elements+1:end] = 
+        σ * evaluator.objective.∂²L(Z⃗)
 
     return nothing
 end
@@ -197,8 +215,8 @@ end
 
     integrators = [
         BilinearIntegrator(G, traj, :x, :u, :Δt),
-        DerivativeIntegrator(traj, :u, :du, :Δt),
-        DerivativeIntegrator(traj, :du, :ddu, :Δt)
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
     ]
 
     J = TerminalLoss(x -> norm(x - traj.goal.x)^2, :x, traj)
