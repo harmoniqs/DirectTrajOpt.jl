@@ -1,4 +1,4 @@
-using DirectCollocation
+using DirectTrajOpt
 using Documenter
 using Literate
 
@@ -24,7 +24,7 @@ pages = [
 
 format = Documenter.HTML(;
     prettyurls=get(ENV, "CI", "false") == "true",
-    canonical="https://harmoniqs.github.io/DirectCollocation.jl",
+    canonical="https://harmoniqs.github.io/DirectTrajOpt.jl",
     edit_link="main",
     assets=String[],
     mathengine = MathJax3(Dict(
@@ -56,14 +56,14 @@ end
 
 
 makedocs(;
-    modules=[DirectCollocation],
+    modules=[DirectTrajOpt],
     authors="Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors",
-    sitename="DirectCollocation.jl",
+    sitename="DirectTrajOpt.jl",
     format=format,
     pages=pages,
 )
 
 deploydocs(;
-    repo="github.com/harmoniqs/DirectCollocation.jl",
+    repo="github.com/harmoniqs/DirectTrajOpt.jl",
     devbranch="main",
 )

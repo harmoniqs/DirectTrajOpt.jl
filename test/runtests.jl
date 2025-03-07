@@ -1,4 +1,4 @@
-using DirectCollocation
+using DirectTrajOpt
 using TestItemRunner
 
 

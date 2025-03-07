@@ -1,4 +1,4 @@
-name = "DirectCollocation"
+name = "DirectTrajOpt"
 uuid = "82ab4c96-bdfe-4573-b0a2-347b6440cc7b"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 version = "0.3.0"

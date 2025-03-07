@@ -74,6 +74,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using DirectCollocation
-          DocMeta.setdocmeta!(DirectCollocation, :DocTestSetup, :(using DirectCollocation); recursive=true)
-          doctest(DirectCollocation)
+          using DirectTrajOpt
+          DocMeta.setdocmeta!(DirectTrajOpt, :DocTestSetup, :(using DirectTrajOpt); recursive=true)
+          doctest(DirectTrajOpt)

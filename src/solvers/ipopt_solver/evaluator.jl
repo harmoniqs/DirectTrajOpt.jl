@@ -34,7 +34,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     eval_hessian::Bool
 
     function IpoptEvaluator(
-        prob::DirectCollocationProblem;
+        prob::DirectTrajOptProblem;
         eval_hessian=true
     )
         n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.T - 1)
@@ -208,7 +208,7 @@ end
 
     g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
 
-    prob = DirectCollocationProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
 
     evaluator = IpoptEvaluator(prob)
 

@@ -1,11 +1,11 @@
 module IpoptSolverExt
 
 
-using DirectCollocation
+using DirectTrajOpt
 using Ipopt
 using MathOptInterface
 import MathOptInterface as MOI
-import DirectCollocation as DC
+import DirectTrajOpt as DC
 using TestItemRunner
 
 include("options.jl")

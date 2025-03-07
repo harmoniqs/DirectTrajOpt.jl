@@ -1,7 +1,7 @@
 # # Quickstart Guide
 
 # ## Installation
-using DirectCollocation
+using DirectTrajOpt
 
 # ## This package also provides various objects and bindings used in Quantum Optimal Control problems.
 # This means various common constraints, integrators, objectives, and losses.
