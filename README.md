@@ -51,7 +51,7 @@
 </div>
 <!--```-->
 
-# DirectTrajOpt
+# DirectTrajOpt.jl
 
 **DirectTrajOpt.jl** provides a core library for quantum collocation methods. It is designed to be used in conjunction with the [QuantumCollocation.jl](https://github.com/harmoniqs/QuantumCollocation.jl) package and the [Piccolo.jl](https://github.com/harmoniqs/Piccolo.jl) ecosystem, which provides a high-level interface for solving quantum optimal control problems using direct collocation.
 
