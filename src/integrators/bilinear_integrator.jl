@@ -15,8 +15,7 @@ struct BilinearIntegrator <: AbstractIntegrator
         G::Function,
         traj::NamedTrajectory,
         x::Symbol,
-        u::Symbol,
-        Δt::Symbol
+        u::Symbol
     )
         @assert size(G(traj[1][u])) == (traj.dims[x], traj.dims[x]) 
 
@@ -24,7 +23,7 @@ struct BilinearIntegrator <: AbstractIntegrator
             G,
             traj.components[x],
             traj.components[u],
-            traj.components[Δt][1],
+            traj.components[traj.timestep][1],
             traj.dim,
             traj.dims[x],
             traj.dims[u]
@@ -32,7 +31,7 @@ struct BilinearIntegrator <: AbstractIntegrator
     end
 end
 
-function (B::BilinearIntegrator)(
+@views function (B::BilinearIntegrator)(
     δₖ::AbstractVector,
     zₖ::AbstractVector,
     zₖ₊₁::AbstractVector
@@ -44,7 +43,7 @@ function (B::BilinearIntegrator)(
     δₖ[:] = xₖ₊₁ - expv(Δtₖ, B.G(uₖ), xₖ)
 end
 
-function jacobian!(
+@views function jacobian!(
     ∂f::AbstractMatrix,
     B!::BilinearIntegrator,
     zₖ::AbstractVector,
@@ -86,7 +85,7 @@ function jacobian_structure(B::BilinearIntegrator)
 end
 
 
-function hessian_of_lagrangian(
+@views function hessian_of_lagrangian(
     B!::BilinearIntegrator,
     μₖ::AbstractVector,
     zₖ::AbstractVector,
@@ -115,15 +114,12 @@ function hessian_structure(B::BilinearIntegrator)
 
     # μ∂ₓₖ∂ᵤf & μ∂ᵤ∂ₓₖf
     μ∂²f[x_comps, u_comps] = ones(x_dim, u_dim)
-    μ∂²f[u_comps, x_comps] = ones(u_dim, x_dim)
 
     # μ∂ₓₖ∂Δtₖf & μ∂Δtₖ∂ₓₖf
     μ∂²f[x_comps, Δt_comp] = ones(x_dim)
-    μ∂²f[Δt_comp, x_comps] = ones(x_dim)
 
     # μ∂u∂Δtₖf & μ∂Δtₖ∂uf
     μ∂²f[u_comps, Δt_comp] = ones(u_dim)
-    μ∂²f[Δt_comp, u_comps] = ones(u_dim)
 
     # μ∂ᵤ²f
     μ∂²f[u_comps, u_comps] = ones(u_dim, u_dim)
@@ -141,7 +137,7 @@ end
 
     G, traj = bilinear_dynamics_and_trajectory()
 
-    B = BilinearIntegrator(G, traj, :x, :u, :Δt)
+    B = BilinearIntegrator(G, traj, :x, :u)
 
     test_integrator(B; diff=false)
 end

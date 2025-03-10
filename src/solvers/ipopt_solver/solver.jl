@@ -241,9 +241,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, traj, :x, :u, :Δt),
-        DerivativeIntegrator(traj, :u, :du, :Δt),
-        DerivativeIntegrator(traj, :du, :ddu, :Δt)
+        BilinearIntegrator(G, traj, :x, :u),
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
     ]
 
     J = TerminalLoss(x -> norm(x - traj.goal.x)^2, :x, traj)
