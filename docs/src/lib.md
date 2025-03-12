@@ -14,11 +14,6 @@ Modules = [DirectTrajOpt.Constraints]
 Modules = [DirectTrajOpt.Integrators]
 ``` 
 
-## Losses
-```@autodocs
-Modules = [DirectTrajOpt.Losses]
-```
-
 ## Objectives
 ```@autodocs
 Modules = [DirectTrajOpt.Objectives]
@@ -29,23 +24,17 @@ Modules = [DirectTrajOpt.Objectives]
 Modules = [DirectTrajOpt.Dynamics]
 ```
 
-## Options
-```@autodocs
-Modules = [DirectTrajOpt.Options]
-```
-
-## Problem Solvers
-```@autodocs
-Modules = [DirectTrajOpt.ProblemSolvers]
-```
-
 ## Problems
 ```@autodocs
 Modules = [DirectTrajOpt.Problems]
 ```
 
-## Saving and Loading
+## Problem Solvers
 ```@autodocs
-Modules = [DirectTrajOpt.SaveLoadUtils]
+Modules = [DirectTrajOpt.Solvers]
 ```
 
+## Problem Solvers
+```@autodocs
+Modules = [DirectTrajOpt.IpoptSolverExt]
+```

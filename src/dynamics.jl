@@ -286,7 +286,9 @@ end
 
     D.μ∂²F!(D.μ∂²fs, traj.datavec, μ)
 
-    @test all(Dynamics.get_full_hessian(D, traj) .≈ hessian_autodiff)
+    hessian = Dynamics.get_full_hessian(D, traj)
+
+    @test all(Symmetric(hessian) .≈ hessian_autodiff)
 end
 
 
