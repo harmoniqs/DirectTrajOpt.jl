@@ -11,15 +11,14 @@ struct DerivativeIntegrator <: AbstractIntegrator
     function DerivativeIntegrator(
         traj::NamedTrajectory,
         x::Symbol,
-        ẋ::Symbol,
-        Δt::Symbol
+        ẋ::Symbol
     )
         @assert traj.dims[x] == traj.dims[ẋ]
 
         return new(
             traj.components[x],
             traj.components[ẋ],
-            traj.components[Δt][1],
+            traj.components[traj.timestep][1],
             traj.dim,
             traj.dims[x],
             traj.dims[ẋ]
@@ -91,7 +90,7 @@ function hessian_of_lagrangian(
 
     # μ∂Δtₖ∂ẋₖD
     μ∂²D[D.u_comps, D.Δt_comp] += -μₖ 
-    μ∂²D[D.Δt_comp, D.u_comps] += -μₖ
+    # μ∂²D[D.Δt_comp, D.u_comps] += -μₖ
 
     return μ∂²D
 end
@@ -99,13 +98,13 @@ end
 function hessian_structure(D::DerivativeIntegrator) 
     μ∂²D = spzeros(2D.z_dim, 2D.z_dim) 
     μ∂²D[D.u_comps, D.Δt_comp] .= 1
-    μ∂²D[D.Δt_comp, D.u_comps] .= 1
+    # μ∂²D[D.Δt_comp, D.u_comps] .= 1
     return μ∂²D
 end
 
 @testitem "testing DerivativeIntegrator" begin
     include("../../test/test_utils.jl")
     traj = named_trajectory_type_1()
-    D = DerivativeIntegrator(traj, :a, :da, :Δt)
+    D = DerivativeIntegrator(traj, :a, :da)
     test_integrator(D)
 end

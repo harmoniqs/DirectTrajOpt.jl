@@ -6,46 +6,35 @@ CollapsedDocStrings = true
 
 ## Constraints
 ```@autodocs
-Modules = [DirectCollocation.Constraints]
+Modules = [DirectTrajOpt.Constraints]
 ```
 
 ## Integrators
 ```@autodocs
-Modules = [DirectCollocation.Integrators]
+Modules = [DirectTrajOpt.Integrators]
 ``` 
-
-## Losses
-```@autodocs
-Modules = [DirectCollocation.Losses]
-```
 
 ## Objectives
 ```@autodocs
-Modules = [DirectCollocation.Objectives]
+Modules = [DirectTrajOpt.Objectives]
 ```
 
 ## Dynamics
 ```@autodocs
-Modules = [DirectCollocation.Dynamics]
-```
-
-## Options
-```@autodocs
-Modules = [DirectCollocation.Options]
-```
-
-## Problem Solvers
-```@autodocs
-Modules = [DirectCollocation.ProblemSolvers]
+Modules = [DirectTrajOpt.Dynamics]
 ```
 
 ## Problems
 ```@autodocs
-Modules = [DirectCollocation.Problems]
+Modules = [DirectTrajOpt.Problems]
 ```
 
-## Saving and Loading
+## Problem Solvers
 ```@autodocs
-Modules = [DirectCollocation.SaveLoadUtils]
+Modules = [DirectTrajOpt.Solvers]
 ```
 
+## Problem Solvers
+```@autodocs
+Modules = [DirectTrajOpt.IpoptSolverExt]
+```

@@ -10,6 +10,7 @@ export test_integrator
 using LinearAlgebra
 using SparseArrays
 using ForwardDiff
+using FiniteDiff
 using NamedTrajectories
 using TestItemRunner
 using Test
@@ -46,23 +47,21 @@ function test_integrator(integrator::AbstractIntegrator; diff=false)
 
     jacobian!(∂f, integrator, z₁, z₂)
 
-    ∂f_autodiff = ForwardDiff.jacobian(f̂, [z₁; z₂])
+    ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁; z₂])
 
-    @test ∂f ≈ ∂f_autodiff
+    @test all(isapprox.(∂f, ∂f_autodiff, atol=1e-6))
     if diff 
         show_diffs(∂f, ∂f_autodiff)
     end
 
     # testing hessian
-    μ∂²f = spzeros(size(hessian_structure(integrator)))
-
     μ = randn(x_dim)
 
     μ∂²f = hessian_of_lagrangian(integrator, μ, z₁, z₂)
 
-    μ∂²f_autodiff = ForwardDiff.hessian(zz -> μ'f̂(zz), [z₁; z₂])
+    μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁; z₂])
 
-    @test μ∂²f ≈ μ∂²f_autodiff
+    @test all(isapprox.(Symmetric(μ∂²f), μ∂²f_autodiff, atol=1e-5))
 
     if diff 
         display(μ∂²f)

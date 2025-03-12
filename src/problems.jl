@@ -1,6 +1,6 @@
 module Problems
 
-export DirectCollocationProblem
+export DirectTrajOptProblem
 
 export get_trajectory_constraints
 
@@ -16,22 +16,22 @@ using LinearAlgebra
 using JLD2
 
 """
-    mutable struct DirectCollocationProblem <: AbstractProblem
+    mutable struct DirectTrajOptProblem <: AbstractProblem
 
-Stores all the information needed to set up and solve a DirectCollocationProblem as well as the solution
+Stores all the information needed to set up and solve a DirectTrajOptProblem as well as the solution
 after the solver terminates.
 
 # Fields
 - `optimizer::Ipopt.Optimizer`: Ipopt optimizer object
 """
-mutable struct DirectCollocationProblem
+mutable struct DirectTrajOptProblem
     trajectory::NamedTrajectory
     objective::Objective
     dynamics::TrajectoryDynamics
     constraints::Vector{<:AbstractConstraint}
 end
 
-function DirectCollocationProblem(
+function DirectTrajOptProblem(
     traj::NamedTrajectory,
     obj::Objective,
     integrators::Vector{<:AbstractIntegrator};
@@ -40,16 +40,16 @@ function DirectCollocationProblem(
     dynamics = TrajectoryDynamics(integrators, traj)
     traj_constraints = get_trajectory_constraints(traj)
     append!(constraints, traj_constraints)
-    return DirectCollocationProblem(traj, obj, dynamics, constraints)
+    return DirectTrajOptProblem(traj, obj, dynamics, constraints)
 end
 
-function DirectCollocationProblem(
+function DirectTrajOptProblem(
     traj::NamedTrajectory,
     obj::Objective,
     integrator::AbstractIntegrator;
     kwargs...
 )
-    return DirectCollocationProblem(
+    return DirectTrajOptProblem(
         traj, 
         obj, 
         AbstractIntegrator[integrator];

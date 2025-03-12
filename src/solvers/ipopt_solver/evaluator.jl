@@ -34,7 +34,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     eval_hessian::Bool
 
     function IpoptEvaluator(
-        prob::DirectCollocationProblem;
+        prob::DirectTrajOptProblem;
         eval_hessian=true
     )
         n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.T - 1)
@@ -58,7 +58,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
             hessian .+= Constraints.get_full_hessian(con, prob.trajectory)
         end
 
-        hessian_structure = collect(zip(findnz(hessian)[1:2]...))
+        hessian_structure = filter(((i, j),) -> i ≤ j, collect(zip(findnz(hessian)[1:2]...)))
         n_constraint_hessian_elements = length(hessian_structure)
 
         # objective hessian structure
@@ -196,9 +196,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, traj, :x, :u, :Δt),
-        DerivativeIntegrator(traj, :u, :du, :Δt),
-        DerivativeIntegrator(traj, :du, :ddu, :Δt)
+        BilinearIntegrator(G, traj, :x, :u),
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
     ]
 
     J = TerminalLoss(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -208,7 +208,7 @@ end
 
     g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
 
-    prob = DirectCollocationProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
 
     evaluator = IpoptEvaluator(prob)
 

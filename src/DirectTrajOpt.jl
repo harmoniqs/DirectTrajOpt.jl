@@ -1,4 +1,4 @@
-module DirectCollocation
+module DirectTrajOpt
 
 using Reexport
 
