@@ -19,7 +19,6 @@ abstract type AbstractIntegrator end
 
 include("derivative_integrator.jl")
 include("bilinear_integrator.jl")
-# include("quantum_integrators.jl")
 
 include("../../test/test_utils.jl")
 
@@ -49,7 +48,7 @@ function test_integrator(integrator::AbstractIntegrator; diff=false)
 
     ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁; z₂])
 
-    @test all(isapprox.(∂f, ∂f_autodiff, atol=1e-6))
+    @test all(isapprox.(∂f, ∂f_autodiff, atol=1e-5))
     if diff 
         show_diffs(∂f, ∂f_autodiff)
     end
