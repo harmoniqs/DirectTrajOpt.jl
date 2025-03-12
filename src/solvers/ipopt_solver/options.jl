@@ -39,6 +39,6 @@ Base.@kwdef mutable struct IpoptOptions{T} <: AbstractSolverOptions
     recalc_y = "no"
     recalc_y_feas_tol = 1.0e-6
     linear_solver = "mumps"
-    watchdog_shortened_iter_trigger = 10
+    watchdog_shortened_iter_trigger = 0 
     watchdog_trial_iter_max = 3
 end

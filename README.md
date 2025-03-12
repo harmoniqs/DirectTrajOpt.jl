@@ -1,9 +1,12 @@
+# DirectTrajOpt.jl
+
+
 <!--```@raw html-->
-<div align="center">
+<!-- <div align="center">
   <a href="https://github.com/harmoniqs/Piccolo.jl">
     <img src="assets/logo.svg" alt="Piccolo.jl" width="25%"/>
   </a>
-</div>
+</div> -->
 
 <div align="center">
   <table>
@@ -34,14 +37,6 @@
         <a href="https://opensource.org/licenses/MIT">
           <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"/>
         </a>
-      </td>
-      <td align="center">
-        <b>Support</b>
-        <br>
-        <a href="https://unitary.fund">
-          <img src="https://img.shields.io/badge/Supported%20By-Unitary%20Fund-FFFF00.svg" alt="Unitary Fund"/>
-        </a>
-      </td>
     </tr>
   </table>
 </div>
@@ -51,8 +46,17 @@
 </div>
 <!--```-->
 
-# DirectTrajOpt.jl
+**DirectTrajOpt.jl** provides abstractions and utilities for setting up and solving direct trajectory optimization problems of the form:
 
-**DirectTrajOpt.jl** provides a core library for quantum collocation methods. It is designed to be used in conjunction with the [QuantumCollocation.jl](https://github.com/harmoniqs/QuantumCollocation.jl) package and the [Piccolo.jl](https://github.com/harmoniqs/Piccolo.jl) ecosystem, which provides a high-level interface for solving quantum optimal control problems using direct collocation.
+$$
+\begin{align*}
+\underset{x_{1:N}, u_{1:N-1}}{\text{minimize}} \quad & J(x_{1:N}, u_{1:N-1}) \\
+\text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0\\
+& c_k(x_k, u_k) \geq 0 \\
+& x_1 = x_{\text{init}} \\
+\end{align*}
+$$
+
+where $J(x_{1:N}, u_{1:N-1})$ is a user-defined cost function, $f(x_{k+1}, x_k, u_k, \Delta t, t_k)$ is an *integrator* funtion encoding the dynamics of the system, and $c_k(x_k, u_k)$ are user-defined constraints.
 
 The underlying nonlinear solver is [Ipopt.jl](https://github.com/jump-dev/Ipopt.jl), which is a Julia interface to the [Ipopt](https://coin-or.github.io/Ipopt/) solver. 
