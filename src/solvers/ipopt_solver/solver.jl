@@ -85,7 +85,7 @@ function get_nonlinear_constraints(prob)
         if nl_con.equality
             append!(nl_cons, fill(MOI.NLPBoundsPair(0.0, 0.0), nl_con.dim))
         else
-            append!(nl_cons, fill(MOI.NLPBoundsPair(0.0, Inf), nl_con.dim))
+            append!(nl_cons, fill(MOI.NLPBoundsPair(-Inf, 0.0), nl_con.dim))
         end
     end
 
