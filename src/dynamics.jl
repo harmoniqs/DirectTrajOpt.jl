@@ -147,6 +147,7 @@ struct TrajectoryDynamics
             Z⃗::AbstractVector,
             μ⃗::AbstractVector
         )
+            # TODO: figure out how to get around resetting the matrix to zero
             for μ∂²f ∈ μ∂²fs
                 μ∂²f .= 0.0
             end

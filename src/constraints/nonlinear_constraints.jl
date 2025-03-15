@@ -11,6 +11,27 @@ struct NonlinearKnotPointConstraint <: AbstractNonlinearConstraint
     g_dim::Int
     dim::Int
 
+    """
+        NonlinearKnotPointConstraint(
+            g::Function,
+            name::Symbol,
+            traj::NamedTrajectory;
+            kwargs...
+        )
+
+    Create a NonlinearKnotPointConstraint object that represents a nonlinear constraint on a trajectory.
+
+    # Arguments
+    - `g::Function`: Function that defines the constraint. If `equality=false`, the constraint is `g(x) ≤ 0`.
+    - `name::Symbol`: Name of the variable to be constrained.
+    - `traj::NamedTrajectory`: The trajectory on which the constraint is defined.
+
+    # Keyword Arguments
+    - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
+    - `times::AbstractVector{Int}=1:traj.T`: Time indices at which the constraint is enforced.
+    - `jacobian_structure::Union{Nothing, SparseMatrixCSC}=nothing`: Structure of the Jacobian matrix of the constraint.
+    - `hessian_structure::Union{Nothing, SparseMatrixCSC}=nothing`: Structure of the Hessian matrix of the constraint.
+    """
     function NonlinearKnotPointConstraint(
         g::Function,
         name::Symbol,
@@ -122,7 +143,7 @@ end
 
     times = 1:traj.T
 
-    NLC = NonlinearKnotPointConstraint(g, :u, traj; times=times)
+    NLC = NonlinearKnotPointConstraint(g, :u, traj; times=times, equality=false)
 
     ĝ(Z⃗) = vcat([g(Z⃗[slice(k, traj.components[:u], traj.dim)]) for k ∈ times]...)
 

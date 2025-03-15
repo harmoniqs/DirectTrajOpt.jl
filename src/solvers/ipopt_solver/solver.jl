@@ -33,6 +33,7 @@ function DC.solve!(
     prob::DirectTrajOptProblem;
     options::IpoptOptions=IpoptOptions(),
     max_iter::Int=options.max_iter,
+    verbose::Bool=true,
     linear_solver::String=options.linear_solver,
     print_level::Int=options.print_level,
     callback=nothing
@@ -41,7 +42,7 @@ function DC.solve!(
     options.linear_solver = linear_solver
     options.print_level = print_level
 
-    optimizer, variables = get_optimizer_and_variables(prob, options, callback)
+    optimizer, variables = get_optimizer_and_variables(prob, options, callback, verbose=verbose)
 
     MOI.optimize!(optimizer)
 
@@ -84,7 +85,7 @@ function get_nonlinear_constraints(prob)
         if nl_con.equality
             append!(nl_cons, fill(MOI.NLPBoundsPair(0.0, 0.0), nl_con.dim))
         else
-            append!(nl_cons, fill(MOI.NLPBoundsPair(0.0, Inf), nl_con.dim))
+            append!(nl_cons, fill(MOI.NLPBoundsPair(-Inf, 0.0), nl_con.dim))
         end
     end
 
