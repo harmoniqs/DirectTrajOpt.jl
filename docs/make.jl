@@ -24,7 +24,7 @@ pages = [
 
 format = Documenter.HTML(;
     prettyurls=get(ENV, "CI", "false") == "true",
-    canonical="https://harmoniqs.github.io/DirectTrajOpt.jl",
+    canonical="https://docs.harmoniqs.co/DirectTrajOpt.jl",
     edit_link="main",
     assets=String[],
     mathengine = MathJax3(Dict(
