@@ -19,6 +19,8 @@ abstract type AbstractIntegrator end
 
 include("derivative_integrator.jl")
 include("bilinear_integrator.jl")
+include("adjoint_bilinear_integrator.jl")
+
 
 include("../../test/test_utils.jl")
 
