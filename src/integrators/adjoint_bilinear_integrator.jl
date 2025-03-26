@@ -17,7 +17,7 @@ struct AdjointBilinearIntegrator <: AbstractIntegrator
         G::Function,
         traj::NamedTrajectory,
         x::Symbol,
-        xₐ::Symbol,
+        xₐ::Vector{Symbol},
         u::Symbol
     )
         #TODO put the right assert here
@@ -25,11 +25,11 @@ struct AdjointBilinearIntegrator <: AbstractIntegrator
 
         return new(
             G,
-            vcat(traj.components[xₐ],traj.components[x]),
+            vcat(reduce(vcat,[traj.components[a] for a∈xₐ]),traj.components[x]),
             traj.components[u],
             traj.components[traj.timestep][1],
             traj.dim,
-            traj.dims[xₐ]+traj.dims[x],
+            sum([traj.dims[i] for i in xₐ])+traj.dims[x],
             traj.dims[u]
         )
     end
