@@ -43,7 +43,6 @@ function DC.solve!(
     options.print_level = print_level
 
     optimizer, variables = get_optimizer_and_variables(prob, options, callback, verbose=verbose)
-
     MOI.optimize!(optimizer)
 
     update_trajectory!(prob, optimizer, variables)
@@ -153,7 +152,6 @@ function set_variables!(
     n_traj_vars = traj.dim * traj.T
     n_vars = n_traj_vars + traj.global_dim
 
-
     # add variables
     variables = MOI.add_variables(optimizer, n_vars)
 
@@ -177,7 +175,6 @@ function set_variables!(
         )
         running_vars += n_global_vars
     end
-
     return variables
 end
 
@@ -188,7 +185,6 @@ function update_trajectory!(
 )
 
     n_vars = prob.trajectory.dim * prob.trajectory.T
-
     # get trajectory data
     datavec = MOI.get(
         optimizer,
