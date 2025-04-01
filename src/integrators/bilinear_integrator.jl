@@ -14,20 +14,31 @@ struct BilinearIntegrator <: AbstractIntegrator
     function BilinearIntegrator(
         G::Function,
         traj::NamedTrajectory,
-        x::Symbol,
+        xs::AbstractVector{Symbol},
         u::Symbol
     )
-        @assert size(G(traj[1][u])) == (traj.dims[x], traj.dims[x]) 
+        x_dim = sum(traj.dims[x] for x in xs)
+        u_dim = traj.dims[u]
+
+        @assert size(G(ones(u_dim))) == (x_dim, x_dim)
+
+        x_comps = vcat([traj.components[x] for x in xs]...)
+        u_comps = traj.components[u]
+        Δt_comp = traj.components[traj.timestep][1]
 
         return new(
             G,
-            traj.components[x],
-            traj.components[u],
-            traj.components[traj.timestep][1],
+            x_comps,
+            u_comps,
+            Δt_comp,
             traj.dim,
-            traj.dims[x],
-            traj.dims[u]
+            x_dim,
+            u_dim
         )
+    end
+
+    function BilinearIntegrator(G::Function, traj::NamedTrajectory, x::Symbol, u::Symbol)
+        BilinearIntegrator(G, traj, [x], u)
     end
 end
 
