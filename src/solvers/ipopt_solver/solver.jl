@@ -243,7 +243,7 @@ end
         DerivativeIntegrator(traj, :du, :ddu)
     ]
 
-    J = TerminalLoss(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
     J += QuadraticRegularizer(:u, traj, 1.0) 
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
