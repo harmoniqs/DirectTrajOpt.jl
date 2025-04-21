@@ -83,3 +83,15 @@ function (con::L1SlackConstraint)(
         )
     end
 end
+
+function (con::TotalConstraint)(
+    opt::Ipopt.Optimizer,
+    vars::Vector{MOI.VariableIndex}
+)
+MOI.add_constraints(
+    opt,
+    MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, vars[idx]) for idx in con.indices], 0.0),
+    MOI.EqualTo(con.value)
+)
+
+end

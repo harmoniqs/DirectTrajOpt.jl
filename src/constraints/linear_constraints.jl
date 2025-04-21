@@ -5,7 +5,8 @@ export GlobalBoundsConstraint
 export AllEqualConstraint
 export TimeStepsAllEqualConstraint
 export L1SlackConstraint
-
+export TotalConstraint
+export DurationConstraint
 ### 
 ### EqualityConstraint
 ###
@@ -244,4 +245,21 @@ function L1SlackConstraint(
         s2_indices,
         label
     )
+end
+
+struct TotalConstraint <: AbstractLinearConstraint
+    indices::Vector{Int}
+    value::Float64
+    label::String
+end
+
+
+function DurationConstraint(
+    traj::NamedTrajectory,
+    value::Float64;
+    label="duration constraint of $value"
+)
+    @assert traj.timestep isa Symbol
+    indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.T]
+    return TotalConstraint(indices, value ,label)
 end
