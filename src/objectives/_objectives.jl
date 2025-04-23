@@ -3,6 +3,7 @@ module Objectives
 export Objective
 export NullObjective
 export KnotPointObjective
+export TerminalObjective
 
 using ..Constraints
 
@@ -125,13 +126,27 @@ function KnotPointObjective(
     return Objective(L, ∇L, ∂²L, ∂²L_structure)
 end
 
+function TerminalObjective(
+    ℓ::Function,
+    name::Symbol,
+    traj::NamedTrajectory;
+    Q::Float64=1.0
+)
+    return KnotPointObjective(
+        ℓ,
+        name,
+        traj;
+        Qs=[Q],
+        times=[traj.T]
+    )
+end
+
 # ----------------------------------------------------------------------------- #
 # Additional objectives
 # ----------------------------------------------------------------------------- #
 
 include("minimum_time_objective.jl")
 include("regularizers.jl")
-include("terminal_loss.jl")
 
 # =========================================================================== #
 

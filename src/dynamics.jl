@@ -21,6 +21,17 @@ using TestItemRunner
 function dynamics_components(integrators::Vector{<:AbstractIntegrator})
     dynamics_comps = []
     comp_mark = 0
+    # for integrator ∈ integrators
+    #     if(!(typeof(integrator)<:AdjointBilinearIntegrator))
+    #         integrator_comps = comp_mark .+ (1:integrator.x_dim)
+    #         push!(dynamics_comps, integrator_comps)
+    #         comp_mark += integrator.x_dim
+    #     else 
+    #         integrator_comps = comp_mark .+ (1:integrator.x_dim+integrator.xₐ_dim)
+    #         push!(dynamics_comps, integrator_comps)
+    #         comp_mark += integrator.x_dim + integrator.xₐ_dim
+    #     end
+    # end
     for integrator ∈ integrators
         integrator_comps = comp_mark .+ (1:integrator.x_dim)
         push!(dynamics_comps, integrator_comps)
@@ -112,7 +123,9 @@ struct TrajectoryDynamics
             println("        constructing full dynamics derivative functions...")
         end
 
-        dynamics_dim = sum(integrator.x_dim for integrator ∈ integrators)
+        #dynamics_dim = sum(typeof(integrator)<:AdjointBilinearIntegrator ? integrator.x_dim + integrator.xₐ_dim : integrator.x_dim  for integrator ∈ integrators) 
+        dynamics_dim = sum(integrator.x_dim  for integrator ∈ integrators) 
+
         dynamics_comps = dynamics_components(integrators)
 
         @views function F!(
@@ -291,8 +304,5 @@ end
 
     @test all(Symmetric(hessian) .≈ hessian_autodiff)
 end
-
-
-
 
 end
