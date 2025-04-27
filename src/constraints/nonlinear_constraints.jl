@@ -61,14 +61,12 @@ struct NonlinearKnotPointConstraint <: AbstractNonlinearConstraint
     )
         @assert length(params) == length(times) "params must have the same length as times"
 
-        for name in names
-            @assert g(traj[times[1]][name], params[1]) isa AbstractVector{Float64}
-        end
-
         z_dim = traj.dim
-        g_dim = sum(length(g(traj[times[1]][name], params[1])) for name in names)
         x_comps = vcat([traj.components[name] for name in names]...)
         x_slices = [slice(t, x_comps, traj.dim) for t in times]
+
+        @assert g(traj[times[1]].data[x_comps], params[1]) isa AbstractVector{Float64}
+        g_dim = length(g(traj[times[1]].data[x_comps], params[1]))
 
         @views function g!(δ::AbstractVector, Z⃗::AbstractVector)
             for (i, x_slice) ∈ enumerate(x_slices)
