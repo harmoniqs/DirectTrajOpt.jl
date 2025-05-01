@@ -1,64 +1,85 @@
 export NonlinearKnotPointConstraint
 
+
 struct NonlinearKnotPointConstraint <: AbstractNonlinearConstraint
     g!::Function
     ∂g!::Function
     ∂gs::Vector{SparseMatrixCSC}
     μ∂²g!::Function
     μ∂²gs::Vector{SparseMatrixCSC}
-    equality::Bool
     times::AbstractVector{Int}
+    equality::Bool
     g_dim::Int
     dim::Int
 
     """
         NonlinearKnotPointConstraint(
             g::Function,
-            name::Symbol,
+            names::AbstractVector{Symbol},
+            traj::NamedTrajectory,
+            params::AbstractVector;
+            kwargs...
+        )
+        NonlinearKnotPointConstraint(
+            g::Function,
+            names::AbstractVector{Symbol},
             traj::NamedTrajectory;
             kwargs...
         )
+        NonlinearKnotPointConstraint(
+            g::Function,
+            name::Symbol,
+            args...;
+            kwargs...
+        )
 
-    Create a NonlinearKnotPointConstraint object that represents a nonlinear constraint on a trajectory.
+    Create a NonlinearKnotPointConstraint object that represents a nonlinear constraint `g(x,p)`
+    on a trajectory variable `x` with parameters `p`. If the parameters argument is omitted, 
+    `g(x)` is assumed to be a function of `x` only.
 
     # Arguments
-    - `g::Function`: Function that defines the constraint. If `equality=false`, the constraint is `g(x) ≤ 0`.
+    - `g::Function`: Function that defines the constraint, g(x, p) or g(x).
     - `name::Symbol`: Name of the variable to be constrained.
     - `traj::NamedTrajectory`: The trajectory on which the constraint is defined.
+    - `params::AbstractVector`: Parameters `p` for the constraint function `g`, for each time.
 
     # Keyword Arguments
-    - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
     - `times::AbstractVector{Int}=1:traj.T`: Time indices at which the constraint is enforced.
+    - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
     - `jacobian_structure::Union{Nothing, SparseMatrixCSC}=nothing`: Structure of the Jacobian matrix of the constraint.
     - `hessian_structure::Union{Nothing, SparseMatrixCSC}=nothing`: Structure of the Hessian matrix of the constraint.
     """
     function NonlinearKnotPointConstraint(
         g::Function,
-        name::Symbol,
-        traj::NamedTrajectory;
-        equality::Bool=true,
+        names::AbstractVector{Symbol},
+        traj::NamedTrajectory,
+        params::AbstractVector;
         times::AbstractVector{Int}=1:traj.T,
+        equality::Bool=true,
         jacobian_structure::Union{Nothing, SparseMatrixCSC}=nothing,
         hessian_structure::Union{Nothing, SparseMatrixCSC}=nothing,
     )
-        @assert g(traj[1][name]) isa AbstractVector{Float64}
+        @assert length(params) == length(times) "params must have the same length as times"
 
-        g_dim = length(g(traj[1][name]))
         z_dim = traj.dim
-        x_comps = traj.components[name]
+        x_comps = vcat([traj.components[name] for name in names]...)
+        x_slices = [slice(t, x_comps, traj.dim) for t in times]
+
+        @assert g(traj[times[1]].data[x_comps], params[1]) isa AbstractVector{Float64}
+        g_dim = length(g(traj[times[1]].data[x_comps], params[1]))
 
         @views function g!(δ::AbstractVector, Z⃗::AbstractVector)
-            for (i, k) ∈ enumerate(times)
-                δ[slice(i, g_dim)] = g(Z⃗[slice(k, x_comps, z_dim)])
+            for (i, x_slice) ∈ enumerate(x_slices)
+                δ[slice(i, g_dim)] = g(Z⃗[x_slice], params[i])
             end
         end
 
         @views function ∂g!(∂gs::Vector{<:AbstractMatrix}, Z⃗::AbstractVector)
-            for (k, ∂g) ∈ zip(times, ∂gs)
+            for (i, (x_slice, ∂g)) ∈ enumerate(zip(x_slices, ∂gs))
                 ForwardDiff.jacobian!(
                     ∂g[:, x_comps], 
-                    g, 
-                    Z⃗[slice(k, x_comps, z_dim)]
+                    x -> g(x, params[i]),
+                    Z⃗[x_slice]
                 )
             end
         end
@@ -71,7 +92,7 @@ struct NonlinearKnotPointConstraint <: AbstractNonlinearConstraint
             for (i, (k, μ∂²g)) ∈ enumerate(zip(times, μ∂²gs))
                 ForwardDiff.hessian!(
                     μ∂²g[x_comps, x_comps], 
-                    Z -> μ[slice(i, g_dim)]' * g(Z), 
+                    x -> μ[slice(i, g_dim)]' * g(x, params[i]), 
                     Z⃗[slice(k, x_comps, z_dim)]
                 )
             end
@@ -101,12 +122,36 @@ struct NonlinearKnotPointConstraint <: AbstractNonlinearConstraint
             ∂gs,
             μ∂²g!,
             μ∂²gs,
-            equality,
             times,
+            equality,
             g_dim,
             g_dim * length(times)
         )
     end
+
+    function NonlinearKnotPointConstraint(
+        g::Function,
+        names::AbstractVector{Symbol},
+        traj::NamedTrajectory;
+        times::AbstractVector{Int}=1:traj.T,
+        kwargs...
+    )
+        params = [nothing for _ in times]
+        g_param = (x, _) -> g(x)
+        return NonlinearKnotPointConstraint(
+            g_param, 
+            names, 
+            traj, 
+            params; 
+            times=times, 
+            kwargs...
+        )
+    end
+
+    function NonlinearKnotPointConstraint(g::Function, name::Symbol, args...; kwargs...)
+        return NonlinearKnotPointConstraint(g, [name], args...; kwargs...)
+    end
+
 end
 
 function get_full_jacobian(
@@ -130,6 +175,8 @@ function get_full_hessian(
     end
     return μ∂²g_full
 end
+
+# ============================================================================= #
 
 @testitem "testing NonlinearConstraint" begin
 
