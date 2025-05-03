@@ -41,6 +41,7 @@ function KnotPointObjective(
     names::AbstractVector{Symbol},
     traj::NamedTrajectory,
     params::AbstractVector;
+    global_names::AbstractVector{Symbol}=Symbol[],
     times::AbstractVector{Int}=1:traj.T,
     Qs::AbstractVector{Float64}=ones(traj.T),
 )
@@ -49,7 +50,8 @@ function KnotPointObjective(
 
     Z_dim = traj.dim * traj.T + traj.global_dim
     x_comps = vcat([traj.components[name] for name in names]...)
-    x_slices = [slice(t, x_comps, traj.dim) for t in times]
+    g_comps = vcat([traj.global_components[name] for name in global_names]...)
+    x_slices = [vcat([slice(t, x_comps, traj.dim), g_comps]...) for t in times]
     
     function L(Z⃗::AbstractVector{<:Real})
         loss = 0.0
@@ -111,14 +113,16 @@ function TerminalObjective(
     ℓ::Function,
     name::Symbol,
     traj::NamedTrajectory;
-    Q::Float64=1.0
+    Q::Float64=1.0,
+    kwargs...
 )
     return KnotPointObjective(
         ℓ,
         name,
         traj;
         Qs=[Q],
-        times=[traj.T]
+        times=[traj.T],
+        kwargs...
     )
 end
 
