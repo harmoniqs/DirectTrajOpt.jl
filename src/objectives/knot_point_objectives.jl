@@ -1,5 +1,10 @@
 export KnotPointObjective
 export TerminalObjective
+export GlobalObjective
+
+# ----------------------------------------------------------------------------- #
+# KnotPointObjective
+# ----------------------------------------------------------------------------- #
 
 """
     KnotPointObjective(
@@ -124,6 +129,62 @@ function TerminalObjective(
         times=[traj.T],
         kwargs...
     )
+end
+
+# ----------------------------------------------------------------------------- #
+# GlobalObjective
+# ----------------------------------------------------------------------------- #
+
+"""
+    GlobalObjective(
+        ℓ::Function,
+        global_names::AbstractVector{Symbol},
+        traj::NamedTrajectory;
+        kwargs...
+    )
+    GlobalObjective(
+        ℓ::Function,
+        global_name::Symbol,
+        traj::NamedTrajectory;
+        kwargs...
+    )
+
+Create an objective that only involves the global components.
+"""
+function GlobalObjective(
+    ℓ::Function,
+    global_names::AbstractVector{Symbol},
+    traj::NamedTrajectory;
+    Q::Float64=1.0
+)
+    Z_dim = traj.dim * traj.T + traj.global_dim
+    g_comps = vcat([traj.global_components[name] for name in global_names]...)
+    
+    L(Z⃗::AbstractVector{<:Real}) = Q * ℓ(Z⃗[g_comps])
+
+    @views function ∇L(Z⃗::AbstractVector{<:Real})
+        ∇ = zeros(Z_dim)
+        ∇[g_comps] = ForwardDiff.gradient(x -> Q * ℓ(x), Z⃗[g_comps])
+        return ∇
+    end
+
+    function ∂²L_structure()
+        structure = spzeros(Z_dim, Z_dim)
+        structure[g_comps, g_comps] .= 1.0
+        structure_pairs = collect(zip(findnz(structure)[1:2]...))
+        return structure_pairs
+    end
+
+    @views function ∂²L(Z⃗::AbstractVector{<:Real})
+        ∂²ℓ = ForwardDiff.hessian(x -> Q * ℓ(x), Z⃗[g_comps])
+        return ∂²ℓ[:]
+    end
+
+    return Objective(L, ∇L, ∂²L, ∂²L_structure)
+end
+
+function ℓ(ℓ::Function, global_name::Symbol, traj::NamedTrajectory; kwargs...)
+    return GlobalObjective(ℓ, [global_name], traj; kwargs...)
 end
 
 # ============================================================================ #

@@ -51,6 +51,8 @@ function jacobian_structure(
     return ∂f
 end
 
+# TODO: Where is get_full_jacobian?
+
 function hessian_structure(
     integrators::Vector{<:AbstractIntegrator}, 
     traj::NamedTrajectory
@@ -62,8 +64,9 @@ function hessian_structure(
     return μ∂²f
 end
 
-function get_full_hessian(μ∂²f::AbstractMatrix, traj::NamedTrajectory) 
-    μ∂²F = spzeros(traj.dim * traj.T, traj.dim * traj.T)
+function get_full_hessian(μ∂²f::AbstractMatrix, traj::NamedTrajectory)
+    Z_dim = traj.dim * traj.T + traj.global_dim
+    μ∂²F = spzeros(Z_dim, Z_dim)
     for k = 1:traj.T-1
         μ∂²F[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= μ∂²f
     end
@@ -213,16 +216,18 @@ function NullTrajectoryDynamics()
     )
 end
 
-function get_full_jacobian(D::TrajectoryDynamics, traj::NamedTrajectory) 
-    ∂F = spzeros(D.dim * (traj.T - 1), traj.dim * traj.T)
+function get_full_jacobian(D::TrajectoryDynamics, traj::NamedTrajectory)
+    Z_dim = traj.dim * traj.T + traj.global_dim
+    ∂F = spzeros(D.dim * (traj.T - 1), Z_dim)
     for k = 1:traj.T-1
         ∂F[slice(k, D.dim), slice(k, 1:2traj.dim, traj.dim)] += D.∂fs[k]
     end
     return ∂F
 end
 
-function get_full_hessian(D::TrajectoryDynamics, traj::NamedTrajectory) 
-    μ∂²F = spzeros(traj.dim * traj.T, traj.dim * traj.T)
+function get_full_hessian(D::TrajectoryDynamics, traj::NamedTrajectory)
+    Z_dim = traj.dim * traj.T + traj.global_dim
+    μ∂²F = spzeros(Z_dim, Z_dim)
     for k = 1:traj.T-1
         μ∂²F[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= D.μ∂²fs[k]
     end
