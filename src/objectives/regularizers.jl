@@ -1,5 +1,5 @@
 export QuadraticRegularizer
-
+export PairwiseQuadraticRegularizer
 # ----------------------------------------------------------------------------- #
 # Quadratic Regularizer
 # ----------------------------------------------------------------------------- #
@@ -122,3 +122,32 @@ end
 
 
 
+#####
+function PairwiseQuadraticRegularizer(
+    name1::Symbol,
+    name2::Symbol,
+    traj::NamedTrajectory,
+    R::Float64;
+)
+    if traj.timestep isa Symbol
+        J = KnotPointObjective(
+        (v,p) -> 1/2 * sum(abs2, (v[1:length(v) ÷ 2]-v[length(v) ÷ 2+1:end] ) * p ) ,
+        [name1,name2],
+        traj,
+        [t[1] for t in eachcol(traj[traj.timestep])];
+        times =  1:traj.T,
+        Qs = R * ones(traj.T)
+        )
+        
+    else
+        Δt  = traj.timestep
+        J = KnotPointObjective(
+        v -> 1/2 * sum(abs2, (v[1:length(v) ÷ 2]-v[length(v) ÷ 2+1:end]) * Δt),
+        [name1,name2],
+        traj,
+        [nothing for _ in 1:traj.T];
+        times =  1:traj.T,
+        Qs = R * ones(traj.T)
+        )
+    end 
+end

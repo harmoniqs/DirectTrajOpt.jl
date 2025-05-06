@@ -154,7 +154,6 @@ struct TrajectoryDynamics
             end
         end
 
-
         @views function μ∂²F!(
             μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}},
             Z⃗::AbstractVector,
