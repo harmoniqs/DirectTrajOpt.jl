@@ -48,6 +48,8 @@ function DC.solve!(
     update_trajectory!(prob, optimizer, variables)
 
     remove_slack_variables!(prob)
+
+    return nothing
 end
 
 # TODO: take another look at this
