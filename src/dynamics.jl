@@ -51,8 +51,6 @@ function jacobian_structure(
     return ∂f
 end
 
-# TODO: Where is get_full_jacobian?
-
 function hessian_structure(
     integrators::Vector{<:AbstractIntegrator}, 
     traj::NamedTrajectory

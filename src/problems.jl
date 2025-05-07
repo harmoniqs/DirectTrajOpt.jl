@@ -104,8 +104,4 @@ function get_trajectory_constraints(traj::NamedTrajectory)
 end
 
 
-
-
-
-
 end
