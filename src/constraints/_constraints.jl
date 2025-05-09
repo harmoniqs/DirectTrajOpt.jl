@@ -21,5 +21,6 @@ abstract type AbstractNonlinearConstraint <: AbstractConstraint end
 
 include("linear_constraints.jl")
 include("nonlinear_constraints.jl")
+include("global_nonlinear_constraints.jl")
 
 end

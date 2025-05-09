@@ -81,6 +81,7 @@ end
 # ----------------------------------------------------------------------------- #
 
 include("knot_point_objectives.jl")
+include("global_objectives.jl")
 include("minimum_time_objective.jl")
 include("regularizers.jl")
 
