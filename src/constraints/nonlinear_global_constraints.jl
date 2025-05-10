@@ -157,6 +157,13 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
 
         @views function ∂g!(∂gs::Vector{<:AbstractMatrix}, Z⃗::AbstractVector)
             for (i, (xg_slice, ∂g)) ∈ enumerate(zip(xg_slices, ∂gs))
+                # Reset
+                if i == 1
+                    ∂g[:, xg_comps] .= 0
+                else
+                    ∂g[:, x_comps] .= 0
+                end
+
                 # Overlapping
                 ∂g[:, xg_comps] .+= ForwardDiff.jacobian(
                     xg -> g(xg, params[i]), 
@@ -171,6 +178,15 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
             μ::AbstractVector
         )
             for (i, (xg_slice, μ∂²g)) ∈ enumerate(zip(xg_slices, μ∂²gs))
+                # Reset
+                if i == 1
+                    μ∂²g[xg_comps, xg_comps] .= 0
+                else
+                    ∂g[x_comps, x_comps] .= 0
+                    ∂g[x_comps, xg_comps] .= 0
+                    ∂g[xg_comps, xg_comps] .= 0
+                end
+
                 # Overlapping
                 μ∂²g[xg_comps, xg_comps] .+= ForwardDiff.hessian(
                     xg -> μ[slice(i, g_dim)]' * g(xg, params[i]), 
