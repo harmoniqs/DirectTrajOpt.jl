@@ -52,8 +52,9 @@ struct NonlinearKnotPointConstraint <: AbstractNonlinearConstraint
         x_comps = vcat([traj.components[name] for name in names]...)
         x_slices = [slice(t, x_comps, traj.dim) for t in times]
 
-        @assert g(traj[times[1]].data[x_comps], params[1]) isa AbstractVector{Float64}
-        g_dim = length(g(traj[times[1]].data[x_comps], params[1]))
+        # inspect view of knot point data
+        @assert g(traj.datavec[x_slices[1]], params[1]) isa AbstractVector{Float64}
+        g_dim = length(g(traj.datavec[x_slices[1]], params[1]))
 
         @views function g!(δ::AbstractVector, Z⃗::AbstractVector)
             for (i, x_slice) ∈ enumerate(x_slices)
@@ -149,6 +150,7 @@ function get_full_jacobian(
     Z_dim = traj.dim * traj.T + traj.global_dim
     ∂g_full = spzeros(NLC.dim, Z_dim) 
     for (i, (k, ∂gₖ)) ∈ enumerate(zip(NLC.times, NLC.∂gs))
+        # Disjoint
         ∂g_full[slice(i, NLC.g_dim), slice(k, traj.dim)] = ∂gₖ
     end
     return ∂g_full
@@ -161,6 +163,7 @@ function get_full_hessian(
     Z_dim = traj.dim * traj.T + traj.global_dim
     μ∂²g_full = spzeros(Z_dim, Z_dim)
     for (k, μ∂²gₖ) ∈ zip(NLC.times, NLC.μ∂²gs)
+        # Disjoint
         μ∂²g_full[slice(k, traj.dim), slice(k, traj.dim)] = μ∂²gₖ
     end
     return μ∂²g_full

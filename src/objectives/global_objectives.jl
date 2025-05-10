@@ -62,7 +62,7 @@ end
 # Global KnotPointObjective
 # ----------------------------------------------------------------------------- #
 
-function KnotPointObjective(
+function GlobalKnotPointObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
     global_names::AbstractVector{Symbol},
@@ -77,13 +77,13 @@ function KnotPointObjective(
     Z_dim = traj.dim * traj.T + traj.global_dim
     x_comps = vcat([traj.components[name] for name in names]...)
     g_comps = vcat([traj.global_components[name] for name in global_names]...)
+    
     xg_slices = [vcat([slice(t, x_comps, traj.dim), g_comps]...) for t in times]
     
     function L(Z⃗::AbstractVector{<:Real})
         loss = 0.0
-        for (i, x_slice) in enumerate(xg_slices)
-            x = Z⃗[x_slice]
-            loss += Qs[i] * ℓ(x, params[i])
+        for (i, xg_slice) in enumerate(xg_slices)
+            loss += Qs[i] * ℓ(Z⃗[xg_slice], params[i])
         end
         return loss
     end
@@ -91,16 +91,16 @@ function KnotPointObjective(
     @views function ∇L(Z⃗::AbstractVector{<:Real})
         ∇ = zeros(Z_dim)
         for (i, x_slice) in enumerate(xg_slices)
-            # Add because global params
-            ∇[x_slice] .+= ForwardDiff.gradient(x -> Qs[i] * ℓ(x, params[i]), Z⃗[x_slice])
+            # Global parameters are shared
+            ∇[x_slice] .+= ForwardDiff.gradient(xg -> Qs[i] * ℓ(xg, params[i]), Z⃗[x_slice])
         end
         return ∇
     end
 
     function ∂²L_structure()
         structure = spzeros(Z_dim, Z_dim)
-        for x_slice in xg_slices
-            structure[x_slice, x_slice] .= 1.0
+        for xg_slice in xg_slices
+            structure[xg_slice, xg_slice] .= 1.0
         end
         structure_pairs = collect(zip(findnz(structure)[1:2]...))
         return structure_pairs
@@ -108,36 +108,29 @@ function KnotPointObjective(
 
     function ∂²L_structure_mapping()
         # Build a mapping from (i, j) -> idx
-        structure_dict = Dict{Tuple{Int, Int}, Int}()
+        structure_pairs = Dict{Tuple{Int, Int}, Int}()
         for (idx, pair) in enumerate(∂²L_structure())
-            structure_dict[pair] = idx
+            structure_pairs[pair] = idx
         end
-        return structure_dict
+        
+        # Build a mapping from slice to structure
+        structure_map = [
+            [structure_pairs[(i, j)] for j in xg_slice for i in xg_slice]
+            for xg_slice in xg_slices
+        ]
+        return structure_map
     end
 
-    @views function ∂²L(Z⃗::AbstractVector{<:Real})
-        structure_dict = ∂²L_structure_mapping()
-        ∂²L_values = zeros(length(structure_dict))
-        for (i, x_slice) in enumerate(xg_slices)
-            ∂²ℓ = ForwardDiff.hessian(x -> Qs[i] * ℓ(x, params[i]), Z⃗[x_slice])
+    # precompute
+    ∂²L_slices = ∂²L_structure_mapping()
+    ∂²L_structure_length = length(∂²L_structure())
 
-            # TODO: Is there a more efficient way to do this?
-            for local_i in eachindex(x_slice)
-                global_i = x_slice[local_i]
-                for local_j in 1:local_i
-                    global_j = x_slice[local_j]
-    
-                    # Add to (i,j)
-                    idx = structure_dict[(global_i, global_j)]
-                    ∂²L_values[idx] += ∂²ℓ[local_i, local_j]
-    
-                    # Add to (j,i) if off-diagonal
-                    if local_i != local_j
-                        idx_sym = structure_dict[(global_j, global_i)]
-                        ∂²L_values[idx_sym] += ∂²ℓ[local_j, local_i]
-                    end
-                end
-            end
+    @views function ∂²L(Z⃗::AbstractVector{<:Real})
+        ∂²L_values = zeros(∂²L_structure_length)
+        for (i, xg_slice) in enumerate(xg_slices)
+            ∂²ℓ = ForwardDiff.hessian(xg -> Qs[i] * ℓ(xg, params[i]), Z⃗[xg_slice])
+            # Global parameters are shared
+            ∂²L_values[∂²L_slices[i]] .+= ∂²ℓ[:]
         end
         return ∂²L_values
     end
@@ -145,7 +138,7 @@ function KnotPointObjective(
     return Objective(L, ∇L, ∂²L, ∂²L_structure)
 end
 
-function KnotPointObjective(
+function GlobalKnotPointObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
     global_names::AbstractVector{Symbol},
@@ -155,10 +148,10 @@ function KnotPointObjective(
 )
     params = [nothing for _ in times]
     ℓ_param = (x, _) -> ℓ(x)
-    return KnotPointObjective(ℓ_param, names, global_names, traj, params; times=times, kwargs...)
+    return GlobalKnotPointObjective(ℓ_param, names, global_names, traj, params; times=times, kwargs...)
 end
 
-
+# From KnotPointObjective
 function TerminalObjective(
     ℓ::Function,
     name::Symbol,
@@ -167,9 +160,9 @@ function TerminalObjective(
     Q::Float64=1.0,
     kwargs...
 )
-    return KnotPointObjective(
+    return GlobalKnotPointObjective(
         ℓ,
-        name,
+        [name],
         global_names,
         traj;
         Qs=[Q],
