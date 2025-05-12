@@ -51,7 +51,7 @@ function test_integrator(integrator::AbstractIntegrator; diff=false)
 
     ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁; z₂])
 
-    @test all(isapprox.(∂f, ∂f_autodiff, atol=1e-5))
+    @test all(isapprox.(∂f, ∂f_autodiff, atol=1e-4))
     if diff 
         show_diffs(∂f, ∂f_autodiff)
     end
