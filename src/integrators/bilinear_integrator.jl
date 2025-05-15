@@ -2,8 +2,8 @@ export BilinearIntegrator
 
 using ExponentialAction
 
-struct BilinearIntegrator <: AbstractIntegrator
-    G::Function
+struct BilinearIntegrator{F} <: AbstractIntegrator
+    G::F
     x_comps::AbstractVector{Int}
     u_comps::AbstractVector{Int}
     Δt_comp::Int
@@ -12,11 +12,11 @@ struct BilinearIntegrator <: AbstractIntegrator
     u_dim::Int
 
     function BilinearIntegrator(
-        G::Function,
+        G::F,
         traj::NamedTrajectory,
         xs::AbstractVector{Symbol},
         u::Symbol
-    )
+    ) where F <: Function
         x_dim = sum(traj.dims[x] for x in xs)
         u_dim = traj.dims[u]
 
@@ -26,7 +26,7 @@ struct BilinearIntegrator <: AbstractIntegrator
         u_comps = traj.components[u]
         Δt_comp = traj.components[traj.timestep][1]
 
-        return new(
+        return new{F}(
             G,
             x_comps,
             u_comps,
