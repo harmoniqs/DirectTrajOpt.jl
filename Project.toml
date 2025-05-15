@@ -1,7 +1,7 @@
 name = "DirectTrajOpt"
 uuid = "c823fa1f-8872-4af5-b810-2b9b72bbbf56"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
-version = "0.2.4"
+version = "0.2.5"
 
 [deps]
 ExponentialAction = "e24c0720-ea99-47e8-929e-571b494574d3"
@@ -24,11 +24,11 @@ TrajectoryIndexingUtils = "6dad8b7f-dd9a-4c28-9b70-85b9a079bfc8"
 ExponentialAction = "0.2"
 FiniteDiff = "2.27"
 ForwardDiff = "0.10, 1.0"
-Ipopt = "1.7"
+Ipopt = "1.10"
 JLD2 = "0.5"
 Libdl = "1.10, 1.11"
 LinearAlgebra = "1.10, 1.11"
-MathOptInterface = "1.38"
+MathOptInterface = "1.40"
 NamedTrajectories = "0.3"
 Reexport = "1.2"
 SparseArrays = "1.10, 1.11"
