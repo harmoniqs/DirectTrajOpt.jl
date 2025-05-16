@@ -18,6 +18,7 @@ abstract type AbstractBilinearIntegrator <: AbstractIntegrator end
         zeros(B!.x_dim),
         [zₖ; zₖ₊₁]
     )
+    return nothing
 end
 
 function jacobian_structure(B::AbstractBilinearIntegrator)

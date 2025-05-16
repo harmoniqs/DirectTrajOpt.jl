@@ -139,6 +139,7 @@ struct TrajectoryDynamics
                     integrator!(δ[slice(k, comps, dynamics_dim)], zₖ, zₖ₊₁)
                 end
             end
+            return nothing
         end
 
         @views function ∂F!(
@@ -152,6 +153,7 @@ struct TrajectoryDynamics
                     jacobian!(∂fs[k][comps, :], integrator, zₖ, zₖ₊₁)
                 end
             end
+            return nothing
         end
 
 
@@ -172,6 +174,7 @@ struct TrajectoryDynamics
                     μ∂²fs[k] .+= hessian_of_lagrangian(integrator, μₖ, zₖ, zₖ₊₁)
                 end
             end
+            return nothing
         end
 
         ∂f_structure = jacobian_structure(integrators, traj)

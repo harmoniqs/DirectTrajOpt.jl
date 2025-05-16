@@ -38,6 +38,7 @@ function jacobian!(
     zₖ₊₁::AbstractVector
 )
     # ∂xₖ₊₁D, ∂xₖD, ∂ΔtₖD in jacobian structure
+    return nothing
 end
 
 function jacobian_structure(D::TimeIntegrator)
