@@ -4,7 +4,6 @@ using DifferentialEquations
 using SciMLBase
 using SciMLSensitivity
 
-
 struct TimeDependentBilinearIntegrator <: AbstractBilinearIntegrator
     G::Function
     prob::ODEProblem
@@ -24,21 +23,26 @@ struct TimeDependentBilinearIntegrator <: AbstractBilinearIntegrator
         t::Symbol
     )
 
-        function f!(dx, x, p, τ)
-            t, Δt, u = p[1], p[2], p[3:end]
-            dx[:] = G(u, t + τ * Δt) * x
+        function f!(dx, x_, p, τ)
+            t_, Δt_, u_ = p[1], p[2], p[3:end]
+            dx[:] = G(u_, t_ + τ * Δt_) * x_ * Δt_
+            return nothing
         end
 
-        x₀ = zeros(traj.components[x])
-        u₀ = zeros(traj.components[u])
+        x_comp = traj.components[x]
+        u_comp = traj.components[u]
+
+        x₀ = zeros(x_comp)
+        u₀ = zeros(u_comp)
         t₀ = 0.0
         Δt₀ = 1.0
         prob = ODEProblem(f!, x₀, (0.0, 1.0), [t₀; Δt₀; u₀...])
+
         return new(
             G,
             prob,
-            traj.components[x],
-            traj.components[u],
+            x_comp,
+            u_comp,
             traj.components[t][1],
             traj.components[traj.timestep][1],
             traj.dim,
@@ -51,7 +55,10 @@ end
 @views function (B::TimeDependentBilinearIntegrator)(
     δₖ::AbstractVector,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector;
+    algorithm=Tsit5(),
+    rtol::Float64=1e-6,
+    atol::Float64=1e-6
 )
     xₖ₊₁ = zₖ₊₁[B.x_comps]
     xₖ = zₖ[B.x_comps]
@@ -60,32 +67,8 @@ end
     Δtₖ = zₖ[B.Δt_comp]
 
     _prob = remake(B.prob, u0 = xₖ, p = [tₖ, Δtₖ, uₖ...])
-    sol = solve(_prob, Tsit5(), reltol = 1e-6, abstol = 1e-6)
+    sol = solve(_prob, algorithm, reltol = rtol, abstol = atol)
     δₖ[:] = xₖ₊₁ - sol[:,end]
-end
-
-@views function jacobian!(
-    ∂f::AbstractMatrix,
-    B!::TimeDependentBilinearIntegrator,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
-)
-    # function f(zₖ)
-    #     xₖ = zₖ[B!.x_comps]
-    #     uₖ = zₖ[B!.u_comps]
-    #     tₖ = zₖ[B!.t_comp]
-    #     Δtₖ = zₖ[B!.Δt_comp]
-    #     _prob = remake(B!.prob, u0 = xₖ, p = [tₖ; Δtₖ; uₖ])
-    #     solve(_prob, Tsit5(), reltol = 1e-6, abstol = 1e-6)
-    # end
-    #∂f[:, 1:B!.z_dim] = ForwardDiff.jacobian!(∂f, f, zeros(B!.x_dim), [zₖ])
-    ForwardDiff.jacobian!(
-        ∂f,
-        (δ, zz) -> B!(δ, zz[1:B!.z_dim], zz[B!.z_dim+1:end]),
-        zeros(B!.x_dim),
-        [zₖ; zₖ₊₁]
-    )
-    #∂f[:, B!.z_dim .+ B!.x_comps] = I(B!.x_dim)
 end
 
 function jacobian_structure(B::TimeDependentBilinearIntegrator)
@@ -118,26 +101,6 @@ function jacobian_structure(B::TimeDependentBilinearIntegrator)
 
     return ∂f
 end
-
-
-# @views function hessian_of_lagrangian(
-#     B!::TimeDependentBilinearIntegrator,
-#     μₖ::AbstractVector,
-#     zₖ::AbstractVector,
-#     zₖ₊₁::AbstractVector
-# )
-
-#     function f(zₖ)
-#         xₖ = zₖ[B.x_comps]
-#         uₖ = zₖ[B.u_comps]
-#         tₖ = zₖ[B.t_comp]
-#         Δtₖ = zₖ[B.Δt_comp]
-#         _prob = remake(prob, u0 = xₖ, p = [tₖ; Δtₖ; uₖ])
-#         solve(_prob, Tsit5(), reltol = 1e-6, abstol = 1e-6)
-#     end
-#     μ∂²f[:B.z_dim,:B.z_dim] = ForwardDiff.hessian!(f, zₖ)
-    
-# end
 
 function hessian_structure(B::TimeDependentBilinearIntegrator)
 
