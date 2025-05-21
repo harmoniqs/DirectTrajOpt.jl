@@ -143,3 +143,13 @@ function hessian_structure(B::TimeDependentBilinearIntegrator)
 
     return μ∂²f
 end
+
+@testitem "testing TimeDependentBilinearIntegrator" begin
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    B = TimeDependentBilinearIntegrator(G, traj, :x, :u, :t)
+
+    test_integrator(B; diff=false)
+end
