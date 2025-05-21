@@ -28,11 +28,11 @@ Fields:
     `∂²L`: the Hessian of the objective function
     `∂²L_structure`: the structure of the Hessian of the objective function
 """
-struct Objective
-	L::Function
-	∇L::Function
-	∂²L::Union{Function, Nothing}
-	∂²L_structure::Union{Function, Nothing}
+struct Objective{F1, F2, F3, F4}
+	L::F1
+	∇L::F2
+	∂²L::Union{F3, Nothing}
+	∂²L_structure::Union{F4, Nothing}
 end
 
 function Base.:+(obj1::Objective, obj2::Objective)

@@ -4,11 +4,11 @@ using DifferentialEquations
 using SciMLBase
 using SciMLSensitivity
 
-struct TimeDependentBilinearIntegrator <: AbstractBilinearIntegrator
-    G::Function
+struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
+    G::F
     prob::ODEProblem
-    x_comps::AbstractVector{Int}
-    u_comps::AbstractVector{Int}
+    x_comps::Vector{Int}
+    u_comps::Vector{Int}
     t_comp::Int
     Δt_comp::Int
     z_dim::Int
@@ -16,12 +16,12 @@ struct TimeDependentBilinearIntegrator <: AbstractBilinearIntegrator
     u_dim::Int
 
     function TimeDependentBilinearIntegrator(
-        G::Function,
+        G::F,
         traj::NamedTrajectory,
         x::Symbol,
         u::Symbol,
         t::Symbol
-    )
+    ) where F <: Function
 
         function f!(dx, x_, p, τ)
             t_, Δt_, u_ = p[1], p[2], p[3:end]
@@ -38,7 +38,7 @@ struct TimeDependentBilinearIntegrator <: AbstractBilinearIntegrator
         Δt₀ = 1.0
         prob = ODEProblem(f!, x₀, (0.0, 1.0), [t₀; Δt₀; u₀...])
 
-        return new(
+        return new{F}(
             G,
             prob,
             x_comp,

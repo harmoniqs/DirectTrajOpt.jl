@@ -94,21 +94,21 @@ function hessian_structure(B::AbstractBilinearIntegrator)
     return μ∂²f
 end
 
-struct BilinearIntegrator <: AbstractBilinearIntegrator
-    G::Function
-    x_comps::AbstractVector{Int}
-    u_comps::AbstractVector{Int}
+struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
+    G::F
+    x_comps::Vector{Int}
+    u_comps::Vector{Int}
     Δt_comp::Int
     z_dim::Int
     x_dim::Int
     u_dim::Int
 
     function BilinearIntegrator(
-        G::Function,
+        G::F,
         traj::NamedTrajectory,
         xs::AbstractVector{Symbol},
         u::Symbol
-    )
+    ) where F <: Function
         x_dim = sum(traj.dims[x] for x in xs)
         u_dim = traj.dims[u]
 
@@ -118,7 +118,7 @@ struct BilinearIntegrator <: AbstractBilinearIntegrator
         u_comps = traj.components[u]
         Δt_comp = traj.components[traj.timestep][1]
 
-        return new(
+        return new{F}(
             G,
             x_comps,
             u_comps,

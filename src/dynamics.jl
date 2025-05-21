@@ -72,8 +72,6 @@ end
 
 
 
-
-
 """
     TrajectoryDynamics
 
@@ -89,11 +87,11 @@ single time step dynamics, and functions for jacobians and hessians.
 - `μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}}`: Vector of Hessian matrices.
 - `dim::Int`: Total dimension of the dynamics.
 """
-struct TrajectoryDynamics
-    F!::Function
-    ∂F!::Function
+struct TrajectoryDynamics{F1, F2, F3} 
+    F!::F1
+    ∂F!::F2
     ∂fs::Vector{SparseMatrixCSC{Float64, Int}}
-    μ∂²F!::Function
+    μ∂²F!::F3
     μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}}
     μ∂²F_structure::SparseMatrixCSC{Float64, Int}
     dim::Int
@@ -183,7 +181,7 @@ struct TrajectoryDynamics
         μ∂²f_structure = hessian_structure(integrators, traj)
         μ∂²fs = [copy(μ∂²f_structure) for _ = 1:traj.T-1]
 
-        return new(
+        return new{typeof(F!), typeof(∂F!), typeof(μ∂²F!)}(
             F!,
             ∂F!,
             ∂fs,
