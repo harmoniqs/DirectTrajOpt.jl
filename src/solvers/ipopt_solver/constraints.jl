@@ -10,6 +10,7 @@ function constrain!(
         end
         con!(opt, vars)
     end
+    return nothing
 end
 
 function (con::EqualityConstraint)(

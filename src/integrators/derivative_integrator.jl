@@ -52,6 +52,7 @@ function jacobian!(
     # ∂ΔtₖD
     ẋₖ = zₖ[D.u_comps]
     ∂D[:, D.Δt_comp] = -ẋₖ
+    return nothing
 end
 
 function jacobian_structure(D::DerivativeIntegrator)
