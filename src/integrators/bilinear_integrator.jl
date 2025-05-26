@@ -4,6 +4,10 @@ export BilinearIntegrator
 using ExponentialAction
 using ..Integrators
 
+# -------------------------------------------------------------------------------- #
+# Abstract Bilinear Integrator
+# -------------------------------------------------------------------------------- #
+
 abstract type AbstractBilinearIntegrator <: AbstractIntegrator end
 
 @views function jacobian!(
@@ -94,6 +98,10 @@ function hessian_structure(B::AbstractBilinearIntegrator)
     return μ∂²f
 end
 
+# -------------------------------------------------------------------------------- #
+# Bilinear Integrator
+# -------------------------------------------------------------------------------- #
+
 struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
     G::F
     x_comps::Vector{Int}
@@ -154,6 +162,6 @@ end
 
     B = BilinearIntegrator(G, traj, :x, :u)
 
-    test_integrator(B; diff=false)
+    test_integrator(B)
 end
 

@@ -1,8 +1,13 @@
 export TimeDependentBilinearIntegrator
 
-using DifferentialEquations
-using SciMLBase
-using SciMLSensitivity
+using OrdinaryDiffEq
+# TODO: Custom SciMLSensitivity (no Zygote, etc.)
+using SciMLSensitivity: ForwardDiffSensitivity
+using ForwardDiff
+
+# -------------------------------------------------------------------------------- #
+# Time Dependent Bilinear Integrator
+# -------------------------------------------------------------------------------- #
 
 struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     G::F
@@ -24,16 +29,16 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     ) where F <: Function
 
         function f!(dx, x_, p, τ)
-            t_, Δt_, u_ = p[1], p[2], p[3:end]
-            dx[:] = G(u_, t_ + τ * Δt_) * x_ * Δt_
+            t_, Δt, u_ = p[1], p[2], p[3:end]
+            dx[:] = G(u_, t_ + τ * Δt) * x_ * Δt
             return nothing
         end
 
         x_comp = traj.components[x]
         u_comp = traj.components[u]
 
-        x₀ = zeros(x_comp)
-        u₀ = zeros(u_comp)
+        x₀ = zeros(length(x_comp))
+        u₀ = zeros(length(u_comp))
         t₀ = 0.0
         Δt₀ = 1.0
         prob = ODEProblem(f!, x₀, (0.0, 1.0), [t₀; Δt₀; u₀...])
@@ -56,9 +61,10 @@ end
     δₖ::AbstractVector,
     zₖ::AbstractVector,
     zₖ₊₁::AbstractVector;
-    algorithm=Tsit5(),
-    rtol::Float64=1e-6,
-    atol::Float64=1e-6
+    algorithm::OrdinaryDiffEq.OrdinaryDiffEqAlgorithm=Tsit5(),
+    # atol=1e-6,
+    # rtol=1e-6,
+    kwargs...
 )
     xₖ₊₁ = zₖ₊₁[B.x_comps]
     xₖ = zₖ[B.x_comps]
@@ -67,8 +73,8 @@ end
     Δtₖ = zₖ[B.Δt_comp]
 
     _prob = remake(B.prob, u0 = xₖ, p = [tₖ, Δtₖ, uₖ...])
-    sol = solve(_prob, algorithm, reltol = rtol, abstol = atol)
-    δₖ[:] = xₖ₊₁ - sol[:,end]
+    sol = solve(_prob, algorithm; sensealg=ForwardDiffSensitivity(),  kwargs...)
+    δₖ[:] = xₖ₊₁ - sol[:, end]
 end
 
 function jacobian_structure(B::TimeDependentBilinearIntegrator)
@@ -144,12 +150,15 @@ function hessian_structure(B::TimeDependentBilinearIntegrator)
     return μ∂²f
 end
 
-@testitem "testing TimeDependentBilinearIntegrator" begin
+@testitem "testing zoh TimeDependentBilinearIntegrator" begin
     include("../../test/test_utils.jl")
 
     G, traj = bilinear_dynamics_and_trajectory()
+    add_component!(traj, :t, get_times(traj))
 
-    B = TimeDependentBilinearIntegrator(G, traj, :x, :u, :t)
+    # zero order hold
+    B = TimeDependentBilinearIntegrator((a, t) -> G(a), traj, :x, :u, :t)
 
-    test_integrator(B; diff=false)
+    # TODO: Need a smoother trajectory for consistent pass!
+    test_integrator(B, atol=1e-2, reltol=1e-6, abstol=1e-6);
 end

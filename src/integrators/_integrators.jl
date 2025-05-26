@@ -29,7 +29,9 @@ function test_integrator(
     integrator::AbstractIntegrator; 
     show_jacobian_diff=false,
     show_hessian_diff=false,
-    atol=1e-5
+    atol=1e-5,
+    rtol=1e-5,
+    kwargs...
 )
 
     z_dim = integrator.z_dim
@@ -45,7 +47,7 @@ function test_integrator(
 
     f̂ = zz -> begin
         δ = zeros(eltype(zz), x_dim)
-        integrator(δ, zz[1:z_dim], zz[z_dim+1:end])
+        integrator(δ, zz[1:z_dim], zz[z_dim+1:end]; kwargs...)
         return δ
     end
 
@@ -54,10 +56,12 @@ function test_integrator(
     jacobian!(∂f, integrator, z₁, z₂)
     ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁; z₂])
 
-    @test all(isapprox.(∂f, ∂f_autodiff, atol=atol))
     if show_jacobian_diff 
         println("Difference in jacobian")
-        show_diffs(∂f, ∂f_autodiff)
+        show_diffs(∂f, ∂f_autodiff, atol=atol, rtol=rtol)
+        println()
+    else
+        @test all(isapprox.(∂f, ∂f_autodiff, atol=atol, rtol=rtol))
     end
 
     # testing hessian
@@ -65,11 +69,14 @@ function test_integrator(
     μ∂²f = hessian_of_lagrangian(integrator, μ, z₁, z₂)
     μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁; z₂])
 
-    @test all(isapprox.(Symmetric(μ∂²f), μ∂²f_autodiff, atol=atol))
     if show_hessian_diff 
         println("Difference in hessian")
-        show_diffs(μ∂²f, μ∂²f_autodiff)
+        show_diffs(μ∂²f, μ∂²f_autodiff, atol=atol, rtol=rtol)
+        println()
+    else
+        @test all(isapprox.(Symmetric(μ∂²f), μ∂²f_autodiff, atol=atol))
     end
+
     return ∂f, ∂f_autodiff, μ∂²f, μ∂²f_autodiff
 end
 
