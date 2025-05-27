@@ -1,8 +1,6 @@
 export TimeDependentBilinearIntegrator
 
 using OrdinaryDiffEq
-# TODO: Custom SciMLSensitivity (no Zygote, etc.)
-using SciMLSensitivity: ForwardDiffSensitivity
 using ForwardDiff
 
 # -------------------------------------------------------------------------------- #
@@ -73,7 +71,7 @@ end
     Δtₖ = zₖ[B.Δt_comp]
 
     _prob = remake(B.prob, u0 = xₖ, p = [tₖ, Δtₖ, uₖ...])
-    sol = solve(_prob, algorithm; sensealg=ForwardDiffSensitivity(),  kwargs...)
+    sol = solve(_prob, algorithm;  kwargs...)
     δₖ[:] = xₖ₊₁ - sol[:, end]
 end
 
