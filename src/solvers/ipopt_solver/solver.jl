@@ -65,6 +65,7 @@ function remove_slack_variables!(prob::DirectTrajOptProblem)
     end
 
     prob.trajectory = remove_components(prob.trajectory, slack_var_names)
+    return nothing
 end
 
 function get_num_variables(prob::DirectTrajOptProblem)
@@ -235,6 +236,7 @@ function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
            optimizer.options[String(name)] = value
         end
     end
+    return nothing
 end
 
 @testitem "testing solver" begin
