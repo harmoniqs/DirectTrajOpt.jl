@@ -123,8 +123,8 @@ end
 function bilinear_dynamics_and_trajectory(;
     N = 10,
     Δt = 0.1,
-    u_bound = 1.0,
-    ω = 2π,
+    u_bound = 0.1,
+    ω = 0.1,
 )
     Gx = sparse(Float64[
         0  0 0 1;

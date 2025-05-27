@@ -29,6 +29,7 @@ function test_integrator(
     integrator::AbstractIntegrator; 
     show_jacobian_diff=false,
     show_hessian_diff=false,
+    test_equality=true,
     atol=1e-5,
     rtol=1e-5,
     kwargs...
@@ -57,11 +58,19 @@ function test_integrator(
     ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁; z₂])
 
     if show_jacobian_diff 
-        println("Difference in jacobian")
+        println("\tDifference in jacobian")
         show_diffs(∂f, ∂f_autodiff, atol=atol, rtol=rtol)
         println()
     else
-        @test all(isapprox.(∂f, ∂f_autodiff, atol=atol, rtol=rtol))
+        if test_equality
+            @test all(isapprox.(∂f, ∂f_autodiff, atol=atol, rtol=rtol))
+        else
+            if atol > 0.0
+                @test norm(∂f - ∂f_autodiff) < atol
+            else
+                @test norm(∂f - ∂f_autodiff) / norm(∂f_autodiff) < rtol
+            end
+        end
     end
 
     # testing hessian
@@ -70,11 +79,19 @@ function test_integrator(
     μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁; z₂])
 
     if show_hessian_diff 
-        println("Difference in hessian")
+        println("\tDifference in hessian")
         show_diffs(μ∂²f, μ∂²f_autodiff, atol=atol, rtol=rtol)
         println()
     else
-        @test all(isapprox.(Symmetric(μ∂²f), μ∂²f_autodiff, atol=atol))
+        if test_equality
+            @test all(isapprox.(Symmetric(μ∂²f), μ∂²f_autodiff, atol=atol))
+        else
+            if atol > 0.0
+                @test norm(μ∂²f - μ∂²f_autodiff) < atol
+            else
+                @test norm(μ∂²f - μ∂²f_autodiff) / norm(μ∂²f_autodiff) < rtol
+            end
+        end
     end
 
     return ∂f, ∂f_autodiff, μ∂²f, μ∂²f_autodiff

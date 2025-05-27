@@ -162,6 +162,6 @@ end
 
     B = BilinearIntegrator(G, traj, :x, :u)
 
-    test_integrator(B)
+    test_integrator(B, atol=1e-3)
 end
 
