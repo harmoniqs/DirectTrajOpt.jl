@@ -95,3 +95,24 @@ MOI.add_constraints(
 )
 
 end
+
+function (con::SymmetryConstraint)(
+    opt::Ipopt.Optimizer,
+    vars::Vector{MOI.VariableIndex}
+)
+
+    for (i1,i2) in con.even_index_pairs
+        MOI.add_constraints(
+                    opt,
+                    MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, vars[i1]) , MOI.ScalarAffineTerm(-1.0, vars[i2])], 0.0),
+                    MOI.EqualTo(0.0)
+                )
+    end
+    for (i1,i2) in con.odd_index_pairs
+        MOI.add_constraints(
+                    opt,
+                    MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, vars[i1]) , MOI.ScalarAffineTerm(1.0, vars[i2])], 0.0),
+                    MOI.EqualTo(0.0)
+                )
+    end
+end
