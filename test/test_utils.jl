@@ -34,17 +34,17 @@ end
 
 Show differences between matrices.
 """
-function show_diffs(A::AbstractMatrix, B::AbstractMatrix; atol=1e-6)
+function show_diffs(A::AbstractMatrix, B::AbstractMatrix; kwargs...)
     @assert size(A) == size(B)
     matrix_is_square = size(A, 1) == size(A, 2)
     for (i, (a, b)) in enumerate(zip(A, B))
         inds = Tuple(CartesianIndices(A)[i])
         if matrix_is_square
-            if !isapprox(a, b; atol=atol) && inds[1] ≤ inds[2]
+            if !isapprox(a, b; kwargs...) && inds[1] ≤ inds[2]
                 println((a, b), " @ ", inds)
             end
         else
-            if !isapprox(a, b; atol=atol)
+            if !isapprox(a, b; kwargs...)
                 println((a, b), " @ ", inds)
             end
         end
@@ -123,8 +123,8 @@ end
 function bilinear_dynamics_and_trajectory(;
     N = 10,
     Δt = 0.1,
-    u_bound = 1.0,
-    ω = 2π,
+    u_bound = 0.1,
+    ω = 0.1,
 )
     Gx = sparse(Float64[
         0  0 0 1;

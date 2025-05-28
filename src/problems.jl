@@ -103,6 +103,13 @@ function get_trajectory_constraints(traj::NamedTrajectory)
 end
 
 
+function Base.show(io::IO, prob::DirectTrajOptProblem)
+    println(io, "DirectTrajOptProblem")
+    println(io, "   timesteps            = ", prob.trajectory.T)
+    println(io, "   duration             = ", get_duration(prob.trajectory))
+    println(io, "   variable names       = ", prob.trajectory.names)
+    println(io, "   knot point dimension = ", prob.trajectory.dim)
+end
 
 
 
