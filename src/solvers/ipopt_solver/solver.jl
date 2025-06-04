@@ -47,7 +47,8 @@ function DC.solve!(
 
     update_trajectory!(prob, optimizer, variables)
 
-    remove_slack_variables!(prob)
+    # TODO: this is broken, it mixes up component names
+    # remove_slack_variables!(prob)
 
     return nothing
 end
@@ -64,6 +65,7 @@ function remove_slack_variables!(prob::DirectTrajOptProblem)
     end
 
     prob.trajectory = remove_components(prob.trajectory, slack_var_names)
+    return nothing
 end
 
 function get_num_variables(prob::DirectTrajOptProblem)
@@ -209,7 +211,10 @@ function update_trajectory!(
     end
     global_data = (; (global_keys .=> global_values)...)
 
-    prob.trajectory = NamedTrajectory(datavec, global_data, prob.trajectory)
+    update!(prob.trajectory, datavec)
+
+    # TODO: this results in a bug of shifted components when components are added after creating a trajectory, this affects constraints which store original componentes in probs
+    # prob.trajectory = NamedTrajectory(datavec, global_data, prob.trajectory)
 
     return nothing
 end
@@ -231,6 +236,7 @@ function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
            optimizer.options[String(name)] = value
         end
     end
+    return nothing
 end
 
 @testitem "testing solver" begin

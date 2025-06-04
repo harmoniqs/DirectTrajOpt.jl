@@ -5,11 +5,15 @@ export NonlinearKnotPointConstraint
 # NonlinearKnotPointConstraint
 # ----------------------------------------------------------------------------- #
 
-struct NonlinearKnotPointConstraint <: AbstractNonlinearConstraint
-    g!::Function
-    ∂g!::Function
+# ----------------------------------------------------------------------------- #
+# NonlinearKnotPointConstraint
+# ----------------------------------------------------------------------------- #
+
+struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
+    g!::F1
+    ∂g!::F2
     ∂gs::Vector{SparseMatrixCSC}
-    μ∂²g!::Function
+    μ∂²g!::F3
     μ∂²gs::Vector{SparseMatrixCSC}
     equality::Bool
     times::AbstractVector{Int}
@@ -106,7 +110,7 @@ struct NonlinearKnotPointConstraint <: AbstractNonlinearConstraint
 
         μ∂²gs = [copy(hessian_structure) for _ ∈ times]
 
-        return new(
+        return new{typeof(g!), typeof(∂g!), typeof(μ∂²g!)}(
             g!,
             ∂g!,
             ∂gs,

@@ -1,62 +1,18 @@
+export AbstractBilinearIntegrator
 export BilinearIntegrator
 
 using ExponentialAction
+using ..Integrators
 
-struct BilinearIntegrator <: AbstractIntegrator
-    G::Function
-    x_comps::AbstractVector{Int}
-    u_comps::AbstractVector{Int}
-    Δt_comp::Int
-    z_dim::Int
-    x_dim::Int
-    u_dim::Int
+# -------------------------------------------------------------------------------- #
+# Abstract Bilinear Integrator
+# -------------------------------------------------------------------------------- #
 
-    function BilinearIntegrator(
-        G::Function,
-        traj::NamedTrajectory,
-        xs::AbstractVector{Symbol},
-        u::Symbol
-    )
-        x_dim = sum(traj.dims[x] for x in xs)
-        u_dim = traj.dims[u]
-
-        @assert size(G(ones(u_dim))) == (x_dim, x_dim)
-
-        x_comps = vcat([traj.components[x] for x in xs]...)
-        u_comps = traj.components[u]
-        Δt_comp = traj.components[traj.timestep][1]
-
-        return new(
-            G,
-            x_comps,
-            u_comps,
-            Δt_comp,
-            traj.dim,
-            x_dim,
-            u_dim
-        )
-    end
-
-    function BilinearIntegrator(G::Function, traj::NamedTrajectory, x::Symbol, u::Symbol)
-        BilinearIntegrator(G, traj, [x], u)
-    end
-end
-
-@views function (B::BilinearIntegrator)(
-    δₖ::AbstractVector,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
-)
-    xₖ₊₁ = zₖ₊₁[B.x_comps]
-    xₖ = zₖ[B.x_comps]
-    uₖ = zₖ[B.u_comps]
-    Δtₖ = zₖ[B.Δt_comp]
-    δₖ[:] = xₖ₊₁ - expv(Δtₖ, B.G(uₖ), xₖ)
-end
+abstract type AbstractBilinearIntegrator <: AbstractIntegrator end
 
 @views function jacobian!(
     ∂f::AbstractMatrix,
-    B!::BilinearIntegrator,
+    B!::AbstractBilinearIntegrator,
     zₖ::AbstractVector,
     zₖ₊₁::AbstractVector
 )
@@ -66,9 +22,10 @@ end
         zeros(B!.x_dim),
         [zₖ; zₖ₊₁]
     )
+    return nothing
 end
 
-function jacobian_structure(B::BilinearIntegrator)
+function jacobian_structure(B::AbstractBilinearIntegrator)
 
     z_dim = B.z_dim
     x_dim = B.x_dim
@@ -97,7 +54,7 @@ end
 
 
 @views function hessian_of_lagrangian(
-    B!::BilinearIntegrator,
+    B!::AbstractBilinearIntegrator,
     μₖ::AbstractVector,
     zₖ::AbstractVector,
     zₖ₊₁::AbstractVector
@@ -112,7 +69,7 @@ end
     )
 end
 
-function hessian_structure(B::BilinearIntegrator)
+function hessian_structure(B::AbstractBilinearIntegrator)
 
     x_comps = B.x_comps
     u_comps = B.u_comps
@@ -141,6 +98,61 @@ function hessian_structure(B::BilinearIntegrator)
     return μ∂²f
 end
 
+# -------------------------------------------------------------------------------- #
+# Bilinear Integrator
+# -------------------------------------------------------------------------------- #
+
+struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
+    G::F
+    x_comps::Vector{Int}
+    u_comps::Vector{Int}
+    Δt_comp::Int
+    z_dim::Int
+    x_dim::Int
+    u_dim::Int
+
+    function BilinearIntegrator(
+        G::F,
+        traj::NamedTrajectory,
+        xs::AbstractVector{Symbol},
+        u::Symbol
+    ) where F <: Function
+        x_dim = sum(traj.dims[x] for x in xs)
+        u_dim = traj.dims[u]
+
+        @assert size(G(ones(u_dim))) == (x_dim, x_dim)
+
+        x_comps = vcat([traj.components[x] for x in xs]...)
+        u_comps = traj.components[u]
+        Δt_comp = traj.components[traj.timestep][1]
+
+        return new{F}(
+            G,
+            x_comps,
+            u_comps,
+            Δt_comp,
+            traj.dim,
+            x_dim,
+            u_dim
+        )
+    end
+
+    function BilinearIntegrator(G::Function, traj::NamedTrajectory, x::Symbol, u::Symbol)
+        BilinearIntegrator(G, traj, [x], u)
+    end
+end
+
+@views function (B::BilinearIntegrator)(
+    δₖ::AbstractVector,
+    zₖ::AbstractVector,
+    zₖ₊₁::AbstractVector
+)
+    xₖ₊₁ = zₖ₊₁[B.x_comps]
+    xₖ = zₖ[B.x_comps]
+    uₖ = zₖ[B.u_comps]
+    Δtₖ = zₖ[B.Δt_comp]
+    δₖ[:] = xₖ₊₁ - expv(Δtₖ, B.G(uₖ), xₖ)
+end
 
 
 @testitem "testing BilinearIntegrator" begin
@@ -150,6 +162,6 @@ end
 
     B = BilinearIntegrator(G, traj, :x, :u)
 
-    test_integrator(B; diff=false)
+    test_integrator(B, atol=1e-3)
 end
 
