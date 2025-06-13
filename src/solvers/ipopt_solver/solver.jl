@@ -196,6 +196,7 @@ function update_trajectory!(
         variables[1:n_vars]
     )
 
+    update!(prob.trajectory, datavec)
 
     # get global variables after trajectory data
     global_keys = keys(prob.trajectory.global_data)
@@ -210,8 +211,7 @@ function update_trajectory!(
         n_vars += n_global_vars
     end
     global_data = (; (global_keys .=> global_values)...)
-
-    update!(prob.trajectory, datavec)
+    update!(prob.trajectory, global_data)
 
     # TODO: this results in a bug of shifted components when components are added after creating a trajectory, this affects constraints which store original componentes in probs
     # prob.trajectory = NamedTrajectory(datavec, global_data, prob.trajectory)
