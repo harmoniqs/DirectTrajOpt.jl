@@ -29,7 +29,7 @@ function GlobalObjective(
     Q::Float64=1.0
 )
     Z_dim = traj.dim * traj.T + traj.global_dim
-    g_comps = vcat([traj.global_components[name] for name in global_names]...)
+    g_comps = vcat([traj.dim * traj.T .+ traj.global_components[name] for name in global_names]...)
     
     L(Z⃗::AbstractVector{<:Real}) = Q * ℓ(Z⃗[g_comps])
 
@@ -76,7 +76,7 @@ function GlobalKnotPointObjective(
 
     Z_dim = traj.dim * traj.T + traj.global_dim
     x_comps = vcat([traj.components[name] for name in names]...)
-    g_comps = vcat([traj.global_components[name] for name in global_names]...)
+    g_comps = vcat([traj.dim * traj.T .+ traj.global_components[name] for name in global_names]...)
     
     xg_slices = [vcat([slice(t, x_comps, traj.dim), g_comps]...) for t in times]
     

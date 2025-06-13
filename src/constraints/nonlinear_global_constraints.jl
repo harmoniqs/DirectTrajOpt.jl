@@ -22,14 +22,14 @@ struct NonlinearGlobalConstraint <: AbstractNonlinearConstraint
         equality::Bool=true,
     )
         global_comps = vcat([traj.global_components[name] for name in global_names]...)
-        local_comps = global_comps .- traj.dim * traj.T
+        offset_global_comps = global_comps .+ traj.dim * traj.T
 
-        g_eval = g(vec(traj)[global_comps])
+        g_eval = g(vec(traj)[offset_global_comps])
         @assert g_eval isa AbstractVector{Float64}
         g_dim = length(g_eval)
         
         @views function g!(δ::AbstractVector, Z⃗::AbstractVector)
-            δ[:] = g(Z⃗[global_comps])
+            δ[:] = g(Z⃗[offset_global_comps])
             return nothing
         end
 
@@ -37,13 +37,13 @@ struct NonlinearGlobalConstraint <: AbstractNonlinearConstraint
             ForwardDiff.jacobian!(
                 ∂g, 
                 x -> g(x),
-                Z⃗[global_comps]
+                Z⃗[offset_global_comps]
             )
         end
 
         # global subspace
         jacobian_structure = spzeros(g_dim, traj.global_dim) 
-        jacobian_structure[:, local_comps] .= 1.0
+        jacobian_structure[:, global_comps] .= 1.0
 
         @views function μ∂²g!(
             μ∂²g::AbstractMatrix,   
@@ -51,15 +51,15 @@ struct NonlinearGlobalConstraint <: AbstractNonlinearConstraint
             μ::AbstractVector
         )
             ForwardDiff.hessian!(
-                μ∂²g[local_comps, local_comps], 
+                μ∂²g[global_comps, global_comps], 
                 x -> μ'g(x), 
-                Z⃗[global_comps]
+                Z⃗[offset_global_comps]
             )
         end
 
         # global subspace
         hessian_structure = spzeros(traj.global_dim, traj.global_dim) 
-        hessian_structure[local_comps, local_comps] .= 1.0
+        hessian_structure[global_comps, global_comps] .= 1.0
 
         return new(
             g!,
@@ -136,14 +136,14 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
 
         x_comps = vcat([traj.components[name] for name in names]...)
         global_comps = vcat([traj.global_components[name] for name in global_names]...)
-        local_comps = global_comps .- traj.dim * traj.T
+        offset_global_comps = global_comps .+ traj.dim * traj.T
 
-        # (Rebased) global data is appended to the knot point
-        xg_comps = vcat([x_comps, traj.dim .+ local_comps]...)
+        # append global data to the knot point
+        xg_comps = vcat([x_comps, global_comps .+ traj.dim]...)
         z_dim = traj.dim + traj.global_dim
 
-        # Each slice indexes into Z⃗
-        xg_slices = [vcat([slice(t, x_comps, traj.dim), global_comps]...) for t in times]
+        # append global data to the trajectory (each slice indexes into Z⃗)
+        xg_slices = [vcat([slice(t, x_comps, traj.dim), offset_global_comps]...) for t in times]
 
         Z⃗ = vec(traj)
         @assert g(Z⃗[xg_slices[1]], params[1]) isa AbstractVector{Float64}

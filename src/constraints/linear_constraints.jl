@@ -216,36 +216,37 @@ function TimeStepsAllEqualConstraint(
     return AllEqualConstraint(indices, bar_index, label)
 end
 
-struct L1SlackConstraint <: AbstractLinearConstraint
-    x_indices::Vector{Int}
-    s1_indices::Vector{Int}
-    s2_indices::Vector{Int}
-    label::String
-end
+# TODO: Doesn't work with parametric trajectory
+# struct L1SlackConstraint <: AbstractLinearConstraint
+#     x_indices::Vector{Int}
+#     s1_indices::Vector{Int}
+#     s2_indices::Vector{Int}
+#     label::String
+# end
 
-function L1SlackConstraint(
-    name::Symbol,
-    traj::NamedTrajectory;
-    indices=1:traj.dims[name],
-    ts=(name ∈ keys(traj.initial) ? 2 : 1):(name ∈ keys(traj.final) ? traj.T-1 : traj.T),
-    label="L1 slack constraint on $name[$(indices)]"
-)
-    @assert all(i ∈ 1:traj.dims[name] for i ∈ indices)
+# function L1SlackConstraint(
+#     name::Symbol,
+#     traj::NamedTrajectory;
+#     indices=1:traj.dims[name],
+#     ts=(name ∈ keys(traj.initial) ? 2 : 1):(name ∈ keys(traj.final) ? traj.T-1 : traj.T),
+#     label="L1 slack constraint on $name[$(indices)]"
+# )
+#     @assert all(i ∈ 1:traj.dims[name] for i ∈ indices)
 
-    s1_name = Symbol("s1_$name")
-    s2_name = Symbol("s2_$name")
+#     s1_name = Symbol("s1_$name")
+#     s2_name = Symbol("s2_$name")
 
-    add_component!(traj, s1_name, rand(length(indices), traj.T))
-    add_component!(traj, s2_name, rand(length(indices), traj.T))
+#     add_component!(traj, s1_name, rand(length(indices), traj.T))
+#     add_component!(traj, s2_name, rand(length(indices), traj.T))
 
-    x_indices = stack(slice(t, traj.components[name][indices], traj.dim) for t ∈ ts)
-    s1_indices = stack(slice(t, traj.components[s1_name], traj.dim) for t ∈ ts)
-    s2_indices = stack(slice(t, traj.components[s2_name], traj.dim) for t ∈ ts)
+#     x_indices = stack(slice(t, traj.components[name][indices], traj.dim) for t ∈ ts)
+#     s1_indices = stack(slice(t, traj.components[s1_name], traj.dim) for t ∈ ts)
+#     s2_indices = stack(slice(t, traj.components[s2_name], traj.dim) for t ∈ ts)
 
-    return L1SlackConstraint(
-        x_indices,
-        s1_indices,
-        s2_indices,
-        label
-    )
-end
+#     return L1SlackConstraint(
+#         x_indices,
+#         s1_indices,
+#         s2_indices,
+#         label
+#     )
+# end
