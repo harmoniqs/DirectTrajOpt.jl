@@ -306,3 +306,67 @@ function SymmetricControlConstraint(
     )
 
 end
+
+@testitem "testing symmetry constraint" begin
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, traj, :x, :u),
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
+
+    prob = DirectTrajOptProblem(traj, J, integrators;)
+
+        
+    sym_constraint = SymmetricControlConstraint(
+        prob.trajectory, 
+        :u,
+        [1];
+        even = true
+    );
+    push!(prob.constraints,sym_constraint);
+    
+    solve!(prob; max_iter=100)
+end
+
+@testitem "testing duration constraint" begin
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, traj, :x, :u),
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
+
+    prob = DirectTrajOptProblem(traj, J, integrators;)
+
+        
+    dur_constraint = DurationConstraint(
+        prob.trajectory,
+        10.0;
+    )
+    push!(prob.constraints,dur_constraint);
+    
+    solve!(prob; max_iter=100)
+end
