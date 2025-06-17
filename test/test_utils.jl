@@ -125,7 +125,8 @@ function bilinear_dynamics_and_trajectory(;
     Δt = 0.1,
     u_bound = 0.1,
     ω = 0.1,
-    time=false
+    add_time=false,
+    add_global=false
 )
     Gx = sparse(Float64[
         0  0 0 1;
@@ -183,8 +184,12 @@ function bilinear_dynamics_and_trajectory(;
         )
     )
 
-    if time
-        traj = add_component(traj, :t, get_times(traj))
+    if add_time
+        traj = add_component(traj, :t, get_times(traj), type=:state)
+    end
+
+    if add_global
+        traj = add_component(traj, :g, randn(N), type=:global)
     end
 
     return G, traj

@@ -26,7 +26,7 @@ struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
     Create a NonlinearKnotPointConstraint object that represents a nonlinear constraint on a trajectory.
 
     # Arguments
-    - `g::Function`: Function that defines the constraint. If `equality=false`, the constraint is `g(x) ≤ 0`.
+    - `g::Function`: Function over knot point variable(s) that defines the constraint, `g(x)`.
     - `name::Symbol`: Name of the variable to be constrained.
     - `traj::NamedTrajectory`: The trajectory on which the constraint is defined.
 
@@ -52,8 +52,9 @@ struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
         x_slices = [slice(t, x_comps, traj.dim) for t in times]
 
         # inspect view of knot point data
-        @assert g(traj.datavec[x_slices[1]], params[1]) isa AbstractVector{Float64}
-        g_dim = length(g(traj.datavec[x_slices[1]], params[1]))
+        Z⃗ = vec(traj)
+        @assert g(Z⃗[x_slices[1]], params[1]) isa AbstractVector{Float64}
+        g_dim = length(g(Z⃗[x_slices[1]], params[1]))
 
         @views function g!(δ::AbstractVector, Z⃗::AbstractVector)
             for (i, x_slice) ∈ enumerate(x_slices)
@@ -172,7 +173,7 @@ end
 
 # ============================================================================= #
 
-@testitem "testing NonlinearConstraint" begin
+@testitem "testing NonlinearKnotPointConstraint" begin
 
     using TrajectoryIndexingUtils
     
@@ -182,31 +183,33 @@ end
 
     g(a) = [norm(a) - 1.0]
 
+    g_dim = 1
     times = 1:traj.T
 
     NLC = NonlinearKnotPointConstraint(g, :u, traj; times=times, equality=false)
+    U_SLICE(k) = slice(k, traj.components[:u], traj.dim)
 
-    ĝ(Z⃗) = vcat([g(Z⃗[slice(k, traj.components[:u], traj.dim)]) for k ∈ times]...)
+    ĝ(Z⃗) = vcat([g(Z⃗[U_SLICE(k)]) for k ∈ times]...)
 
-    δ = zeros(length(times))
+    δ = zeros(g_dim * traj.T)
 
-    NLC.g!(δ, traj.datavec)
+    NLC.g!(δ, vec(traj))
 
-    @test δ ≈ ĝ(traj.datavec)
+    @test δ ≈ ĝ(vec(traj))
     
-    NLC.∂g!(NLC.∂gs, traj.datavec)
+    NLC.∂g!(NLC.∂gs, vec(traj))
 
     ∂g_full = Constraints.get_full_jacobian(NLC, traj)
 
-    ∂g_autodiff = ForwardDiff.jacobian(ĝ, traj.datavec)
+    ∂g_autodiff = ForwardDiff.jacobian(ĝ, vec(traj))
 
     @test ∂g_full ≈ ∂g_autodiff
 
-    μ = randn(length(times))
+    μ = randn(g_dim * traj.T)
 
-    NLC.μ∂²g!(NLC.μ∂²gs, traj.datavec, μ)
+    NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
 
-    hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), traj.datavec)
+    hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), vec(traj))
 
     μ∂²g_full = Constraints.get_full_hessian(NLC, traj) 
 

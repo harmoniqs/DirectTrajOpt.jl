@@ -64,8 +64,6 @@ function EqualityConstraint(
     return EqualityConstraint(name, ts, fill(val, traj.dims[name]), traj; label=label)
 end
 
-
-
 """
     GlobalEqualityConstraint(
         name::Symbol,
@@ -82,19 +80,35 @@ function GlobalEqualityConstraint(
     traj::NamedTrajectory;
     label="equality constraint on global variable $name"
 )
-    @assert name ∈ keys(traj.global_data)
+    @assert name ∈ traj.global_names
     @assert length(val) == traj.global_dims[name]
 
-    indices = traj.global_components[name]
+    indices = traj.dim * traj.T .+ traj.global_components[name]
     return EqualityConstraint(indices, val, label)
 end
 
+struct AllEqualConstraint <: AbstractLinearConstraint
+    indices::Vector{Int}
+    bar_index::Int
+    label::String
+end
 
+function TimeStepsAllEqualConstraint(
+    traj::NamedTrajectory;
+    label="timesteps all equal constraint"
+)
+    @assert traj.timestep isa Symbol
+    indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.T-1]
+    bar_index = index(traj.T, traj.components[traj.timestep][1], traj.dim)
+    return AllEqualConstraint(indices, bar_index, label)
+end
 
 
 ### 
 ### BoundsConstraint
 ###
+
+# TODO: Refactor using `get_bounds_from_dims` from NamedTrajectories.jl
 
 struct BoundsConstraint <: AbstractLinearConstraint
     indices::Vector{Int}
@@ -158,11 +172,11 @@ function GlobalBoundsConstraint(
     traj::NamedTrajectory;
     label="bounds constraint on global variable $name"
 )
-    @assert name ∈ keys(traj.global_data)
+    @assert name ∈ traj.global_names
     @assert length(bounds[1]) == length(bounds[2]) == traj.global_dims[name]
     @assert all(bounds[1] .<= bounds[2])
 
-    indices = traj.global_components[name]
+    indices = traj.dim * traj.T .+ traj.global_components[name]
 
     bounds = collect(zip(bounds...))
 
@@ -175,7 +189,7 @@ function GlobalBoundsConstraint(
     traj::NamedTrajectory;
     label="bounds constraint on global variable $name"
 )
-    @assert name ∈ keys(traj.global_data)
+    @assert name ∈ traj.global_names
     @assert length(bound) == traj.global_dims[name]
     @assert all(bound .>= 0) "bound must be non-negative when only one bound is provided"
 
@@ -190,7 +204,7 @@ function GlobalBoundsConstraint(
     traj::NamedTrajectory;
     label="bounds constraint on global variable $name"
 )
-    @assert name ∈ keys(traj.global_data)
+    @assert name ∈ traj.global_names
     @assert bound >= 0 "bound must be non-negative when only one bound is provided"
 
     bounds = (-fill(bound, traj.global_dims[name]), fill(bound, traj.global_dims[name]))
@@ -199,22 +213,9 @@ function GlobalBoundsConstraint(
 end
 
 
-
-struct AllEqualConstraint <: AbstractLinearConstraint
-    indices::Vector{Int}
-    bar_index::Int
-    label::String
-end
-
-function TimeStepsAllEqualConstraint(
-    traj::NamedTrajectory;
-    label="timesteps all equal constraint"
-)
-    @assert traj.timestep isa Symbol
-    indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.T-1]
-    bar_index = index(traj.T, traj.components[traj.timestep][1], traj.dim)
-    return AllEqualConstraint(indices, bar_index, label)
-end
+### 
+### L1SlackConstraint
+###
 
 # TODO: Doesn't work with parametric trajectory
 # struct L1SlackConstraint <: AbstractLinearConstraint

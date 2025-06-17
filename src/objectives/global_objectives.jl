@@ -54,7 +54,7 @@ function GlobalObjective(
     return Objective(L, ∇L, ∂²L, ∂²L_structure)
 end
 
-function ℓ(ℓ::Function, global_name::Symbol, traj::NamedTrajectory; kwargs...)
+function GlobalObjective(ℓ::Function, global_name::Symbol, traj::NamedTrajectory; kwargs...)
     return GlobalObjective(ℓ, [global_name], traj; kwargs...)
 end
 
@@ -169,4 +169,75 @@ function TerminalObjective(
         times=[traj.T],
         kwargs...
     )
+end
+
+# ============================================================================ #
+
+@testitem "testing GlobalObjective" begin
+
+    using TrajectoryIndexingUtils
+    
+    include("../../test/test_utils.jl")
+
+    _, traj = bilinear_dynamics_and_trajectory(add_global=true)
+
+    L(g) = norm(g)
+
+    Q = 2.0
+
+    OBJ = GlobalObjective(L, :g, traj, Q=Q)
+    G_COMP = traj.dim * traj.T .+ traj.global_components[:g]
+    L̂(Z⃗) = Q * L(Z⃗[G_COMP])
+
+    @test OBJ.L(vec(traj)) ≈ L̂(vec(traj))
+    
+    ∂L_autodiff = ForwardDiff.gradient(L̂, vec(traj))
+    @test OBJ.∇L(vec(traj)) ≈ ∂L_autodiff
+
+    ∂²L_autodiff = ForwardDiff.hessian(L̂, vec(traj))
+
+    ∂²L_full = zeros(size(∂²L_autodiff))
+    for (index, entry) in zip(OBJ.∂²L_structure(), OBJ.∂²L(vec(traj)))
+        i, j = index
+        ∂²L_full[i, j] = entry
+    end
+
+    @test ∂²L_full ≈ ∂²L_autodiff
+end
+
+@testitem "testing GlobalKnotPointObjective" begin
+
+    using TrajectoryIndexingUtils
+    
+    include("../../test/test_utils.jl")
+
+    _, traj = bilinear_dynamics_and_trajectory(add_global=true)
+
+    function L(ug)
+        u, g = ug[1:traj.dims[:u]], ug[traj.dims[:u] .+ 1:end]
+        return norm(u) + norm(g)
+    end
+
+    Qs = [1.0, 2.0]
+    times = [1, traj.T]
+
+    OBJ = GlobalKnotPointObjective(L, [:u], [:g], traj, times=times, Qs=Qs)
+    G_COMP = traj.dim * traj.T .+ traj.global_components[:g]
+    U_COMP(k) = slice(k, traj.components[:u], traj.dim)
+    L̂(Z⃗) = sum(Q * L(Z⃗[vcat(U_COMP(k), G_COMP)]) for (Q, k) ∈ zip(Qs, times))
+
+    @test OBJ.L(vec(traj)) ≈ L̂(vec(traj))
+    
+    ∂L_autodiff = ForwardDiff.gradient(L̂, vec(traj))
+    @test OBJ.∇L(vec(traj)) ≈ ∂L_autodiff
+
+    ∂²L_autodiff = ForwardDiff.hessian(L̂, vec(traj))
+
+    ∂²L_full = zeros(size(∂²L_autodiff))
+    for (index, entry) in zip(OBJ.∂²L_structure(), OBJ.∂²L(vec(traj)))
+        i, j = index
+        ∂²L_full[i, j] = entry
+    end
+
+    @test ∂²L_full ≈ ∂²L_autodiff
 end
