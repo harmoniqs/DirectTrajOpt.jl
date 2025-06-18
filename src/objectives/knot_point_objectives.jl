@@ -55,7 +55,7 @@ function KnotPointObjective(
     Z_dim = traj.dim * traj.T + traj.global_dim
     x_comps = vcat([traj.components[name] for name in names]...)
     x_slices = [slice(t, x_comps, traj.dim) for t in times]
-    
+
     function L(Z⃗::AbstractVector{<:Real})
         loss = 0.0
         for (i, x_slice) in enumerate(x_slices)

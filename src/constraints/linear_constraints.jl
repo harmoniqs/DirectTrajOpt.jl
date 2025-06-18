@@ -5,7 +5,10 @@ export GlobalBoundsConstraint
 export AllEqualConstraint
 export TimeStepsAllEqualConstraint
 export L1SlackConstraint
-
+export TotalConstraint
+export DurationConstraint
+export SymmetryConstraint
+export SymmetricControlConstraint
 ### 
 ### EqualityConstraint
 ###
@@ -251,3 +254,117 @@ end
 #         label
 #     )
 # end
+
+struct TotalConstraint <: AbstractLinearConstraint
+    indices::Vector{Int}
+    value::Float64
+    label::String
+end
+
+
+function DurationConstraint(
+    traj::NamedTrajectory,
+    value::Float64;
+    label="duration constraint of $value"
+)
+    @assert traj.timestep isa Symbol
+    indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.T]
+    return TotalConstraint(indices, value ,label)
+end
+
+
+struct SymmetryConstraint <: AbstractLinearConstraint
+    even_index_pairs::Vector{Tuple{Int64,Int64}}
+    odd_index_pairs::Vector{Tuple{Int64,Int64}}
+    label::String 
+end
+
+function SymmetricControlConstraint(
+    traj::NamedTrajectory,
+    name::Symbol,
+    idx::Vector{Int64};
+    even = true,
+    label = "Symmetry Constraint on $name"
+)
+    even_pairs = Vector{Tuple{Int64,Int64}}()
+    odd_pairs = Vector{Tuple{Int64,Int64}}()
+
+    component_indicies = [slice(t, traj.components[name], traj.dim)[idx] for t ∈ 1:traj.T]
+    if(even)
+        even_pairs = vcat(even_pairs,reduce(vcat,[collect(zip(component_indicies[[idx,traj.T - idx+1]]...)) for idx in 1:traj.T ÷ 2]))
+    else 
+        odd_pairs = vcat(odd_pairs,reduce(vcat,[collect(zip(component_indicies[[idx,traj.T - idx+1]]...)) for idx in 1:traj.T ÷ 2]))
+    end 
+
+    if traj.timestep isa Symbol
+        time_indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.T]
+        even_pairs = vcat(even_pairs,[(time_indices[idx],time_indices[traj.T + 1 - idx]) for idx ∈ 1:traj.T÷2]) 
+    end 
+
+    return SymmetryConstraint(
+        even_pairs,
+        odd_pairs,
+        label
+    )
+
+end
+
+# =========================================================================== #
+
+@testitem "testing symmetry constraint" begin
+
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, traj, :x, :u),
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    prob = DirectTrajOptProblem(traj, J, integrators;)
+
+    sym_constraint = SymmetricControlConstraint(
+        prob.trajectory, 
+        :u,
+        [1];
+        even = true
+    );
+    push!(prob.constraints, sym_constraint);
+    
+    solve!(prob; max_iter=10)
+end
+
+@testitem "testing duration constraint" begin
+
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, traj, :x, :u),
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    prob = DirectTrajOptProblem(traj, J, integrators;)
+
+    dur_constraint = DurationConstraint(
+        prob.trajectory,
+        10.0;
+    )
+    push!(prob.constraints, dur_constraint);
+
+    solve!(prob; max_iter=10)
+end

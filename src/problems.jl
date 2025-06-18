@@ -82,7 +82,6 @@ function get_trajectory_constraints(traj::NamedTrajectory)
         eq_con = EqualityConstraint(name, [traj.T], val, traj; label=label)
         push!(cons, eq_con)
     end
-
     # add bounds constraints
     for (name, bound) ∈ pairs(traj.bounds)
         if name ∈ keys(traj.initial) && name ∈ keys(traj.final) 
