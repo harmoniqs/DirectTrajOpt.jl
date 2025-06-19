@@ -59,28 +59,60 @@ function (con::AllEqualConstraint)(
     end
 end
 
-function (con::L1SlackConstraint)(
+# function (con::L1SlackConstraint)(
+#     opt::Ipopt.Optimizer,
+#     vars::Vector{MOI.VariableIndex}
+# )
+#     for (x, s1, s2) in zip(con.x_indices, con.s1_indices, con.s2_indices)
+#         MOI.add_constraints(
+#             opt,
+#             vars[s1],
+#             MOI.GreaterThan(0.0)
+#         )
+#         MOI.add_constraints(
+#             opt,
+#             vars[s2],
+#             MOI.GreaterThan(0.0)
+#         )
+#         t1 = MOI.ScalarAffineTerm(1.0, vars[s1])
+#         t2 = MOI.ScalarAffineTerm(-1.0, vars[s2])
+#         t3 = MOI.ScalarAffineTerm(-1.0, vars[x])
+#         MOI.add_constraints(
+#             opt,
+#             MOI.ScalarAffineFunction([t1, t2, t3], 0.0),
+#             MOI.EqualTo(0.0)
+#         )
+#     end
+# end
+
+function (con::TotalConstraint)(
     opt::Ipopt.Optimizer,
     vars::Vector{MOI.VariableIndex}
 )
-    for (x, s1, s2) in zip(con.x_indices, con.s1_indices, con.s2_indices)
+    MOI.add_constraints(
+        opt,
+        MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, vars[idx]) for idx in con.indices], 0.0),
+        MOI.EqualTo(con.value)
+    )
+end
+
+function (con::SymmetryConstraint)(
+    opt::Ipopt.Optimizer,
+    vars::Vector{MOI.VariableIndex}
+)
+
+    for (i1,i2) in con.even_index_pairs
         MOI.add_constraints(
-            opt,
-            vars[s1],
-            MOI.GreaterThan(0.0)
-        )
+                    opt,
+                    MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, vars[i1]) , MOI.ScalarAffineTerm(-1.0, vars[i2])], 0.0),
+                    MOI.EqualTo(0.0)
+                )
+    end
+    for (i1,i2) in con.odd_index_pairs
         MOI.add_constraints(
-            opt,
-            vars[s2],
-            MOI.GreaterThan(0.0)
-        )
-        t1 = MOI.ScalarAffineTerm(1.0, vars[s1])
-        t2 = MOI.ScalarAffineTerm(-1.0, vars[s2])
-        t3 = MOI.ScalarAffineTerm(-1.0, vars[x])
-        MOI.add_constraints(
-            opt,
-            MOI.ScalarAffineFunction([t1, t2, t3], 0.0),
-            MOI.EqualTo(0.0)
-        )
+                    opt,
+                    MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(1.0, vars[i1]) , MOI.ScalarAffineTerm(1.0, vars[i2])], 0.0),
+                    MOI.EqualTo(0.0)
+                )
     end
 end
