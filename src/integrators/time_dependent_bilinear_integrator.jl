@@ -148,11 +148,12 @@ function hessian_structure(B::TimeDependentBilinearIntegrator)
     return μ∂²f
 end
 
+# ============================================================================ #
+
 @testitem "testing zoh TimeDependentBilinearIntegrator" begin
     include("../../test/test_utils.jl")
 
-    G, traj = bilinear_dynamics_and_trajectory()
-    add_component!(traj, :t, get_times(traj))
+    G, traj = bilinear_dynamics_and_trajectory(add_time=true)
 
     # zero order hold
     B = TimeDependentBilinearIntegrator((a, t) -> G(a), traj, :x, :u, :t)

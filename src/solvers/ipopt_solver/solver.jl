@@ -152,33 +152,27 @@ function set_variables!(
     optimizer::Ipopt.Optimizer,
     traj::NamedTrajectory
 )
-    # initialize n variables with trajectory data
-    n_traj_vars = traj.dim * traj.T
-    n_vars = n_traj_vars + traj.global_dim
+    data_dim = traj.dim * traj.T
 
     # add variables
-    variables = MOI.add_variables(optimizer, n_vars)
+    variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
 
     # set trajectory data
     MOI.set(
         optimizer,
         MOI.VariablePrimalStart(),
-        variables[1:n_traj_vars],
+        variables[1:data_dim],
         collect(traj.datavec)
     )
 
-    # set global variables
-    running_vars = n_traj_vars
-    for global_vars_i ∈ values(traj.global_data)
-        n_global_vars = length(global_vars_i)
-        MOI.set(
-            optimizer,
-            MOI.VariablePrimalStart(),
-            variables[running_vars .+ (1:n_global_vars)],
-            global_vars_i
-        )
-        running_vars += n_global_vars
-    end
+    # set global data
+    MOI.set(
+        optimizer,
+        MOI.VariablePrimalStart(),
+        variables[data_dim .+ (1:traj.global_dim)],
+        collect(traj.global_data)
+    )
+
     return variables
 end
 
@@ -187,35 +181,11 @@ function update_trajectory!(
     optimizer::Ipopt.Optimizer, 
     variables::Vector{MOI.VariableIndex}
 )
-
-    n_vars = prob.trajectory.dim * prob.trajectory.T
-    # get trajectory data
-    datavec = MOI.get(
-        optimizer,
-        MOI.VariablePrimal(),
-        variables[1:n_vars]
+    update!(
+        prob.trajectory, 
+        MOI.get(optimizer, MOI.VariablePrimal(), variables),
+        type=:both
     )
-
-
-    # get global variables after trajectory data
-    global_keys = keys(prob.trajectory.global_data)
-    global_values = []
-    for global_var ∈ global_keys
-        n_global_vars = length(prob.trajectory.global_data[global_var])
-        push!(global_values, MOI.get(
-            optimizer,
-            MOI.VariablePrimal(),
-            variables[n_vars .+ (1:n_global_vars)]
-        ))
-        n_vars += n_global_vars
-    end
-    global_data = (; (global_keys .=> global_values)...)
-
-    update!(prob.trajectory, datavec)
-
-    # TODO: this results in a bug of shifted components when components are added after creating a trajectory, this affects constraints which store original componentes in probs
-    # prob.trajectory = NamedTrajectory(datavec, global_data, prob.trajectory)
-
     return nothing
 end
 
@@ -263,4 +233,3 @@ end
     solve!(prob; max_iter=100)
 end
 
- 

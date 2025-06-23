@@ -1,6 +1,11 @@
 export KnotPointObjective
 export TerminalObjective
 
+
+# ----------------------------------------------------------------------------- #
+# KnotPointObjective
+# ----------------------------------------------------------------------------- #
+
 """
     KnotPointObjective(
         ℓ::Function,
@@ -50,7 +55,7 @@ function KnotPointObjective(
     Z_dim = traj.dim * traj.T + traj.global_dim
     x_comps = vcat([traj.components[name] for name in names]...)
     x_slices = [slice(t, x_comps, traj.dim) for t in times]
-    
+
     function L(Z⃗::AbstractVector{<:Real})
         loss = 0.0
         for (i, x_slice) in enumerate(x_slices)
@@ -63,8 +68,12 @@ function KnotPointObjective(
     @views function ∇L(Z⃗::AbstractVector{<:Real})
         ∇ = zeros(Z_dim)
         for (i, x_slice) in enumerate(x_slices)
-            x = Z⃗[x_slice]
-            ∇[x_slice] = ForwardDiff.gradient(x -> Qs[i] * ℓ(x, params[i]), x)
+            # Disjoint
+            ForwardDiff.gradient!(
+                ∇[x_slice], 
+                x -> Qs[i] * ℓ(x, params[i]), 
+                Z⃗[x_slice]
+            )
         end
         return ∇
     end
@@ -80,10 +89,14 @@ function KnotPointObjective(
 
     @views function ∂²L(Z⃗::AbstractVector{<:Real})
         ∂²L_values = zeros(length(∂²L_structure()))
+        ∂²ℓ_length = length(x_comps)^2
         for (i, x_slice) in enumerate(x_slices)
-            ∂²ℓ = ForwardDiff.hessian(x -> Qs[i] * ℓ(x, params[i]), Z⃗[x_slice])
-            ∂²ℓ_length = length(∂²ℓ[:])
-            ∂²L_values[(i - 1) * ∂²ℓ_length + 1:i * ∂²ℓ_length] = ∂²ℓ[:]
+            # Disjoint
+            ForwardDiff.hessian!(
+                ∂²L_values[(i - 1) * ∂²ℓ_length + 1:i * ∂²ℓ_length],
+                x -> Qs[i] * ℓ(x, params[i]), 
+                Z⃗[x_slice]
+            )
         end
         return ∂²L_values
     end
@@ -111,16 +124,19 @@ function TerminalObjective(
     ℓ::Function,
     name::Symbol,
     traj::NamedTrajectory;
-    Q::Float64=1.0
+    Q::Float64=1.0,
+    kwargs...
 )
     return KnotPointObjective(
         ℓ,
         name,
         traj;
         Qs=[Q],
-        times=[traj.T]
+        times=[traj.T],
+        kwargs...
     )
 end
+
 
 # ============================================================================ #
 

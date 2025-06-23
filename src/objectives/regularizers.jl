@@ -1,5 +1,4 @@
 export QuadraticRegularizer
-
 # ----------------------------------------------------------------------------- #
 # Quadratic Regularizer
 # ----------------------------------------------------------------------------- #
@@ -119,6 +118,3 @@ function QuadraticRegularizer(
 )
     return QuadraticRegularizer(name, traj, R * ones(traj.dims[name]); kwargs...)
 end
-
-
-
