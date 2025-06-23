@@ -44,7 +44,7 @@ function jacobian_structure(B::AbstractBilinearIntegrator)
     ∂f[:, x_comps] = ones(x_dim, x_dim)
 
     # ∂uₖf
-    ∂f[:, u_comps] = ones(x_dim, u_dim)
+    ∂f[:, u_comps] = ones(x_dim, length(B.u_comps))
 
     # ∂Δtₖf
     ∂f[:, Δt_comp] = ones(x_dim)
@@ -81,16 +81,16 @@ function hessian_structure(B::AbstractBilinearIntegrator)
     μ∂²f = spzeros(2 * B.z_dim, 2 * B.z_dim)
 
     # μ∂ₓₖ∂ᵤf & μ∂ᵤ∂ₓₖf
-    μ∂²f[x_comps, u_comps] = ones(x_dim, u_dim)
+    μ∂²f[x_comps, u_comps] = ones(x_dim, length(u_comps))
 
     # μ∂ₓₖ∂Δtₖf & μ∂Δtₖ∂ₓₖf
     μ∂²f[x_comps, Δt_comp] = ones(x_dim)
 
     # μ∂u∂Δtₖf & μ∂Δtₖ∂uf
-    μ∂²f[u_comps, Δt_comp] = ones(u_dim)
+    μ∂²f[u_comps, Δt_comp] = ones(length(u_comps))
 
     # μ∂ᵤ²f
-    μ∂²f[u_comps, u_comps] = ones(u_dim, u_dim)
+    μ∂²f[u_comps, u_comps] = ones(length(u_comps), length(u_comps))
 
     # μ∂Δt²f
     μ∂²f[Δt_comp, Δt_comp] = 1.0

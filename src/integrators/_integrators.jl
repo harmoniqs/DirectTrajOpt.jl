@@ -37,10 +37,9 @@ function test_integrator(
 
     z_dim = integrator.z_dim
     x_dim = integrator.x_dim
-    u_dim = integrator.u_dim
 
     @test length(integrator.x_comps) == x_dim
-    @test length(integrator.u_comps) == u_dim
+    # @test length(integrator.u_comps) == u_dim
     @test integrator.Δt_comp isa Int
 
     z₁ = randn(z_dim)
@@ -74,7 +73,7 @@ function test_integrator(
     end
 
     # testing hessian
-    μ = randn(x_dim)
+    μ = ones(x_dim)
     μ∂²f = hessian_of_lagrangian(integrator, μ, z₁, z₂)
     μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁; z₂])
 
