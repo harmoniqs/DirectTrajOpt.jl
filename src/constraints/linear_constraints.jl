@@ -9,6 +9,8 @@ export TotalConstraint
 export DurationConstraint
 export SymmetryConstraint
 export SymmetricControlConstraint
+
+
 ### 
 ### EqualityConstraint
 ###

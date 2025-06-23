@@ -11,7 +11,7 @@ struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
     μ∂²g!::F3
     μ∂²gs::Vector{SparseMatrixCSC}
     equality::Bool
-    times::AbstractVector{Int}
+    times::Vector{Int}
     g_dim::Int
     dim::Int
 
