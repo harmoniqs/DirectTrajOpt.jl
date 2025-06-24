@@ -1,5 +1,6 @@
 export EqualityConstraint
 export GlobalEqualityConstraint
+export VariableEqualityConstraint
 export BoundsConstraint
 export GlobalBoundsConstraint
 export AllEqualConstraint
