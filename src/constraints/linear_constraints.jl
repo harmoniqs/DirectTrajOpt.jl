@@ -67,6 +67,46 @@ function EqualityConstraint(
     return EqualityConstraint(name, ts, fill(val, traj.dims[name]), traj; label=label)
 end
 
+##
+
+struct VariableEqualityConstraint <: AbstractLinearConstraint
+    idxs::Vector{Int}
+    ms::Vector{Float64}
+    b::Float64
+    label::String
+end
+
+function VariableEqualityConstraint(
+    names::Vector{Symbol},
+    ts::Vector{Int},
+    ms::Vector{Float64},
+    b::Float64,
+    traj::NamedTrajectory;
+    label="affine function of trajectory variables equality constraint",
+)
+    return VariableEqualityConstraint([index(t, traj.components[name][1], traj.dim) for (name, t) in zip(names, ts)], ms, b, label)
+end
+
+function ValidTimeConstraint(
+    traj::NamedTrajectory,
+    t::Int;
+    t_name::Symbol=:t,
+    Δt_name::Symbol=:Δt,
+    label="t_{k+1}=t_k+Δt_k constraint where k=$t"
+)
+    return VariableEqualityConstraint([t_name, t_name, Δt_name], [t + 1, t, t], [1., -1., -1.,], 0., traj; label=label)
+end
+
+function get_all_valid_time_constraints(
+    traj::NamedTrajectory;
+    t_name::Symbol=:t,
+    Δt_name::Symbol=:Δt,
+)
+    return [EqualityConstraint(t_name, [1,], [0.,], traj), [ValidTimeConstraint(traj, t; t_name=t_name, Δt_name=Δt_name,) for t in 1:(traj.T - 1)]...]
+end
+
+##
+
 """
     GlobalEqualityConstraint(
         name::Symbol,
