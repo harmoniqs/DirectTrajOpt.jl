@@ -14,11 +14,12 @@ abstract type AbstractBilinearIntegrator <: AbstractIntegrator end
     ∂f::AbstractMatrix,
     B!::AbstractBilinearIntegrator,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     ForwardDiff.jacobian!(
         ∂f,
-        (δ, zz) -> B!(δ, zz[1:B!.z_dim], zz[B!.z_dim+1:end]),
+        (δ, zz) -> B!(δ, zz[1:B!.z_dim], zz[B!.z_dim+1:end], k),
         zeros(B!.x_dim),
         [zₖ; zₖ₊₁]
     )
@@ -57,12 +58,13 @@ end
     B!::AbstractBilinearIntegrator,
     μₖ::AbstractVector,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     return ForwardDiff.hessian(
         zz -> begin
             δ = zeros(eltype(zz), B!.x_dim)
-            B!(δ, zz[1:B!.z_dim], zz[B!.z_dim+1:end])
+            B!(δ, zz[1:B!.z_dim], zz[B!.z_dim+1:end], k)
             return μₖ'δ
         end,
         [zₖ; zₖ₊₁]
@@ -145,7 +147,8 @@ end
 @views function (B::BilinearIntegrator)(
     δₖ::AbstractVector,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     xₖ₊₁ = zₖ₊₁[B.x_comps]
     xₖ = zₖ[B.x_comps]

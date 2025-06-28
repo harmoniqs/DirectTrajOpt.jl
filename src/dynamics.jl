@@ -21,17 +21,6 @@ using TestItemRunner
 function dynamics_components(integrators::Vector{<:AbstractIntegrator})
     dynamics_comps = []
     comp_mark = 0
-    # for integrator ∈ integrators
-    #     if(!(typeof(integrator)<:AdjointBilinearIntegrator))
-    #         integrator_comps = comp_mark .+ (1:integrator.x_dim)
-    #         push!(dynamics_comps, integrator_comps)
-    #         comp_mark += integrator.x_dim
-    #     else 
-    #         integrator_comps = comp_mark .+ (1:integrator.x_dim+integrator.xₐ_dim)
-    #         push!(dynamics_comps, integrator_comps)
-    #         comp_mark += integrator.x_dim + integrator.xₐ_dim
-    #     end
-    # end
     for integrator ∈ integrators
         integrator_comps = comp_mark .+ (1:integrator.x_dim)
         push!(dynamics_comps, integrator_comps)
@@ -122,7 +111,6 @@ struct TrajectoryDynamics{F1, F2, F3}
             println("        constructing full dynamics derivative functions...")
         end
 
-        #dynamics_dim = sum(typeof(integrator)<:AdjointBilinearIntegrator ? integrator.x_dim + integrator.xₐ_dim : integrator.x_dim  for integrator ∈ integrators) 
         dynamics_dim = sum(integrator.x_dim  for integrator ∈ integrators) 
 
         dynamics_comps = dynamics_components(integrators)
@@ -135,7 +123,7 @@ struct TrajectoryDynamics{F1, F2, F3}
                 Threads.@threads for k = 1:traj.T-1
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
-                    integrator!(δ[slice(k, comps, dynamics_dim)], zₖ, zₖ₊₁)
+                    integrator!(δ[slice(k, comps, dynamics_dim)], zₖ, zₖ₊₁, k)
                 end
             end
             return nothing
@@ -149,7 +137,7 @@ struct TrajectoryDynamics{F1, F2, F3}
                 Threads.@threads for k = 1:traj.T-1
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
-                    jacobian!(∂fs[k][comps, :], integrator, zₖ, zₖ₊₁)
+                    jacobian!(∂fs[k][comps, :], integrator, zₖ, zₖ₊₁, k)
                 end
             end
             return nothing
@@ -169,7 +157,7 @@ struct TrajectoryDynamics{F1, F2, F3}
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
                     μₖ = μ⃗[slice(k, comps, dynamics_dim)]
-                    μ∂²fs[k] .+= hessian_of_lagrangian(integrator, μₖ, zₖ, zₖ₊₁)
+                    μ∂²fs[k] .+= hessian_of_lagrangian(integrator, μₖ, zₖ, zₖ₊₁, k)
                 end
             end
             return nothing

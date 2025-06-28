@@ -29,21 +29,23 @@ end
 function (D::DerivativeIntegrator)(
     δₖ::AbstractVector,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     aₖ = zₖ[D.x_comps]
     ȧₖ = zₖ[D.u_comps]
     Δtₖ = zₖ[D.Δt_comp]
     aₖ₊₁ = zₖ₊₁[D.x_comps]
-
-    return δₖ .= aₖ₊₁ - aₖ - Δtₖ * ȧₖ
+    δₖ .= aₖ₊₁ - aₖ - Δtₖ * ȧₖ
+    return nothing
 end
 
 function jacobian!(
     ∂D::AbstractMatrix,
     D::DerivativeIntegrator,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     # ∂ẋₖD 
     Δtₖ = zₖ[D.Δt_comp]
@@ -85,7 +87,8 @@ function hessian_of_lagrangian(
     D::DerivativeIntegrator,
     μₖ::AbstractVector,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     μ∂²D = spzeros(2D.z_dim, 2D.z_dim)
 

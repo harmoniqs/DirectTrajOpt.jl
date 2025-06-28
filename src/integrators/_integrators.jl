@@ -45,16 +45,17 @@ function test_integrator(
 
     z₁ = randn(z_dim)
     z₂ = randn(z_dim)
+    k = 1
 
     f̂ = zz -> begin
         δ = zeros(eltype(zz), x_dim)
-        integrator(δ, zz[1:z_dim], zz[z_dim+1:end]; kwargs...)
+        integrator(δ, zz[1:z_dim], zz[z_dim+1:end], k; kwargs...)
         return δ
     end
 
     # testing jacobian
     ∂f = jacobian_structure(integrator)
-    jacobian!(∂f, integrator, z₁, z₂)
+    jacobian!(∂f, integrator, z₁, z₂, k)
     ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁; z₂])
 
     if show_jacobian_diff 
@@ -75,7 +76,7 @@ function test_integrator(
 
     # testing hessian
     μ = randn(x_dim)
-    μ∂²f = hessian_of_lagrangian(integrator, μ, z₁, z₂)
+    μ∂²f = hessian_of_lagrangian(integrator, μ, z₁, z₂, k)
     μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁; z₂])
 
     if show_hessian_diff 
