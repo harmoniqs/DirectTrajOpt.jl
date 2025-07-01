@@ -37,6 +37,7 @@ function DirectTrajOptProblem(
     integrators::Vector{<:AbstractIntegrator};
     constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
 )
+    traj = deepcopy(traj)
     dynamics = TrajectoryDynamics(integrators, traj)
     traj_constraints = get_trajectory_constraints(traj)
     append!(constraints, traj_constraints)
