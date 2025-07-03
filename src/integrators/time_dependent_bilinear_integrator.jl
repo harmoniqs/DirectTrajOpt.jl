@@ -30,7 +30,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
 
         function f!(dx, x_, p, τ)
             t_, Δt, u_ = p[1], p[2], p[3:end]
-            dx[:] = G(u_, t_ + τ * Δt) * x_ * Δt
+            mul!(dx, G(u_, t_ + τ * Δt), x_ * Δt)
             return nothing
         end
 
