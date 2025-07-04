@@ -9,6 +9,8 @@ export TotalConstraint
 export DurationConstraint
 export SymmetryConstraint
 export SymmetricControlConstraint
+
+
 ### 
 ### EqualityConstraint
 ###
@@ -284,7 +286,7 @@ function SymmetricControlConstraint(
     name::Symbol,
     idx::Vector{Int64};
     even = true,
-    label = "Symmetry Constraint on $name"
+    label = "symmetry constraint on $name"
 )
     even_pairs = Vector{Tuple{Int64,Int64}}()
     odd_pairs = Vector{Tuple{Int64,Int64}}()

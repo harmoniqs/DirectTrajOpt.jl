@@ -22,7 +22,8 @@ end
 function (D::TimeIntegrator)(
     δₖ::AbstractVector,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     tₖ = zₖ[D.x_comps]
     Δtₖ = zₖ[D.Δt_comp]
@@ -35,7 +36,8 @@ function jacobian!(
     ∂D::AbstractMatrix,
     D::TimeIntegrator,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     # ∂xₖ₊₁D, ∂xₖD, ∂ΔtₖD in jacobian structure
     return nothing
@@ -64,7 +66,8 @@ function hessian_of_lagrangian(
     D::TimeIntegrator,
     μₖ::AbstractVector,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector
+    zₖ₊₁::AbstractVector,
+    k::Int
 )
     return spzeros(2D.z_dim, 2D.z_dim) 
 end

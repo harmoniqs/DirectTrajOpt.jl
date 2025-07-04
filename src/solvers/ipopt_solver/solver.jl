@@ -191,9 +191,11 @@ end
 
 
 function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
+    ignored_options = [:eval_hessian, :refine]
+
     for name in fieldnames(typeof(options))
         value = getfield(options, name)
-        if name == :eval_hessian
+        if name in ignored_options
             continue
         end
         if name == :linear_solver

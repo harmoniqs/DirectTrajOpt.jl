@@ -11,8 +11,6 @@ function MinimumTimeObjective(
     traj::NamedTrajectory;
     D::Float64=1.0
 )
-    @assert traj.timestep isa Symbol "Trajectory timestep must be a symbol (free time)"
-
     Δt_index = traj.components[traj.timestep][1]
     Δt_indices = [index(t, Δt_index, traj.dim) for t = 1:traj.T-1]
 

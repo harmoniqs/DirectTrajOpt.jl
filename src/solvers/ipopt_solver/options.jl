@@ -25,6 +25,9 @@ Base.@kwdef mutable struct IpoptOptions{T} <: AbstractSolverOptions
     hsllib = nothing
     inf_pr_output = "original"
     linear_solver = "mumps"
+    mu_strategy = "adaptive"
+    refine = true
+    adaptive_mu_globalization = refine ? "obj-constr-filter" : "never-monotone-mode" 
     mu_target::T = 1.0e-4
     nlp_scaling_method = "gradient-based"
     output_file = nothing
@@ -42,3 +45,5 @@ Base.@kwdef mutable struct IpoptOptions{T} <: AbstractSolverOptions
     watchdog_shortened_iter_trigger = 0
     watchdog_trial_iter_max = 3
 end
+
+# 

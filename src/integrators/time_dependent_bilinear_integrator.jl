@@ -9,7 +9,7 @@ using ForwardDiff
 
 struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     G::F
-    prob::ODEProblem
+    probs::Vector{ODEProblem}
     x_comps::Vector{Int}
     u_comps::Vector{Int}
     t_comp::Int
@@ -26,9 +26,11 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         t::Symbol
     ) where F <: Function
 
+        @assert traj.T > 1 "Trajectory must have at least two timesteps."
+
         function f!(dx, x_, p, τ)
             t_, Δt, u_ = p[1], p[2], p[3:end]
-            dx[:] = G(u_, t_ + τ * Δt) * x_ * Δt
+            mul!(dx, G(u_, t_ + τ * Δt), x_ * Δt)
             return nothing
         end
 
@@ -39,11 +41,14 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         u₀ = zeros(length(u_comp))
         t₀ = 0.0
         Δt₀ = 1.0
-        prob = ODEProblem(f!, x₀, (0.0, 1.0), [t₀; Δt₀; u₀...])
+        probs = [
+            ODEProblem(f!, x₀, (0.0, 1.0), [t₀; Δt₀; u₀...])
+            for _ in 1:traj.T - 1
+        ]
 
         return new{F}(
             G,
-            prob,
+            probs,
             x_comp,
             u_comp,
             traj.components[t][1],
@@ -58,7 +63,8 @@ end
 @views function (B::TimeDependentBilinearIntegrator)(
     δₖ::AbstractVector,
     zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector;
+    zₖ₊₁::AbstractVector,
+    k::Int;
     algorithm::OrdinaryDiffEq.OrdinaryDiffEqAlgorithm=Tsit5(),
     # atol=1e-6,
     # rtol=1e-6,
@@ -70,9 +76,9 @@ end
     tₖ = zₖ[B.t_comp]
     Δtₖ = zₖ[B.Δt_comp]
 
-    _prob = remake(B.prob, u0 = xₖ, p = [tₖ, Δtₖ, uₖ...])
-    sol = solve(_prob, algorithm;  kwargs...)
-    δₖ[:] = xₖ₊₁ - sol[:, end]
+    probₖ = remake(B.probs[k], u0 = xₖ, p = [tₖ, Δtₖ, uₖ...])
+    solₖ = solve(probₖ, algorithm;  kwargs...)
+    δₖ[:] = xₖ₊₁ - solₖ[:, end]
 end
 
 function jacobian_structure(B::TimeDependentBilinearIntegrator)

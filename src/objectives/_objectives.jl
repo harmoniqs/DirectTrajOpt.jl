@@ -63,6 +63,7 @@ end
 
 Base.:*(obj::Objective, num::Real) = num * obj
 
+Base.show(io::IO, ::Objective) = print(io, "Objective(L, ∇L, ∂²L, ∂²L_structure)")
 
 # ----------------------------------------------------------------------------- #
 # Null objective                                      

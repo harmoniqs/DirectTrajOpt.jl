@@ -124,7 +124,7 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
     ∂gs::Vector{SparseMatrixCSC}
     μ∂²g!::Function
     μ∂²gs::Vector{SparseMatrixCSC}
-    times::AbstractVector{Int}
+    times::Vector{Int}
     equality::Bool
     g_dim::Int
     dim::Int
