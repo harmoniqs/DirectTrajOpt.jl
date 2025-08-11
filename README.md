@@ -48,14 +48,14 @@
 
 **DirectTrajOpt.jl** provides abstractions and utilities for setting up and solving direct trajectory optimization problems of the form:
 
-$$
+```math
 \begin{align*}
 \underset{x_{1:N}, u_{1:N-1}}{\text{minimize}} \quad & J(x_{1:N}, u_{1:N-1}) \\
 \text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0\\
 & c_k(x_k, u_k) \geq 0 \\
 & x_1 = x_{\text{init}} \\
 \end{align*}
-$$
+```
 
 where $J(x_{1:N}, u_{1:N-1})$ is a user-defined cost function, $f(x_{k+1}, x_k, u_k, \Delta t, t_k)$ is an *integrator* funtion encoding the dynamics of the system, and $c_k(x_k, u_k)$ are user-defined constraints.
 
