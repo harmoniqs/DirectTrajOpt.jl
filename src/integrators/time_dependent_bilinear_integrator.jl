@@ -65,7 +65,7 @@ end
     zₖ::AbstractVector,
     zₖ₊₁::AbstractVector,
     k::Int;
-    algorithm::OrdinaryDiffEq.OrdinaryDiffEqAlgorithm=Tsit5(),
+    algorithm::OrdinaryDiffEq.OrdinaryDiffEqCore.OrdinaryDiffEqAlgorithm=Tsit5(),
     # atol=1e-6,
     # rtol=1e-6,
     kwargs...
