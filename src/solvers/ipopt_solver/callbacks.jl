@@ -100,3 +100,39 @@ function _callback_update_trajectory_factory(problem)
         return true
     end
 end
+
+# WARNING: This callback expects that _callback_update_trajectory was evaluated beforehand
+#          However, a custom callback can just as well do both in one go, especially if the overhead from doing a trajectory update once per iteration is undesirable
+function _callback_rollout_fidelity_factory(problem, system, fid_fn; fid_thresh=nothing, freq=1)
+    function _callback_rollout_fidelity(optimizer, optimizer_state; kwargs...)
+        if optimizer_state[2] % freq != 0
+            return true
+        end
+
+        fid = fid_fn(problem.trajectory, system)
+
+        # Probably comment this out and/or customize display of fidelities
+        println()
+        println("Fidelity: ", fid)
+
+        return fid_thresh isa Nothing || fid < fid_thresh
+    end
+end
+
+# Example usage:
+#
+# # The following solve should proceed as usual, printing the current fidelity (as computed by unitary_rollout_fidelity) once every 10 iterations, and stopping once it exceeds 0.999
+# > initial = unitary_rollout_fidelity(prob.trajectory, sys)
+# > cb = callback_factory(_callback_update_trajectory_factory(prob), _callback_rollout_fidelity_factory(prob, sys, unitary_rollout_fidelity; fid_thresh=0.999, freq=10))
+# > solve!(prob; max_iter=100, callback=cb)
+# > final = unitary_rollout_fidelity(prob.trajectory, sys)
+# > @assert final > initial
+# 
+# # Terminating the solve manually (via Ctrl+C) will result in the final fidelity matching the initial fidelity (loss of solver progress) if _callback_update_trajectory is omitted
+# > do_traj_update = false
+# > initial = unitary_rollout_fidelity(prob.trajectory, sys)
+# > cb = callback_factory((do_traj_update ? [_callback_update_trajectory_factory(prob)] : [])...)
+# > solve!(prob; max_iter=100, callback=cb)
+# > final = unitary_rollout_fidelity(prob.trajectory, sys)
+# > @assert (final == initial) == (!do_traj_update)
+
