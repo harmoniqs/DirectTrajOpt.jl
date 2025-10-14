@@ -25,7 +25,7 @@ using Ipopt
     end
 """
 
-# Take 1
+"""Take 1"""
 
 function callback_update_trajectory(problem::DirectTrajOptProblem; callback=nothing)
     function __callback(optimizer::Ipopt.Optimizer)
@@ -62,8 +62,26 @@ function callback_update_trajectory_with_rollout(problem::DirectTrajOptProblem, 
     return __callback
 end
 
-# Take 2
+"""Take 2"""
 
+"""
+# Example usage:
+#
+# # The following solve should proceed as usual, printing the current fidelity (as computed by unitary_rollout_fidelity) once every 10 iterations, and stopping once it exceeds 0.999
+# > initial = unitary_rollout_fidelity(prob.trajectory, sys)
+# > cb = callback_factory(_callback_update_trajectory_factory(prob), _callback_rollout_fidelity_factory(prob, sys, unitary_rollout_fidelity; fid_thresh=0.999, freq=10))
+# > solve!(prob; max_iter=100, callback=cb)
+# > final = unitary_rollout_fidelity(prob.trajectory, sys)
+# > @assert final > initial
+# 
+# # Terminating the solve manually (via Ctrl+C) will result in the final fidelity matching the initial fidelity (loss of solver progress) if _callback_update_trajectory is omitted
+# > do_traj_update = false
+# > initial = unitary_rollout_fidelity(prob.trajectory, sys)
+# > cb = callback_factory((do_traj_update ? [_callback_update_trajectory_factory(prob)] : [])...)
+# > solve!(prob; max_iter=100, callback=cb)
+# > final = unitary_rollout_fidelity(prob.trajectory, sys)
+# > @assert (final == initial) == (!do_traj_update)
+"""
 function callback_factory(callbacks...; kwargs...)
     function _callback_factory(optimizer::Ipopt.Optimizer)
         function _callback(optimizer_state...)
@@ -101,8 +119,10 @@ function _callback_update_trajectory_factory(problem)
     end
 end
 
+"""
 # WARNING: This callback expects that _callback_update_trajectory was evaluated beforehand
 #          However, a custom callback can just as well do both in one go, especially if the overhead from doing a trajectory update once per iteration is undesirable
+"""
 function _callback_rollout_fidelity_factory(problem, system, fid_fn; fid_thresh=nothing, freq=1)
     function _callback_rollout_fidelity(optimizer, optimizer_state; kwargs...)
         if optimizer_state[2] % freq != 0
@@ -119,20 +139,4 @@ function _callback_rollout_fidelity_factory(problem, system, fid_fn; fid_thresh=
     end
 end
 
-# Example usage:
-#
-# # The following solve should proceed as usual, printing the current fidelity (as computed by unitary_rollout_fidelity) once every 10 iterations, and stopping once it exceeds 0.999
-# > initial = unitary_rollout_fidelity(prob.trajectory, sys)
-# > cb = callback_factory(_callback_update_trajectory_factory(prob), _callback_rollout_fidelity_factory(prob, sys, unitary_rollout_fidelity; fid_thresh=0.999, freq=10))
-# > solve!(prob; max_iter=100, callback=cb)
-# > final = unitary_rollout_fidelity(prob.trajectory, sys)
-# > @assert final > initial
-# 
-# # Terminating the solve manually (via Ctrl+C) will result in the final fidelity matching the initial fidelity (loss of solver progress) if _callback_update_trajectory is omitted
-# > do_traj_update = false
-# > initial = unitary_rollout_fidelity(prob.trajectory, sys)
-# > cb = callback_factory((do_traj_update ? [_callback_update_trajectory_factory(prob)] : [])...)
-# > solve!(prob; max_iter=100, callback=cb)
-# > final = unitary_rollout_fidelity(prob.trajectory, sys)
-# > @assert (final == initial) == (!do_traj_update)
 

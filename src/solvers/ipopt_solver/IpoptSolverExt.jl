@@ -1,5 +1,6 @@
 module IpoptSolverExt
 
+export Callbacks
 
 using DirectTrajOpt
 using Ipopt
