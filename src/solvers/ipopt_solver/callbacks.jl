@@ -25,7 +25,9 @@ using Ipopt
     end
 """
 
-"""Take 1"""
+"""
+Take 1
+"""
 
 function callback_update_trajectory(problem::DirectTrajOptProblem; callback=nothing)
     function __callback(optimizer::Ipopt.Optimizer)
@@ -62,7 +64,9 @@ function callback_update_trajectory_with_rollout(problem::DirectTrajOptProblem, 
     return __callback
 end
 
-"""Take 2"""
+"""
+Take 2
+"""
 
 """
 # Example usage:
@@ -139,4 +143,4 @@ function _callback_rollout_fidelity_factory(problem, system, fid_fn; fid_thresh=
     end
 end
 
-
+end
