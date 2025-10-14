@@ -12,5 +12,6 @@ include("options.jl")
 include("constraints.jl")
 include("evaluator.jl")
 include("solver.jl")
+include("callbacks.jl")
 
 end
