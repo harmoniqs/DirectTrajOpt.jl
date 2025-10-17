@@ -1,4 +1,6 @@
 export EqualityConstraint
+export LinearCombinationEqualityConstraint
+export DerivativeConstraint
 export GlobalEqualityConstraint
 export BoundsConstraint
 export GlobalBoundsConstraint
@@ -67,6 +69,41 @@ function EqualityConstraint(
 )
     @assert val >= 0
     return EqualityConstraint(name, ts, fill(val, traj.dims[name]), traj; label=label)
+end
+
+
+struct LinearCombinationEqualityConstraint <: AbstractLinearConstraint
+    indices::Matrix{Int}
+    coefficients::Vector{Float64}
+    value::Float64
+    label::String
+end
+
+function DerivativeConstraint(
+    u::Symbol,
+    Δu::Symbol,
+    traj::NamedTrajectory;
+    label="derivative constraint on $u and $Δu: $(u)ₖ₊₁ - $(u)ₖ - $(Δu)ₖ = 0"
+)
+    @assert u ∈ traj.names
+    @assert Δu ∈ traj.names
+
+    blocks = []
+
+    for k = 1:traj.T-1
+        uₖ₊₁_slice = slice(k + 1, traj.components[u], traj.dim)
+        uₖ_slice = slice(k, traj.components[u], traj.dim)
+        Δuₖ_slice = slice(k, traj.components[Δu], traj.dim)
+
+        push!(blocks, hcat(uₖ₊₁_slice, uₖ_slice, Δuₖ_slice))
+    end
+
+    indices = vcat(blocks...)
+
+    coefficients = [1.0, -1.0, -1.0]
+    value = 0.0
+
+    return LinearCombinationEqualityConstraint(indices, coefficients, value, label)
 end
 
 """

@@ -116,3 +116,19 @@ function (con::SymmetryConstraint)(
                 )
     end
 end
+
+function (con::LinearCombinationEqualityConstraint)(
+    opt::Ipopt.Optimizer,
+    vars::Vector{MOI.VariableIndex}
+)
+    for row ∈ eachrow(con.indices) 
+        MOI.add_constraints(
+            opt,
+            MOI.ScalarAffineFunction([
+                MOI.ScalarAffineTerm(coef, vars[idx]) 
+                    for (coef, idx) in zip(con.coefficients, row)
+            ], 0.0),
+            MOI.EqualTo(con.value)
+        )
+    end
+end
