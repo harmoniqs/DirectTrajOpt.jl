@@ -17,28 +17,44 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     z_dim::Int
     x_dim::Int
     u_dim::Int
+    linear_spline::Bool
 
     function TimeDependentBilinearIntegrator(
         G::F,
         traj::NamedTrajectory,
         x::Symbol,
         u::Symbol,
-        t::Symbol
+        t::Symbol;
+        linear_spline::Bool = false
     ) where F <: Function
 
         @assert traj.T > 1 "Trajectory must have at least two timesteps."
-
+        
         function f!(dx, x_, p, τ)
             t_, Δt, u_ = p[1], p[2], p[3:end]
-            mul!(dx, G(u_, t_ + τ * Δt), x_ * Δt)
+            if linear_spline
+                uₖ = u_[1:length(u_)÷2]
+                uₖ₊₁ = u_[length(u_)÷2+1:end]
+                u_fn = s -> uₖ .+ s * (uₖ₊₁ .- uₖ)
+            else
+                u_fn = s -> u_
+            end
+            mul!(dx, G(u_fn(τ), t_ + τ * Δt), x_ * Δt)
             return nothing
         end
 
         x_comp = traj.components[x]
         u_comp = traj.components[u]
+        u_dim = traj.dims[u]
 
         x₀ = zeros(length(x_comp))
-        u₀ = zeros(length(u_comp))
+
+        if linear_spline
+            u₀ = zeros(2u_dim)
+        else
+            u₀ = zeros(u_dim)
+        end
+
         t₀ = 0.0
         Δt₀ = 1.0
         probs = [
@@ -56,6 +72,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
             traj.dim,
             traj.dims[x],
             traj.dims[u],
+            linear_spline
         )
     end
 end
@@ -70,13 +87,20 @@ end
     # rtol=1e-6,
     kwargs...
 )
-    xₖ₊₁ = zₖ₊₁[B.x_comps]
     xₖ = zₖ[B.x_comps]
+    xₖ₊₁ = zₖ₊₁[B.x_comps]
     uₖ = zₖ[B.u_comps]
+    uₖ₊₁ = zₖ₊₁[B.u_comps]
     tₖ = zₖ[B.t_comp]
     Δtₖ = zₖ[B.Δt_comp]
 
-    probₖ = remake(B.probs[k], u0 = xₖ, p = [tₖ, Δtₖ, uₖ...])
+    if B.linear_spline
+        pₖ = [tₖ; Δtₖ; uₖ; uₖ₊₁]
+    else
+        pₖ = [tₖ; Δtₖ; uₖ]
+    end
+
+    probₖ = remake(B.probs[k], u0 = xₖ, p = pₖ)
     solₖ = solve(probₖ, algorithm;  kwargs...)
     δₖ[:] = xₖ₊₁ - solₖ[:, end]
 end
@@ -103,6 +127,9 @@ function jacobian_structure(B::TimeDependentBilinearIntegrator)
     # ∂uₖf
     ∂f[:, u_comps] = ones(x_dim, u_dim)
 
+    # ∂uₖ₊₁f
+    ∂f[:, z_dim .+ u_comps] = ones(x_dim, u_dim)
+
     # ∂tₖf
     ∂f[:, t_comp] = ones(x_dim)
 
@@ -114,44 +141,19 @@ end
 
 function hessian_structure(B::TimeDependentBilinearIntegrator)
 
-    x_comps = B.x_comps
-    u_comps = B.u_comps
-    t_comp = B.t_comp
-    Δt_comp = B.Δt_comp
-
-    x_dim = B.x_dim
-    u_dim = B.u_dim
+    if B.linear_spline
+        p_comps = [B.t_comp; B.Δt_comp; B.u_comps; B.z_dim .+ B.u_comps]
+    else
+        p_comps = [B.t_comp; B.Δt_comp; B.u_comps]
+    end
 
     μ∂²f = spzeros(2 * B.z_dim, 2 * B.z_dim)
 
-    # μ∂ₓₖ∂ᵤf & μ∂ᵤ∂ₓₖf
-    μ∂²f[x_comps, u_comps] = ones(x_dim, u_dim)
+    μ∂²f[B.x_comps, p_comps] .= 1.0
 
-    # μ∂ₓₖ∂ₜf & μ∂ₜ∂ₓₖf
-    μ∂²f[x_comps, t_comp] = ones(x_dim)
+    μ∂²f[p_comps, p_comps] .= 1.0
 
-    # μ∂ₓₖ∂Δtₖf & μ∂Δtₖ∂ₓₖf
-    μ∂²f[x_comps, Δt_comp] = ones(x_dim)
-
-    # μ∂u∂tf & μ∂t∂uf
-    μ∂²f[u_comps,t_comp] = ones(u_dim)
-
-    # μ∂u∂Δtₖf & μ∂Δtₖ∂uf
-    μ∂²f[u_comps, Δt_comp] = ones(u_dim)
-
-    # μ∂t∂Δtₖf & μ∂Δtₖ∂tf
-    μ∂²f[t_comp, Δt_comp] = 1.0
-
-    # μ∂ᵤ²f
-    μ∂²f[u_comps, u_comps] = ones(u_dim, u_dim)
-
-    # μ∂ₜ²f
-    μ∂²f[t_comp, t_comp] = 1.0
-
-    # μ∂Δt²f
-    μ∂²f[Δt_comp, Δt_comp] = 1.0
-
-    return μ∂²f
+    return sparse(UpperTriangular(μ∂²f))
 end
 
 # ============================================================================ #
