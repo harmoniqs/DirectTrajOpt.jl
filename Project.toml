@@ -1,7 +1,7 @@
 name = "DirectTrajOpt"
 uuid = "c823fa1f-8872-4af5-b810-2b9b72bbbf56"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
-version = "0.4.1"
+version = "0.4.2"
 
 [deps]
 ExponentialAction = "e24c0720-ea99-47e8-929e-571b494574d3"
