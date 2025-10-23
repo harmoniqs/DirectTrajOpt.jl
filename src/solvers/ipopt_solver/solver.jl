@@ -45,6 +45,7 @@ function DC.solve!(
     optimizer, variables = get_optimizer_and_variables(prob, options, callback, verbose=verbose)
     MOI.optimize!(optimizer)
 
+    # TODO: if `_callback_update_trajectory` is employed by default, then this call to `update_trajectory!` becomes superfluous.
     update_trajectory!(prob, optimizer, variables)
 
     # TODO: this is broken, it mixes up component names
