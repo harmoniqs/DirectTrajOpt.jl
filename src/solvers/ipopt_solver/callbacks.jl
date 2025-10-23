@@ -5,6 +5,8 @@ using ..DirectTrajOpt
 using NamedTrajectories
 using Ipopt
 
+using TestItemRunner
+
 
 # """
 #     # Callbacks evaluated by Ipopt should have the following signature:
@@ -219,6 +221,39 @@ function callback_best_rollout_fidelity_factory(problem::DirectTrajOptProblem, s
         return fid_thresh isa Nothing || fid < fid_thresh
     end
 end
+
+function cb_test()
+    include("test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, traj, :x, :u),
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
+
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
+
+    callback = callback_factory(
+        callback_say_hello_factory("Hello, world!"),
+        callback_stop_iteration_factory(50),
+    )
+
+    optimizer, variables = get_optimizer_and_variables(prob, IpoptOptions(; max_iter=100), callback)
+    MOI.optimize!(optimizer)
+
+    # solve!(prob; max_iter=100)
+end
+
+@testitem begin cb_test() end
 
 
 end
