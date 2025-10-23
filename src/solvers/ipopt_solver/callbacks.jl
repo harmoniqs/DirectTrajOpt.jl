@@ -1,8 +1,10 @@
 module Callbacks
 
+
 using ..DirectTrajOpt
 using NamedTrajectories
 using Ipopt
+
 
 """
     # Callbacks evaluated by Ipopt should have the following signature:
@@ -26,48 +28,6 @@ using Ipopt
     end
 """
 
-# """
-# Take 1
-# """
-
-# function callback_update_trajectory(problem::DirectTrajOptProblem; callback=nothing)
-#     function __callback(optimizer::Ipopt.Optimizer)
-#         function _callback(args...)
-#             IpoptSolverExt.update_trajectory!(prob, optimizer, optimizer.list_of_variable_indices)
-#             if callback isa Nothing
-#                 return true
-#             end
-#             # by now, the trajectory is up to date, so `callback` can make use of it for e.g. rollouts
-#             return callback(args...)
-#         end
-#         return _callback
-#     end
-#     return __callback
-# end
-
-# function callback_update_trajectory_with_rollout(problem::DirectTrajOptProblem, fid_fn::Function; callback=nothing, fid_thresh=0.99, freq=1)
-#     function __callback(optimizer::Ipopt.Optimizer)
-#         function _callback(args...)
-#             IpoptSolverExt.update_trajectory!(prob, optimizer, optimizer.list_of_variable_indices)
-
-#             res = (callback isa Nothing) || (callback(args...))
-
-#             # we should evaluate `fid_fn` every `freq` iterations even if !res
-#             if args[2] % freq == 0
-#                 res_fid = fid_fn(prob.trajectory) < fid_thresh
-#                 return res && res_fid
-#             end
-
-#             return res
-#         end
-#         return _callback
-#     end
-#     return __callback
-# end
-
-"""
-Take 2
-"""
 
 """
 # Example usage:
@@ -88,8 +48,8 @@ Take 2
 # > @assert (final == initial) == (!do_traj_update)
 """
 
-IpoptOptimizerState = NamedTuple{(:alg_mod, :iter_count, :obj_value, :inf_pr, :inf_du, :mu, :d_norm, :regularization_size, :alpha_du, :alpha_pr, :ls_trials), Tuple{Int32, Int32, Float64, Float64, Float64, Float64, Float64, Float64, Float64, Float64, Int32}}
 
+IpoptOptimizerState = NamedTuple{(:alg_mod, :iter_count, :obj_value, :inf_pr, :inf_du, :mu, :d_norm, :regularization_size, :alpha_du, :alpha_pr, :ls_trials), Tuple{Int32, Int32, Float64, Float64, Float64, Float64, Float64, Float64, Float64, Float64, Int32}}
 
 function callback_factory(callbacks...; kwargs...)
     function _callback_factory(optimizer::Ipopt.Optimizer)
@@ -162,7 +122,7 @@ end
 function _callback_best_rollout_fidelity_factory(problem::DirectTrajOptProblem, system::Any, fid_fn::Function, trajectories::Dict{Int32, Any}; fid_thresh=nothing, max_trajectories=1, freq=1)
     best_fid_idxs = Int32[]
     
-    function _callback_rollout_fidelity(optimizer::Ipopt.Optimizer, optimizer_state::IpoptOptimizerState; kwargs...)
+    function _callback_best_rollout_fidelity(optimizer::Ipopt.Optimizer, optimizer_state::IpoptOptimizerState; kwargs...)
         if optimizer_state.iter_count % freq != 0
             return true
         end
@@ -171,7 +131,7 @@ function _callback_best_rollout_fidelity_factory(problem::DirectTrajOptProblem, 
 
         iter = optimizer_state.iter_count
         pushed_traj = false
-        for i in 1:min(length(best_fid_idxs), max_trajectories)
+        for i in 1:Int(min(length(best_fid_idxs), max_trajectories))
             if trajectories[best_fid_idxs[i]][1] < fid
                 if length(best_fid_idxs) < max_trajectories
                     push!(best_fid_idxs, iter)
