@@ -6,47 +6,46 @@ using NamedTrajectories
 using Ipopt
 
 
-"""
-    # Callbacks evaluated by Ipopt should have the following signature:
-    # Note that Cint === Int32 && Cdouble === Float64
+# """
+#     # Callbacks evaluated by Ipopt should have the following signature:
+#     # Note that Cint === Int32 && Cdouble === Float64
 
-    function my_intermediate_callback(
-        alg_mod::Cint,
-        iter_count::Cint,
-        obj_value::Float64,
-        inf_pr::Float64,
-        inf_du::Float64,
-        mu::Float64,
-        d_norm::Float64,
-        regularization_size::Float64,
-        alpha_du::Float64,
-        alpha_pr::Float64,
-        ls_trials::Cint,
-    )
-        # ... user code ...
-        return true # or `return false` to terminate the solve.
-    end
-"""
+#     function my_intermediate_callback(
+#         alg_mod::Cint,
+#         iter_count::Cint,
+#         obj_value::Float64,
+#         inf_pr::Float64,
+#         inf_du::Float64,
+#         mu::Float64,
+#         d_norm::Float64,
+#         regularization_size::Float64,
+#         alpha_du::Float64,
+#         alpha_pr::Float64,
+#         ls_trials::Cint,
+#     )
+#         # ... user code ...
+#         return true # or `return false` to terminate the solve.
+#     end
+# """
 
+# """
+# # Example usage:
 
-"""
-# Example usage:
-#
-# # The following solve should proceed as usual, printing the current fidelity (as computed by unitary_rollout_fidelity) once every 10 iterations, and stopping once it exceeds 0.999
+# The following solve should proceed as usual, printing the current fidelity (as computed by unitary_rollout_fidelity) once every 10 iterations, and stopping once it exceeds 0.999
 # > initial = unitary_rollout_fidelity(prob.trajectory, sys)
 # > cb = callback_factory(_callback_update_trajectory_factory(prob), _callback_rollout_fidelity_factory(prob, sys, unitary_rollout_fidelity; fid_thresh=0.999, freq=10))
 # > solve!(prob; max_iter=100, callback=cb)
 # > final = unitary_rollout_fidelity(prob.trajectory, sys)
 # > @assert final > initial
-# 
-# # Terminating the solve manually (via Ctrl+C) will result in the final fidelity matching the initial fidelity (loss of solver progress) if _callback_update_trajectory is omitted
+
+# Terminating the solve manually (via Ctrl+C) will result in the final fidelity matching the initial fidelity (loss of solver progress) if _callback_update_trajectory is omitted
 # > do_traj_update = false
 # > initial = unitary_rollout_fidelity(prob.trajectory, sys)
 # > cb = callback_factory((do_traj_update ? [_callback_update_trajectory_factory(prob)] : [])...)
 # > solve!(prob; max_iter=100, callback=cb)
 # > final = unitary_rollout_fidelity(prob.trajectory, sys)
 # > @assert (final == initial) == (!do_traj_update)
-"""
+# """
 
 
 """
@@ -74,12 +73,6 @@ It is recommended that the first callback passed to this factory method be _call
 function callback_factory(callbacks...; kwargs...)
     function _callback_factory(optimizer::Ipopt.Optimizer)
         function _callback(optimizer_state...)
-            # for callback in callbacks
-            #     res = callback(optimizer, optimizer_state; kwargs)
-            #     if !res
-            #         return false
-            #     end
-            # end
             return all([callback(optimizer, IpoptOptimizerState(optimizer_state); kwargs...) for callback in callbacks])
         end
     end
