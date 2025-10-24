@@ -8,6 +8,7 @@ on:
 
   # added for tagbot releases
   release:
+    types: [created]
 
 concurrency:
   # Skip intermediate builds: always.
