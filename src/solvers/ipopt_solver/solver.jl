@@ -45,6 +45,7 @@ function DC.solve!(
     optimizer, variables = get_optimizer_and_variables(prob, options, callback, verbose=verbose)
     MOI.optimize!(optimizer)
 
+    # TODO: if `_callback_update_trajectory` is employed by default, then this call to `update_trajectory!` becomes superfluous.
     update_trajectory!(prob, optimizer, variables)
 
     # TODO: this is broken, it mixes up component names
@@ -123,13 +124,13 @@ function get_optimizer_and_variables(
     # set objective sense: minimize
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    # set callback function
-    if !isnothing(callback)
-        MOI.set(optimizer, Ipopt.CallbackFunction(), callback)
-    end
-
     # initialize problem variables 
     variables = set_variables!(optimizer, prob.trajectory)
+
+    # set callback function
+    if !isnothing(callback)
+        MOI.set(optimizer, Ipopt.CallbackFunction(), callback(optimizer))
+    end
 
     # add linear constraints
     linear_constraints = AbstractLinearConstraint[
