@@ -237,54 +237,55 @@ function callback_best_rollout_fidelity_factory(problem::DirectTrajOptProblem, s
 end
 
 
-# @testitem "Callback tests" begin
-#     using DirectTrajOpt
+function test_update_trajectory(problem::DirectTrajOptProblem, update_trajectory::Bool)
+    callbacks = [
+        callback_say_hello_factory("Hello, world!"),
+        callback_stop_iteration_factory(50),
+    ]
+    if update_trajectory
+        pushfirst!(callbacks, callback_update_trajectory_factory(problem))
+    end
+    callback = callback_factory(callbacks...)
 
-#     function test_update_trajectory(update_trajectory::Bool)
-#         include("../../../test/test_utils.jl")
+    traj_init = deepcopy(problem.trajectory)
+    trajs = NamedTrajectory[]
 
-#         G, traj = Base.invokelatest(bilinear_dynamics_and_trajectory)
+    optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(problem, IpoptOptions(; max_iter=100), callback)
+    IpoptSolverExt.MOI.optimize!(optimizer)
 
-#         integrators = [
-#             BilinearIntegrator(G, traj, :x, :u),
-#             DerivativeIntegrator(traj, :u, :du),
-#             DerivativeIntegrator(traj, :du, :ddu)
-#         ]
+    traj_final = deepcopy(problem.trajectory)
 
-#         J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
-#         J += QuadraticRegularizer(:u, traj, 1.0) 
-#         J += QuadraticRegularizer(:du, traj, 1.0)
-#         J += MinimumTimeObjective(traj)
+    return (traj_final == traj_init) == !update_trajectory
 
-#         g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
-
-#         prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
-
-#         callbacks = [
-#             callback_say_hello_factory("Hello, world!"),
-#             callback_stop_iteration_factory(50),
-#         ]
-#         if update_trajectory
-#             pushfirst!(callbacks, callback_update_trajectory_factory(prob))
-#         end
-#         callback = callback_factory(callbacks...)
-
-#         traj_init = deepcopy(prob.trajectory)
-#         trajs = NamedTrajectory[]
-
-#         optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(prob, IpoptOptions(; max_iter=100), callback)
-#         IpoptSolverExt.MOI.optimize!(optimizer)
-
-#         traj_final = prob.trajectory
-
-#         return (traj_final == traj_init) == !update_trajectory
-
-#         # solve!(prob; max_iter=100)
-#     end
-
-#     @test test_update_trajectory(true)
-#     @test test_update_trajectory(false)
-# end
-
+    # solve!(prob; max_iter=100)
+end
 
 end
+
+
+@testitem "Callback tests" begin
+    using DirectTrajOpt
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, traj, :x, :u),
+        DerivativeIntegrator(traj, :u, :du),
+        DerivativeIntegrator(traj, :du, :ddu)
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
+
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
+
+    @test Callbacks.test_update_trajectory(prob, false)
+    @test Callbacks.test_update_trajectory(prob, true)
+end
+
