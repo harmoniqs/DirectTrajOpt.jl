@@ -5,6 +5,10 @@ on:
     branches:
       - main
     tags: ["*"]
+
+  # added for tagbot releases
+  release:
+
 concurrency:
   # Skip intermediate builds: always.
   # Cancel intermediate builds: only if it is a pull request build.
