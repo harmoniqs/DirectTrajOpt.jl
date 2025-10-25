@@ -4,7 +4,12 @@ on:
   push:
     branches:
       - main
-    tags: ['*']
+    tags: ["*"]
+
+  # added for tagbot releases
+  release:
+    types: [created]
+
 concurrency:
   # Skip intermediate builds: always.
   # Cancel intermediate builds: only if it is a pull request build.
@@ -18,7 +23,7 @@ jobs:
       contents: write
       statuses: write
     env:
-      DOC_TEMPLATE_VERSION: "v0.2.0"  # Change this to the specific tag version you want
+      DOC_TEMPLATE_VERSION: "v0.2.0" # Change this to the specific tag version you want
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
@@ -42,3 +47,17 @@ jobs:
             using DirectTrajOpt
             DocMeta.setdocmeta!(DirectTrajOpt, :DocTestSetup, :(using DirectTrajOpt); recursive=true)
             doctest(DirectTrajOpt)'
+
+  dispatch:
+    name: Dispatch PiccoloMultiDocs
+    runs-on: ubuntu-latest
+    needs: docs
+    if: github.ref_type == 'tag' && github.ref_name != ''
+    steps:
+      - name: Dispatch PiccoloMultiDocs workflow
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          repository: harmoniqs/PiccoloMultiDocs.jl
+          event-type: rebuild-docs
+          client-payload: '{"ref": "${{ github.ref }}"}'
