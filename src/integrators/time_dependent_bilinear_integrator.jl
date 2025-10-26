@@ -1,6 +1,6 @@
 export TimeDependentBilinearIntegrator
 
-using OrdinaryDiffEq
+using OrdinaryDiffEqTsit5
 using ForwardDiff
 
 # -------------------------------------------------------------------------------- #
@@ -82,7 +82,6 @@ end
     zₖ::AbstractVector,
     zₖ₊₁::AbstractVector,
     k::Int;
-    algorithm::OrdinaryDiffEq.OrdinaryDiffEqCore.OrdinaryDiffEqAlgorithm=Tsit5(),
     # atol=1e-6,
     # rtol=1e-6,
     kwargs...
@@ -101,7 +100,7 @@ end
     end
 
     probₖ = remake(B.probs[k], u0 = xₖ, p = pₖ)
-    solₖ = solve(probₖ, algorithm;  kwargs...)
+    solₖ = solve(probₖ, Tsit5();  kwargs...)
     δₖ[:] = xₖ₊₁ - solₖ[:, end]
 end
 
