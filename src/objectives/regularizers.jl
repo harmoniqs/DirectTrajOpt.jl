@@ -4,16 +4,50 @@ export QuadraticRegularizer
 # ----------------------------------------------------------------------------- #
 
 """
-    QuadraticRegularizer
+    QuadraticRegularizer(
+        name::Symbol,
+        traj::NamedTrajectory,
+        R::Union{Real, AbstractVector{<:Real}};
+        baseline::AbstractMatrix{<:Real}=zeros(traj.dims[name], traj.T),
+        times::AbstractVector{Int}=1:traj.T
+    )
 
-A quadratic regularizer for a trajectory component.
+Create a quadratic regularization objective for a trajectory component.
 
-Fields:
-    `name`: the name of the trajectory component to regularize
-    `traj`: the trajectory
-    `R`: the regularization matrix diagonal
-    `baseline`: the baseline values for the trajectory component
-    `times`: the times at which to evaluate the regularizer
+Minimizes the weighted squared deviation from a baseline trajectory, integrated over time:
+
+```math
+J = \\sum_{t \\in \\text{times}} \\frac{1}{2} (v_t - v_\\text{baseline})^T R (v_t - v_\\text{baseline}) \\Delta t
+```
+
+where `v_t` is the trajectory component at time `t`.
+
+# Arguments
+- `name::Symbol`: Name of the trajectory component to regularize
+- `traj::NamedTrajectory`: The trajectory containing the component
+- `R`: Regularization weight(s). Can be:
+  - Scalar: same weight for all components
+  - Vector: individual weights for each component dimension
+- `baseline::AbstractMatrix`: Target values (default: zeros). Size: (component_dim × T)
+- `times::AbstractVector{Int}`: Time indices to include in regularization (default: all)
+
+# Returns
+- `Objective`: Regularization objective with gradient and Hessian
+
+# Examples
+```julia
+# Regularize control with uniform weight
+obj = QuadraticRegularizer(:u, traj, 1e-2)
+
+# Regularize with different weights per component
+obj = QuadraticRegularizer(:u, traj, [1e-2, 1e-3])
+
+# Regularize around a reference trajectory
+obj = QuadraticRegularizer(:x, traj, 1.0, baseline=x_ref)
+
+# Only regularize middle time steps
+obj = QuadraticRegularizer(:u, traj, 1e-2, times=2:traj.T-1)
+```
 """
 function QuadraticRegularizer(
     name::Symbol,

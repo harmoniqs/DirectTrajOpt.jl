@@ -3,8 +3,8 @@ using PiccoloDocsTemplate
 
 pages = [
     "Home" => "index.md",
-    "Lib" => "lib.md",
-    "Explanation" => "generated/explanation.md",
+    "Guide" => "generated/explanation.md",
+    "Library" => "lib.md",
 ]
 
 generate_docs(

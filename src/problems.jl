@@ -13,16 +13,38 @@ using TrajectoryIndexingUtils
 using NamedTrajectories
 using TestItems
 using LinearAlgebra
-using JLD2
 
 """
-    mutable struct DirectTrajOptProblem <: AbstractProblem
+    mutable struct DirectTrajOptProblem
 
-Stores all the information needed to set up and solve a DirectTrajOptProblem as well as the solution
-after the solver terminates.
+A direct trajectory optimization problem containing all information needed for setup and solution.
 
 # Fields
-- `optimizer::Ipopt.Optimizer`: Ipopt optimizer object
+- `trajectory::NamedTrajectory`: The trajectory containing optimization variables and data
+- `objective::Objective`: The objective function to minimize
+- `dynamics::TrajectoryDynamics`: The system dynamics (integrators)
+- `constraints::Vector{<:AbstractConstraint}`: Constraints on the trajectory
+
+# Constructors
+```julia
+DirectTrajOptProblem(
+    traj::NamedTrajectory,
+    obj::Objective,
+    integrators::Vector{<:AbstractIntegrator};
+    constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
+)
+```
+
+Create a problem from a trajectory, objective, and integrators. Trajectory constraints
+(initial, final, bounds) are automatically extracted and added to the constraint list.
+
+# Example
+```julia
+traj = NamedTrajectory((x = rand(2, 10), u = rand(1, 10)), timestep=:Δt)
+obj = QuadraticRegularizer(:u, traj, 1.0)
+integrator = BilinearIntegrator(G, traj, :x, :u)
+prob = DirectTrajOptProblem(traj, obj, integrator)
+```
 """
 mutable struct DirectTrajOptProblem
     trajectory::NamedTrajectory
@@ -59,11 +81,25 @@ end
 
 
 """
-    trajectory_constraints(traj::NamedTrajectory)
+    get_trajectory_constraints(traj::NamedTrajectory)
 
-Implements the initial and final value constraints and bounds constraints on the controls
-and states as specified by traj.
+Extract and create constraints from a NamedTrajectory's initial, final, and bounds specifications.
 
+# Arguments
+- `traj::NamedTrajectory`: Trajectory with specified initial conditions, final conditions, and/or bounds
+
+# Returns
+- `Vector{AbstractConstraint}`: Vector of constraints including:
+  - Initial value equality constraints (from `traj.initial`)
+  - Final value equality constraints (from `traj.final`)
+  - Bounds constraints (from `traj.bounds`)
+
+# Details
+The function automatically handles time indices based on which constraints are specified:
+- If both initial and final constraints exist for a component, bounds apply to interior points (2:T-1)
+- If only initial exists, bounds apply from second point onward (2:T)
+- If only final exists, bounds apply up to second-to-last point (1:T-1)
+- If neither exist, bounds apply to all time points (1:T)
 """
 function get_trajectory_constraints(traj::NamedTrajectory)
 

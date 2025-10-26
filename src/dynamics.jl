@@ -65,17 +65,39 @@ end
 """
     TrajectoryDynamics
 
-A struct for trajectory optimization dynamics, represented by integrators that compute
-single time step dynamics, and functions for jacobians and hessians.
+Represents the dynamics of a trajectory optimization problem through integrators.
+
+This structure encapsulates the dynamics constraints that enforce consistency between
+consecutive time steps in the trajectory. It uses integrators to define how the state
+evolves from one time step to the next and provides automatic differentiation support
+through Jacobian and Hessian computations.
 
 # Fields
-- `integrators::Union{Nothing, Vector{<:AbstractIntegrator}}`: Vector of integrators.
-- `F!::Function`: Function to compute trajectory dynamics.
-- `∂F!::Function`: Function to compute the Jacobian of the dynamics.
-- `∂fs::Vector{SparseMatrixCSC{Float64, Int}}`: Vector of Jacobian matrices.
-- `μ∂²F!::Union{Function, Nothing}`: Function to compute the Hessian of the Lagrangian.
-- `μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}}`: Vector of Hessian matrices.
-- `dim::Int`: Total dimension of the dynamics.
+- `F!::Function`: In-place function computing dynamics violations δ = f(zₖ, zₖ₊₁)
+- `∂F!::Function`: In-place function computing Jacobian of dynamics
+- `∂fs::Vector{SparseMatrixCSC}`: Cached Jacobian matrices for each time step
+- `μ∂²F!::Function`: In-place function computing Hessian of Lagrangian
+- `μ∂²fs::Vector{SparseMatrixCSC}`: Cached Hessian matrices for each time step
+- `μ∂²F_structure::SparseMatrixCSC`: Sparsity structure of full trajectory Hessian
+- `dim::Int`: Total dimension of dynamics (sum of all integrator state dimensions)
+
+# Constructor
+```julia
+TrajectoryDynamics(
+    integrators::Vector{<:AbstractIntegrator},
+    traj::NamedTrajectory;
+    verbose=false
+)
+```
+
+Create trajectory dynamics from integrators and a trajectory structure.
+
+# Example
+```julia
+G = rand(2, 2)
+integrator = BilinearIntegrator(G, traj, :x, :u)
+dynamics = TrajectoryDynamics(integrator, traj)
+```
 """
 struct TrajectoryDynamics{F1, F2, F3} 
     F!::F1
@@ -86,15 +108,6 @@ struct TrajectoryDynamics{F1, F2, F3}
     μ∂²F_structure::SparseMatrixCSC{Float64, Int}
     dim::Int
 
-    """
-        TrajectoryDynamics(
-            integrators::Vector{<:AbstractIntegrator},
-            traj::NamedTrajectory;
-            verbose=false
-        )
-
-    Construct a `TrajectoryDynamics` object from a vector of integrators and a trajectory.
-    """
     function TrajectoryDynamics(
         integrators::Vector{<:AbstractIntegrator},
         traj::NamedTrajectory;
