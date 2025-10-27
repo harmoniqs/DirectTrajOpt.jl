@@ -3,7 +3,16 @@ using PiccoloDocsTemplate
 
 pages = [
     "Home" => "index.md",
-    "Guide" => "generated/explanation.md",
+    "Getting Started" => [
+        "Quickstart" => "generated/quickstart.md",
+    ],
+    "Core Concepts" => [
+        "Problem Formulation" => "generated/concepts/problem_formulation.md",
+        "Trajectories" => "generated/concepts/trajectories.md",
+        "Integrators" => "generated/concepts/integrators.md",
+        "Objectives" => "generated/concepts/objectives.md",
+        "Constraints" => "generated/concepts/constraints.md",
+    ],
     "Library" => "lib.md",
 ]
 

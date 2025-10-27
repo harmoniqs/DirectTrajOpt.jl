@@ -26,3 +26,8 @@ function MinimumTimeObjective(
     ∂²L_structure = () -> []
     return Objective(L, ∇L, ∂²L, ∂²L_structure)
 end
+
+# Convenience constructor with D as positional argument
+function MinimumTimeObjective(traj::NamedTrajectory, D::Real)
+    return MinimumTimeObjective(traj; D=Float64(D))
+end

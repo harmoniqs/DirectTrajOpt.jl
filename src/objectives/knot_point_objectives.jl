@@ -29,10 +29,18 @@ export TerminalObjective
 
 Create a knot point summed objective function for trajectory optimization, where `ℓ(x, p)` 
 on trajectory knot point variables `x` with parameters `p`. If the parameters argument is 
-omitted, `ℓ(x)` is assumed  to be a function of `x` only.
+omitted, `ℓ(x)` is assumed to be a function of `x` only.
+
+For multiple variables, the function `ℓ` can accept either:
+- Separate arguments: `ℓ(x, u)` for variables `[:x, :u]`
+- Concatenated vector: `ℓ(xu)` where `xu = [x; u]`
+
+The constructor automatically detects which form `ℓ` expects.
 
 # Arguments
-- `ℓ::Function`: Function that defines the objective, ℓ(x, p) or ℓ(x).
+- `ℓ::Function`: Function that defines the objective, `ℓ(x, p)` or `ℓ(x)`.
+  - For single variable: `ℓ(x)` where `x` is the variable values at a knot point
+  - For multiple variables: `ℓ(x, u)` or `ℓ(xu)` depending on preference
 - `names::AbstractVector{Symbol}`: Names of the trajectory variables to be optimized.
 - `traj::NamedTrajectory`: The trajectory on which the objective is defined.
 - `params::AbstractVector`: Parameters `p` for the objective function ℓ, for each time.
@@ -40,6 +48,27 @@ omitted, `ℓ(x)` is assumed  to be a function of `x` only.
 # Keyword Arguments
 - `times::AbstractVector{Int}=1:traj.T`: Time indices at which the objective is evaluated.
 - `Qs::AbstractVector{Float64}=ones(traj.T)`: Weights for the objective function at each time.
+
+# Examples
+```julia
+# Single variable objective
+obj = KnotPointObjective(
+    x -> norm(x)^2,
+    [:x], traj
+)
+
+# Multiple variables with separate arguments (recommended)
+obj = KnotPointObjective(
+    (x, u) -> x[1]^2 + u[1]^2,
+    [:x, :u], traj
+)
+
+# Multiple variables with concatenated vector
+obj = KnotPointObjective(
+    xu -> xu[1]^2 + xu[3]^2,  # xu = [x[1], x[2], u[1]]
+    [:x, :u], traj
+)
+```
 """
 function KnotPointObjective(
     ℓ::Function,
@@ -47,8 +76,13 @@ function KnotPointObjective(
     traj::NamedTrajectory,
     params::AbstractVector;
     times::AbstractVector{Int}=1:traj.T,
-    Qs::AbstractVector{Float64}=ones(traj.T),
+    Qs::Union{Nothing, AbstractVector{Float64}}=nothing,
 )
+    # Default Qs to ones matching the length of times
+    if isnothing(Qs)
+        Qs = ones(length(times))
+    end
+    
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
 
@@ -111,13 +145,70 @@ function KnotPointObjective(
     times::AbstractVector{Int}=1:traj.T,
     kwargs...
 )
-    params = [nothing for _ in times]
-    ℓ_param = (x, _) -> ℓ(x)
-    return KnotPointObjective(ℓ_param, names, traj, params; times=times, kwargs...)
+    # Determine if ℓ expects separate arguments or a single concatenated vector
+    num_vars = length(names)
+    
+    if num_vars == 1
+        # Single variable: ℓ(x) where x is the variable values
+        params = [nothing for _ in times]
+        ℓ_param = (x, _) -> ℓ(x)
+        return KnotPointObjective(ℓ_param, names, traj, params; times=times, kwargs...)
+    else
+        # Multiple variables: try to detect if ℓ expects separate arguments
+        
+        # Get component ranges for each variable
+        comp_ranges = Vector{UnitRange{Int}}(undef, num_vars)
+        offset = 0
+        for (i, name) in enumerate(names)
+            comp_len = length(traj.components[name])
+            comp_ranges[i] = (offset + 1):(offset + comp_len)
+            offset += comp_len
+        end
+        
+        # Test with dummy data to see if ℓ accepts separate arguments
+        Z⃗ = vec(traj)
+        x_comps = vcat([traj.components[name] for name in names]...)
+        x_slice = slice(1, x_comps, traj.dim)
+        test_vec = Z⃗[x_slice]
+        
+        # Split test vector according to component ranges
+        test_args = [test_vec[r] for r in comp_ranges]
+        
+        accepts_separate_args = false
+        try
+            # Try calling with separate arguments
+            result = ℓ(test_args...)
+            if result isa Real
+                accepts_separate_args = true
+            end
+        catch
+            # If that fails, it expects a single concatenated vector
+            accepts_separate_args = false
+        end
+        
+        params = [nothing for _ in times]
+        
+        if accepts_separate_args
+            # Wrapper that splits concatenated vector into separate arguments
+            ℓ_param = function(x_concat, _)
+                args = [x_concat[r] for r in comp_ranges]
+                return ℓ(args...)
+            end
+        else
+            # ℓ expects a single concatenated vector
+            ℓ_param = (x, _) -> ℓ(x)
+        end
+        
+        return KnotPointObjective(ℓ_param, names, traj, params; times=times, kwargs...)
+    end
 end
 
-function KnotPointObjective(ℓ::Function,  name::Symbol,  args...;  kwargs...)
-    return KnotPointObjective(ℓ, [name], args...; kwargs...)
+function KnotPointObjective(ℓ::Function, name::Symbol, traj::NamedTrajectory; kwargs...)
+    return KnotPointObjective(ℓ, [name], traj; kwargs...)
+end
+
+function KnotPointObjective(ℓ::Function, name::Symbol, traj::NamedTrajectory, params::AbstractVector; kwargs...)
+    return KnotPointObjective(ℓ, [name], traj, params; kwargs...)
 end
 
 function TerminalObjective(
