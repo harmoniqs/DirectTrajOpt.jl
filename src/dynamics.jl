@@ -52,9 +52,9 @@ function hessian_structure(
 end
 
 function get_full_hessian(μ∂²f::AbstractMatrix, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     μ∂²F = spzeros(Z_dim, Z_dim)
-    for k = 1:traj.T-1
+    for k = 1:traj.N-1
         μ∂²F[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= μ∂²f
     end
     return μ∂²F
@@ -133,7 +133,7 @@ struct TrajectoryDynamics{F1, F2, F3}
             Z⃗::AbstractVector
         )
             for (integrator!, comps) ∈ zip(integrators, dynamics_comps)
-                Threads.@threads for k = 1:traj.T-1
+                Threads.@threads for k = 1:traj.N-1
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
                     integrator!(δ[slice(k, comps, dynamics_dim)], zₖ, zₖ₊₁, k)
@@ -147,7 +147,7 @@ struct TrajectoryDynamics{F1, F2, F3}
             Z⃗::AbstractVector
         )
             for (integrator, comps) ∈ zip(integrators, dynamics_comps)
-                Threads.@threads for k = 1:traj.T-1
+                Threads.@threads for k = 1:traj.N-1
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
                     jacobian!(∂fs[k][comps, :], integrator, zₖ, zₖ₊₁, k)
@@ -166,7 +166,7 @@ struct TrajectoryDynamics{F1, F2, F3}
                 μ∂²f .= 0.0
             end
             for (integrator, comps) ∈ zip(integrators, dynamics_comps)
-                Threads.@threads for k = 1:traj.T-1
+                Threads.@threads for k = 1:traj.N-1
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
                     μₖ = μ⃗[slice(k, comps, dynamics_dim)]
@@ -177,10 +177,10 @@ struct TrajectoryDynamics{F1, F2, F3}
         end
 
         ∂f_structure = jacobian_structure(integrators, traj)
-        ∂fs = [copy(∂f_structure) for _ = 1:traj.T-1]
+        ∂fs = [copy(∂f_structure) for _ = 1:traj.N-1]
 
         μ∂²f_structure = hessian_structure(integrators, traj)
-        μ∂²fs = [copy(μ∂²f_structure) for _ = 1:traj.T-1]
+        μ∂²fs = [copy(μ∂²f_structure) for _ = 1:traj.N-1]
 
         return new{typeof(F!), typeof(∂F!), typeof(μ∂²F!)}(
             F!,
@@ -216,18 +216,18 @@ function NullTrajectoryDynamics()
 end
 
 function get_full_jacobian(D::TrajectoryDynamics, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.T + traj.global_dim
-    ∂F = spzeros(D.dim * (traj.T - 1), Z_dim)
-    for k = 1:traj.T-1
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    ∂F = spzeros(D.dim * (traj.N - 1), Z_dim)
+    for k = 1:traj.N-1
         ∂F[slice(k, D.dim), slice(k, 1:2traj.dim, traj.dim)] += D.∂fs[k]
     end
     return ∂F
 end
 
 function get_full_hessian(D::TrajectoryDynamics, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     μ∂²F = spzeros(Z_dim, Z_dim)
-    for k = 1:traj.T-1
+    for k = 1:traj.N-1
         μ∂²F[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= D.μ∂²fs[k]
     end
     return μ∂²F
@@ -248,7 +248,7 @@ end
     D = TrajectoryDynamics(integrator, traj)
 
     F̂ = Z⃗ -> begin
-        δ = zeros(eltype(Z⃗), D.dim * (traj.T - 1))
+        δ = zeros(eltype(Z⃗), D.dim * (traj.N - 1))
         D.F!(δ, Z⃗)
         return δ
     end
@@ -261,7 +261,7 @@ end
 
     @test all(jacobian .≈ jacobian_autodiff)
 
-    μ = randn(D.dim * (traj.T - 1))
+    μ = randn(D.dim * (traj.N - 1))
 
     hessian_autodiff = ForwardDiff.hessian(Z⃗ -> μ'F̂(Z⃗), traj.datavec)
 
@@ -287,7 +287,7 @@ end
     D = TrajectoryDynamics(integrators, traj)
 
     F̂ = Z⃗ -> begin
-        δ = zeros(eltype(Z⃗), D.dim * (traj.T - 1))
+        δ = zeros(eltype(Z⃗), D.dim * (traj.N - 1))
         D.F!(δ, Z⃗)
         return δ
     end
@@ -298,7 +298,7 @@ end
 
     @test all(Dynamics.get_full_jacobian(D, traj) .≈ jacobian_autodiff)
 
-    μ = randn(D.dim * (traj.T - 1))
+    μ = randn(D.dim * (traj.N - 1))
 
     hessian_autodiff = ForwardDiff.hessian(Z⃗ -> μ'F̂(Z⃗), traj.datavec)
 

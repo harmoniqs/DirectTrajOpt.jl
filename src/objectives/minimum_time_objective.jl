@@ -12,7 +12,7 @@ function MinimumTimeObjective(
     D::Float64=1.0
 )
     Δt_index = traj.components[traj.timestep][1]
-    Δt_indices = [index(t, Δt_index, traj.dim) for t = 1:traj.T-1]
+    Δt_indices = [index(t, Δt_index, traj.dim) for t = 1:traj.N-1]
 
     L = Z⃗::AbstractVector{<:Real} -> D * sum(Z⃗[Δt_indices])
 

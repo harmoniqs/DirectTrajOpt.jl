@@ -36,7 +36,7 @@ struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
 
     # Keyword Arguments
     - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
-    - `times::AbstractVector{Int}=1:traj.T`: Time indices at which the constraint is enforced.
+    - `times::AbstractVector{Int}=1:traj.N`: Time indices at which the constraint is enforced.
     - `jacobian_structure::Union{Nothing, SparseMatrixCSC}=nothing`: Structure of the Jacobian matrix of the constraint.
     - `hessian_structure::Union{Nothing, SparseMatrixCSC}=nothing`: Structure of the Hessian matrix of the constraint.
 
@@ -61,7 +61,7 @@ struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
         traj::NamedTrajectory,
         params::AbstractVector;
         equality::Bool=true,
-        times::AbstractVector{Int}=1:traj.T,
+        times::AbstractVector{Int}=1:traj.N,
         jacobian_structure::Union{Nothing, SparseMatrixCSC}=nothing,
         hessian_structure::Union{Nothing, SparseMatrixCSC}=nothing,
     )
@@ -143,7 +143,7 @@ function NonlinearKnotPointConstraint(
     g::Function,
     names::AbstractVector{Symbol},
     traj::NamedTrajectory;
-    times::AbstractVector{Int}=1:traj.T,
+    times::AbstractVector{Int}=1:traj.N,
     kwargs...
 )
     # Determine if g expects separate arguments or a single concatenated vector
@@ -230,7 +230,7 @@ function get_full_jacobian(
     NLC::NonlinearKnotPointConstraint, 
     traj::NamedTrajectory
 )
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     ∂g_full = spzeros(NLC.dim, Z_dim) 
     for (i, (k, ∂gₖ)) ∈ enumerate(zip(NLC.times, NLC.∂gs))
         # Disjoint
@@ -243,7 +243,7 @@ function get_full_hessian(
     NLC::NonlinearKnotPointConstraint, 
     traj::NamedTrajectory
 )
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     μ∂²g_full = spzeros(Z_dim, Z_dim)
     for (k, μ∂²gₖ) ∈ zip(NLC.times, NLC.μ∂²gs)
         # Disjoint
@@ -267,14 +267,14 @@ end
     g(a) = [norm(a) - 1.0]
 
     g_dim = 1
-    times = 1:traj.T
+    times = 1:traj.N
 
     NLC = NonlinearKnotPointConstraint(g, :u, traj; times=times, equality=false)
     U_SLICE(k) = slice(k, traj.components[:u], traj.dim)
 
     ĝ(Z⃗) = vcat([g(Z⃗[U_SLICE(k)]) for k ∈ times]...)
 
-    δ = zeros(g_dim * traj.T)
+    δ = zeros(g_dim * traj.N)
 
     NLC.g!(δ, vec(traj))
 
@@ -288,7 +288,7 @@ end
 
     @test ∂g_full ≈ ∂g_autodiff
 
-    μ = randn(g_dim * traj.T)
+    μ = randn(g_dim * traj.N)
 
     NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
 
@@ -311,7 +311,7 @@ end
     g(a) = [norm(a) - 1.0]
 
     g_dim = 1
-    times = 1:traj.T
+    times = 1:traj.N
 
     NLC1 = NonlinearKnotPointConstraint(g, :u, traj; times=times, equality=false)
     NLC2 = NonlinearKnotPointConstraint(g, [:u], traj; times=times, equality=false)
@@ -319,8 +319,8 @@ end
     U_SLICE(k) = slice(k, traj.components[:u], traj.dim)
     ĝ(Z⃗) = vcat([g(Z⃗[U_SLICE(k)]) for k ∈ times]...)
 
-    δ1 = zeros(g_dim * traj.T)
-    δ2 = zeros(g_dim * traj.T)
+    δ1 = zeros(g_dim * traj.N)
+    δ2 = zeros(g_dim * traj.N)
 
     NLC1.g!(δ1, vec(traj))
     NLC2.g!(δ2, vec(traj))
@@ -341,7 +341,7 @@ end
     g_concat(xu) = [xu[1]^2 + xu[2]^2 - 1.0, xu[3] - 0.5]
 
     g_dim = 2
-    times = 1:traj.T
+    times = 1:traj.N
 
     NLC = NonlinearKnotPointConstraint(g_concat, [:x, :u], traj; times=times, equality=false)
     
@@ -350,7 +350,7 @@ end
 
     ĝ(Z⃗) = vcat([g_concat(Z⃗[XU_SLICE(k)]) for k ∈ times]...)
 
-    δ = zeros(g_dim * traj.T)
+    δ = zeros(g_dim * traj.N)
     NLC.g!(δ, vec(traj))
 
     @test δ ≈ ĝ(vec(traj))
@@ -361,7 +361,7 @@ end
 
     @test ∂g_full ≈ ∂g_autodiff
 
-    μ = randn(g_dim * traj.T)
+    μ = randn(g_dim * traj.N)
     NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
     hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), vec(traj))
     μ∂²g_full = Constraints.get_full_hessian(NLC, traj) 
@@ -381,7 +381,7 @@ end
     g_separate(x, u) = [x[1]^2 + x[2]^2 - 1.0, u[1] - 0.5]
 
     g_dim = 2
-    times = 1:traj.T
+    times = 1:traj.N
 
     # This should automatically detect and handle separate arguments
     NLC = NonlinearKnotPointConstraint(g_separate, [:x, :u], traj; times=times, equality=false)
@@ -393,7 +393,7 @@ end
 
     ĝ(Z⃗) = vcat([g_separate(Z⃗[X_SLICE(k)], Z⃗[U_SLICE(k)]) for k ∈ times]...)
 
-    δ = zeros(g_dim * traj.T)
+    δ = zeros(g_dim * traj.N)
     NLC.g!(δ, vec(traj))
 
     @test δ ≈ ĝ(vec(traj))
@@ -404,7 +404,7 @@ end
 
     @test ∂g_full ≈ ∂g_autodiff
 
-    μ = randn(g_dim * traj.T)
+    μ = randn(g_dim * traj.N)
     NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
     hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), vec(traj))
     μ∂²g_full = Constraints.get_full_hessian(NLC, traj) 
@@ -441,7 +441,7 @@ end
     g_three(x, u, a) = [x[1] + u[1] + a[1] - 1.0, x[2]^2 - 0.5]
 
     g_dim = 2
-    times = 1:traj.T
+    times = 1:traj.N
 
     NLC = NonlinearKnotPointConstraint(g_three, [:x, :u, :a], traj; times=times, equality=true)
     
@@ -451,7 +451,7 @@ end
 
     ĝ(Z⃗) = vcat([g_three(Z⃗[X_SLICE(k)], Z⃗[U_SLICE(k)], Z⃗[A_SLICE(k)]) for k ∈ times]...)
 
-    δ = zeros(g_dim * traj.T)
+    δ = zeros(g_dim * traj.N)
     NLC.g!(δ, vec(traj))
 
     @test δ ≈ ĝ(vec(traj))
@@ -462,7 +462,7 @@ end
 
     @test ∂g_full ≈ ∂g_autodiff
 
-    μ = randn(g_dim * traj.T)
+    μ = randn(g_dim * traj.N)
     NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
     hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), vec(traj))
     μ∂²g_full = Constraints.get_full_hessian(NLC, traj) 
@@ -509,7 +509,7 @@ end
     g(x) = [norm(x) - 1.0]
     
     # Only constrain first and last time steps
-    times = [1, traj.T]
+    times = [1, traj.N]
     
     NLC = NonlinearKnotPointConstraint(g, [:x], traj; times=times, equality=false)
     

@@ -71,7 +71,7 @@ traj = NamedTrajectory(
 println("Trajectory dimensions:")
 println("  States: ", traj.dims.x)
 println("  Controls: ", traj.dims.u)
-println("  Time steps: ", traj.T)
+println("  Time steps: ", traj.N)
 
 # ## Step 3: Define the Dynamics Constraint
 

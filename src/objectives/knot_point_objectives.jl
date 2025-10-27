@@ -46,8 +46,8 @@ The constructor automatically detects which form `ℓ` expects.
 - `params::AbstractVector`: Parameters `p` for the objective function ℓ, for each time.
 
 # Keyword Arguments
-- `times::AbstractVector{Int}=1:traj.T`: Time indices at which the objective is evaluated.
-- `Qs::AbstractVector{Float64}=ones(traj.T)`: Weights for the objective function at each time.
+- `times::AbstractVector{Int}=1:traj.N`: Time indices at which the objective is evaluated.
+- `Qs::AbstractVector{Float64}=ones(traj.N)`: Weights for the objective function at each time.
 
 # Examples
 ```julia
@@ -75,7 +75,7 @@ function KnotPointObjective(
     names::AbstractVector{Symbol},
     traj::NamedTrajectory,
     params::AbstractVector;
-    times::AbstractVector{Int}=1:traj.T,
+    times::AbstractVector{Int}=1:traj.N,
     Qs::Union{Nothing, AbstractVector{Float64}}=nothing,
 )
     # Default Qs to ones matching the length of times
@@ -86,7 +86,7 @@ function KnotPointObjective(
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
 
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     x_comps = vcat([traj.components[name] for name in names]...)
     x_slices = [slice(t, x_comps, traj.dim) for t in times]
 
@@ -142,7 +142,7 @@ function KnotPointObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
     traj::NamedTrajectory;
-    times::AbstractVector{Int}=1:traj.T,
+    times::AbstractVector{Int}=1:traj.N,
     kwargs...
 )
     # Determine if ℓ expects separate arguments or a single concatenated vector
@@ -223,7 +223,7 @@ function TerminalObjective(
         name,
         traj;
         Qs=[Q],
-        times=[traj.T],
+        times=[traj.N],
         kwargs...
     )
 end
@@ -242,7 +242,7 @@ end
     L(a) = norm(a)
 
     Qs = [1.0, 2.0]
-    times = [1, traj.T]
+    times = [1, traj.N]
 
     OBJ = KnotPointObjective(L, :u, traj, times=times, Qs=Qs)
 
@@ -275,7 +275,7 @@ end
     L(x, p) = norm(x) + p
 
     Qs = [1.0, 2.0]
-    times = [1, traj.T]
+    times = [1, traj.N]
     params = [1.0, 2.0]
 
     OBJ = KnotPointObjective(L, :u, traj, params; times=times, Qs=Qs)

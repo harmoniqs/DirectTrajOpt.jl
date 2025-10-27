@@ -115,19 +115,19 @@ function get_trajectory_constraints(traj::NamedTrajectory)
     # add final equality constraints
     for (name, val) ∈ pairs(traj.final)
         label = "final value of $name"
-        eq_con = EqualityConstraint(name, [traj.T], val, traj; label=label)
+        eq_con = EqualityConstraint(name, [traj.N], val, traj; label=label)
         push!(cons, eq_con)
     end
     # add bounds constraints
     for (name, bound) ∈ pairs(traj.bounds)
         if name ∈ keys(traj.initial) && name ∈ keys(traj.final) 
-            ts = 2:traj.T-1
+            ts = 2:traj.N-1
         elseif name ∈ keys(traj.initial) && !(name ∈ keys(traj.final))
-            ts = 2:traj.T
+            ts = 2:traj.N
         elseif name ∈ keys(traj.final) && !(name ∈ keys(traj.initial))
-            ts = 1:traj.T-1
+            ts = 1:traj.N-1
         else
-            ts = 1:traj.T
+            ts = 1:traj.N
         end
         con_label = "bounds on $name"
         # bounds = collect(zip(bound[1], bound[2]))
@@ -141,7 +141,7 @@ end
 
 function Base.show(io::IO, prob::DirectTrajOptProblem)
     println(io, "DirectTrajOptProblem")
-    println(io, "   timesteps            = ", prob.trajectory.T)
+    println(io, "   timesteps            = ", prob.trajectory.N)
     println(io, "   duration             = ", get_duration(prob.trajectory))
     println(io, "   variable names       = ", prob.trajectory.names)
     println(io, "   knot point dimension = ", prob.trajectory.dim)

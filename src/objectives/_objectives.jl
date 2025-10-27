@@ -89,7 +89,7 @@ Base.show(io::IO, ::Objective) = print(io, "Objective(L, ∇L, ∂²L, ∂²L_st
 
 function NullObjective(Z::NamedTrajectory)
 	L(::AbstractVector{<:Real}) = 0.0
-    ∇L(::AbstractVector{R}) where R<:Real = zeros(R, Z.dim * Z.T + Z.global_dim)
+    ∇L(::AbstractVector{R}) where R<:Real = zeros(R, Z.dim * Z.N + Z.global_dim)
     ∂²L_structure() = []
     ∂²L(::AbstractVector{R}) where R<:Real = R[]
 	return Objective(L, ∇L, ∂²L, ∂²L_structure)

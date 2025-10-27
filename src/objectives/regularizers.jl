@@ -8,8 +8,8 @@ export QuadraticRegularizer
         name::Symbol,
         traj::NamedTrajectory,
         R::Union{Real, AbstractVector{<:Real}};
-        baseline::AbstractMatrix{<:Real}=zeros(traj.dims[name], traj.T),
-        times::AbstractVector{Int}=1:traj.T
+        baseline::AbstractMatrix{<:Real}=zeros(traj.dims[name], traj.N),
+        times::AbstractVector{Int}=1:traj.N
     )
 
 Create a quadratic regularization objective for a trajectory component.
@@ -46,15 +46,15 @@ obj = QuadraticRegularizer(:u, traj, [1e-2, 1e-3])
 obj = QuadraticRegularizer(:x, traj, 1.0, baseline=x_ref)
 
 # Only regularize middle time steps
-obj = QuadraticRegularizer(:u, traj, 1e-2, times=2:traj.T-1)
+obj = QuadraticRegularizer(:u, traj, 1e-2, times=2:traj.N-1)
 ```
 """
 function QuadraticRegularizer(
     name::Symbol,
     traj::NamedTrajectory,
     R::AbstractVector{<:Real};
-    baseline::AbstractMatrix{<:Real}=zeros(traj.dims[name], traj.T),
-    times::AbstractVector{Int}=1:traj.T,
+    baseline::AbstractMatrix{<:Real}=zeros(traj.dims[name], traj.N),
+    times::AbstractVector{Int}=1:traj.N,
 )
     @assert length(R) == traj.dims[name] "R must have the same length as the dimension of the trajectory component"
 
@@ -77,7 +77,7 @@ function QuadraticRegularizer(
     end
 
     @views function ∇L(Z⃗::AbstractVector)
-        ∇ = zeros(traj.dim * traj.T + traj.global_dim)
+        ∇ = zeros(traj.dim * traj.N + traj.global_dim)
         Threads.@threads for t ∈ times
             vₖ_slice = slice(t, traj.components[name], traj.dim)
             Δv = Z⃗[vₖ_slice] .- baseline[:, t]

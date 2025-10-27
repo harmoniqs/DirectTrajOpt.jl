@@ -28,7 +28,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         linear_spline::Bool = false
     ) where F <: Function
 
-        @assert traj.T > 1 "Trajectory must have at least two timesteps."
+        @assert traj.N > 1 "Trajectory must have at least two timesteps."
         
         function f!(dx, x_, p, τ)
             t_, Δt, u_ = p[1], p[2], p[3:end]
@@ -59,7 +59,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         Δt₀ = 1.0
         probs = [
             ODEProblem(f!, x₀, (0.0, 1.0), [t₀; Δt₀; u₀...])
-            for _ in 1:traj.T - 1
+            for _ in 1:traj.N - 1
         ]
 
         return new{F}(

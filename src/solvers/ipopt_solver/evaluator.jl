@@ -37,7 +37,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
         prob::DirectTrajOptProblem;
         eval_hessian=true
     )
-        n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.T - 1)
+        n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.N - 1)
         nonlinear_constraints = filter(c -> c isa AbstractNonlinearConstraint, prob.constraints)
         n_nonlinear_constraints = sum(c -> c.dim, nonlinear_constraints; init=0)
 
@@ -206,7 +206,7 @@ end
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
 
-    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
+    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.N-1, equality=false)
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
 
@@ -248,7 +248,7 @@ end
 
     MOI.eval_constraint_jacobian(evaluator, ∂ĝ_values, traj.datavec)
 
-    ∂ĝ = dense(∂ĝ_values, ∂ĝ_structure, (evaluator.n_constraints, evaluator.trajectory.dim * evaluator.trajectory.T))
+    ∂ĝ = dense(∂ĝ_values, ∂ĝ_structure, (evaluator.n_constraints, evaluator.trajectory.dim * evaluator.trajectory.N))
 
     ∂g_autodiff = ForwardDiff.jacobian(ĝ, traj.datavec)
     @test all(∂g_autodiff .≈ ∂ĝ)
@@ -263,7 +263,7 @@ end
 
     MOI.eval_hessian_lagrangian(evaluator, ∂²ℒ_values, traj.datavec, σ, μ)
 
-    ∂²ℒ = dense(∂²ℒ_values, ∂²ℒ_structure, (evaluator.trajectory.dim * evaluator.trajectory.T, evaluator.trajectory.dim * evaluator.trajectory.T))
+    ∂²ℒ = dense(∂²ℒ_values, ∂²ℒ_structure, (evaluator.trajectory.dim * evaluator.trajectory.N, evaluator.trajectory.dim * evaluator.trajectory.N))
 
     ∂²ℒ_autodiff = ForwardDiff.hessian(Z⃗ -> σ * J.L(Z⃗) + μ'ĝ(Z⃗), traj.datavec)
     

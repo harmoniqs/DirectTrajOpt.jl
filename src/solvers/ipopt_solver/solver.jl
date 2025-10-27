@@ -73,7 +73,7 @@ function remove_slack_variables!(prob::DirectTrajOptProblem)
 end
 
 function get_num_variables(prob::DirectTrajOptProblem)
-    n_vars = prob.trajectory.dim * prob.trajectory.T
+    n_vars = prob.trajectory.dim * prob.trajectory.N
 
     for global_vars_i ∈ values(prob.trajectory.global_data)
         n_global_vars = length(global_vars_i)
@@ -84,7 +84,7 @@ function get_num_variables(prob::DirectTrajOptProblem)
 end
 
 function get_nonlinear_constraints(prob)
-    n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.T - 1)
+    n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.N - 1)
 
     nl_cons = fill(MOI.NLPBoundsPair(0.0, 0.0), n_dynamics_constraints)
 
@@ -156,7 +156,7 @@ function set_variables!(
     optimizer::Ipopt.Optimizer,
     traj::NamedTrajectory
 )
-    data_dim = traj.dim * traj.T
+    data_dim = traj.dim * traj.N
 
     # add variables
     variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
@@ -232,7 +232,7 @@ end
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
 
-    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
+    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.N-1, equality=false)
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
 
