@@ -31,12 +31,12 @@ using LinearAlgebra
 
 # A trajectory contains your states, controls, and time information:
 
-T = 50  # number of time steps
+N = 50  # number of time steps
 traj = NamedTrajectory(
     (
-        x = randn(2, T),    # 2D state
-        u = randn(1, T),    # 1D control
-        Δt = fill(0.1, T)   # time step
+        x = randn(2, N),    # 2D state
+        u = randn(1, N),    # 1D control
+        Δt = fill(0.1, N)   # time step
     );
     timestep=:Δt,
     controls=:u,

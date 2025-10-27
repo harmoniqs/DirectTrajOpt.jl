@@ -54,10 +54,10 @@ DirectTrajOpt solves problems of the form:
 
 ```math
 \begin{align*}
-\underset{x_{1:T}, u_{1:T}}{\text{minimize}} \quad & J(x_{1:T}, u_{1:T}) \\
-\text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0, \quad k = 1, \ldots, T-1\\
-& c_k(x_k, u_k) \geq 0, \quad k = 1, \ldots, T \\
-& x_1 = x_{\text{init}}, \quad x_T = x_{\text{goal}} \\
+\underset{x_{1:N}, u_{1:N}}{\text{minimize}} \quad & J(x_{1:N}, u_{1:N}) \\
+\text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0, \quad k = 1, \ldots, N-1\\
+& c_k(x_k, u_k) \geq 0, \quad k = 1, \ldots, N \\
+& x_1 = x_{\text{init}}, \quad x_N = x_{\text{goal}} \\
 \end{align*}
 ```
 

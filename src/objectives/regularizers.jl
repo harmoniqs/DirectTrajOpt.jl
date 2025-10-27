@@ -17,10 +17,10 @@ Create a quadratic regularization objective for a trajectory component.
 Minimizes the weighted squared deviation from a baseline trajectory, integrated over time:
 
 ```math
-J = \\sum_{t \\in \\text{times}} \\frac{1}{2} (v_t - v_\\text{baseline})^T R (v_t - v_\\text{baseline}) \\Delta t
+J = \\sum_{k \\in \\text{times}} \\frac{1}{2} (v_k - v_\\text{baseline})^T R (v_k - v_\\text{baseline}) \\Delta t
 ```
 
-where `v_t` is the trajectory component at time `t`.
+where `v_k` is the trajectory component at knot point `k`.
 
 # Arguments
 - `name::Symbol`: Name of the trajectory component to regularize
@@ -28,7 +28,7 @@ where `v_t` is the trajectory component at time `t`.
 - `R`: Regularization weight(s). Can be:
   - Scalar: same weight for all components
   - Vector: individual weights for each component dimension
-- `baseline::AbstractMatrix`: Target values (default: zeros). Size: (component_dim × T)
+- `baseline::AbstractMatrix`: Target values (default: zeros). Size: (component_dim × N)
 - `times::AbstractVector{Int}`: Time indices to include in regularization (default: all)
 
 # Returns
@@ -67,11 +67,11 @@ function QuadraticRegularizer(
                 Δt = traj.timestep
             end
 
-            vₜ = Z⃗[slice(t, traj.components[name], traj.dim)]
-            Δv = vₜ - baseline[:, t]
+            vₖ = Z⃗[slice(t, traj.components[name], traj.dim)]
+            Δv = vₖ - baseline[:, t]
 
-            rₜ = Δt .* Δv
-            J += 0.5 * rₜ' * (R .* rₜ)
+            rₖ = Δt .* Δv
+            J += 0.5 * rₖ' * (R .* rₖ)
         end
         return J
     end
@@ -79,8 +79,8 @@ function QuadraticRegularizer(
     @views function ∇L(Z⃗::AbstractVector)
         ∇ = zeros(traj.dim * traj.T + traj.global_dim)
         Threads.@threads for t ∈ times
-            vₜ_slice = slice(t, traj.components[name], traj.dim)
-            Δv = Z⃗[vₜ_slice] .- baseline[:, t]
+            vₖ_slice = slice(t, traj.components[name], traj.dim)
+            Δv = Z⃗[vₖ_slice] .- baseline[:, t]
 
             if traj.timestep isa Symbol
                 Δt_slice = slice(t, traj.components[traj.timestep], traj.dim)
@@ -90,7 +90,7 @@ function QuadraticRegularizer(
                 Δt = traj.timestep
             end
 
-            ∇[vₜ_slice] .= R .* (Δt.^2 .* Δv)
+            ∇[vₖ_slice] .= R .* (Δt.^2 .* Δv)
         end
         return ∇
     end
@@ -99,18 +99,18 @@ function QuadraticRegularizer(
         structure = []
         # Hessian structure (eq. 17)
         for t ∈ times
-            vₜ_slice = slice(t, traj.components[name], traj.dim)
-            vₜ_vₜ_inds = collect(zip(vₜ_slice, vₜ_slice))
-            append!(structure, vₜ_vₜ_inds)
+            vₖ_slice = slice(t, traj.components[name], traj.dim)
+            vₖ_vₖ_inds = collect(zip(vₖ_slice, vₖ_slice))
+            append!(structure, vₖ_vₖ_inds)
 
             if traj.timestep isa Symbol
                 Δt_slice = slice(t, traj.components[traj.timestep], traj.dim)
-                # ∂²_vₜ_Δt
-                vₜ_Δt_inds = [(i, j) for i ∈ vₜ_slice for j ∈ Δt_slice]
-                append!(structure, vₜ_Δt_inds)
-                # ∂²_Δt_vₜ
-                Δt_vₜ_inds = [(i, j) for i ∈ Δt_slice for j ∈ vₜ_slice]
-                append!(structure, Δt_vₜ_inds)
+                # ∂²_vₖ_Δt
+                vₖ_Δt_inds = [(i, j) for i ∈ vₖ_slice for j ∈ Δt_slice]
+                append!(structure, vₖ_Δt_inds)
+                # ∂²_Δt_vₖ
+                Δt_vₖ_inds = [(i, j) for i ∈ Δt_slice for j ∈ vₖ_slice]
+                append!(structure, Δt_vₖ_inds)
                 # ∂²_Δt_Δt
                 Δt_Δt_inds = collect(zip(Δt_slice, Δt_slice))
                 append!(structure, Δt_Δt_inds)
@@ -126,9 +126,9 @@ function QuadraticRegularizer(
             if traj.timestep isa Symbol
                 Δt = Z⃗[slice(t, traj.components[traj.timestep], traj.dim)]
                 append!(values, R .* Δt.^2)
-                # ∂²_vₜ_Δt, ∂²_Δt_vₜ
-                vₜ = Z⃗[slice(t, traj.components[name], traj.dim)]
-                Δv = vₜ .- baseline[:, t]
+                # ∂²_vₖ_Δt, ∂²_Δt_vₖ
+                vₖ = Z⃗[slice(t, traj.components[name], traj.dim)]
+                Δv = vₖ .- baseline[:, t]
                 append!(values, 2 * (R .* (Δt .* Δv)))
                 append!(values, 2 * (R .* (Δt .* Δv)))
                 # ∂²_Δt_Δt

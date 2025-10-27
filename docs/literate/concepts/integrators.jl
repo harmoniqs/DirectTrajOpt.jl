@@ -37,9 +37,9 @@ using LinearAlgebra
 
 # ### Example: Simple 2D System
 
-T = 50
+N = 50
 traj = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     initial=(x = [1.0, 0.0],),
@@ -59,7 +59,7 @@ integrator = BilinearIntegrator(G, traj, :x, :u)
 # ### Multiple Drives Example
 
 traj_multi = NamedTrajectory(
-    (x = randn(3, T), u = randn(2, T), Δt = fill(0.1, T));
+    (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u
 )
@@ -99,10 +99,10 @@ integrator_multi = BilinearIntegrator(G_multi, traj_multi, :x, :u)
 
 traj_td = NamedTrajectory(
     (
-        x = randn(2, T),
-        u = randn(1, T),
-        t = collect(range(0, 5, T)),  # time variable
-        Δt = fill(0.1, T)
+        x = randn(2, N),
+        u = randn(1, N),
+        t = collect(range(0, 5, N)),  # time variable
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u
@@ -132,10 +132,10 @@ integrator_td = TimeDependentBilinearIntegrator(G_td, traj_td, :x, :u, :t)
 
 traj_smooth = NamedTrajectory(
     (
-        x = randn(2, T),
-        u = randn(2, T),
-        du = zeros(2, T),   # control derivative
-        Δt = fill(0.1, T)
+        x = randn(2, N),
+        u = randn(2, N),
+        du = zeros(2, N),   # control derivative
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u,
@@ -154,11 +154,11 @@ deriv_integrator = DerivativeIntegrator(traj_smooth, :u, :du)
 
 traj_smooth2 = NamedTrajectory(
     (
-        x = randn(2, T),
-        u = randn(1, T),
-        du = zeros(1, T),
-        ddu = zeros(1, T),
-        Δt = fill(0.1, T)
+        x = randn(2, N),
+        u = randn(1, N),
+        du = zeros(1, N),
+        ddu = zeros(1, N),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u
@@ -185,10 +185,10 @@ deriv_du = DerivativeIntegrator(traj_smooth2, :du, :ddu)
 
 traj_time = NamedTrajectory(
     (
-        x = randn(2, T),
-        u = randn(1, T),
-        t = zeros(1, T),
-        Δt = fill(0.1, T)
+        x = randn(2, N),
+        u = randn(1, N),
+        t = zeros(1, N),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u
@@ -207,11 +207,11 @@ time_integrator = TimeIntegrator(traj_time, :t)
 
 traj_combined = NamedTrajectory(
     (
-        x = randn(2, T),
-        u = randn(2, T),
-        du = zeros(2, T),
-        t = collect(range(0, 5, T)),
-        Δt = fill(0.1, T)
+        x = randn(2, N),
+        u = randn(2, N),
+        du = zeros(2, N),
+        t = collect(range(0, 5, N)),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u,

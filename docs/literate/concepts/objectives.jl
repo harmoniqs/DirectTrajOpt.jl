@@ -5,7 +5,7 @@
 # **Objectives** (or cost functions) define what you want to minimize in your optimization problem.
 # DirectTrajOpt.jl uses an additive structure where you can combine multiple objective terms:
 # ```math
-# J_{\text{total}} = w_1 J_1 + w_2 J_2 + \cdots + w_n J_n
+# J_{\text{total}} = w_1 J_1 + w_2 J_2 + \cdots + w_N J_N
 # ```
 
 using DirectTrajOpt
@@ -13,9 +13,9 @@ using NamedTrajectories
 using LinearAlgebra
 
 # Setup a sample trajectory for examples
-T = 50
+N = 50
 traj = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     initial=(x = [0.0, 0.0],),
@@ -27,7 +27,7 @@ traj = NamedTrajectory(
 # ### Overview
 # Penalizes the **squared norm** of a variable:
 # ```math
-# J = \sum_{k=1}^{T} \|v_k\|^2
+# J = \sum_{k=1}^{N} \|v_k\|^2
 # ```
 
 # This is the most common objective for regularization.
@@ -45,7 +45,7 @@ obj_x = QuadraticRegularizer(:x, traj, 0.1)
 # ### Control Derivative Regularization (Smoothness)
 
 traj_smooth = NamedTrajectory(
-    (x = randn(2, T), u = randn(2, T), du = zeros(2, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(2, N), du = zeros(2, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u
 )
@@ -71,7 +71,7 @@ obj_weighted = QuadraticRegularizer(:u, traj_smooth, [1.0, 0.5])
 # ### Overview
 # Minimizes the **total trajectory duration**:
 # ```math
-# J = w \sum_{k=1}^{T} \Delta t_k
+# J = w \sum_{k=1}^{N} \Delta t_k
 # ```
 
 # This encourages fast trajectories.
@@ -92,7 +92,7 @@ obj_tradeoff = QuadraticRegularizer(:u, traj, 1.0) +
 # ### Free Time Problems
 
 traj_free_time = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(Δt = (0.01, 0.5),)  # Allow variable time steps
@@ -106,7 +106,7 @@ obj_free_time = QuadraticRegularizer(:u, traj_free_time, 1.0) +
 # ### Overview
 # Applies a cost only at the **final time step**:
 # ```math
-# J = f(x_T)
+# J = f(x_N)
 # ```
 
 # Useful for soft constraints on the final state.
@@ -119,7 +119,7 @@ obj_terminal = TerminalObjective(
     :x,
     traj
 )
-# Penalizes: ||x_T - x_goal||²
+# Penalizes: ||x_N - x_goal||²
 
 # ### Custom Terminal Cost
 
@@ -139,7 +139,7 @@ obj_custom_terminal = TerminalObjective(
 
 # Hard constraint (via trajectory):
 traj_hard = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     final=(x = x_goal,)  # Exact constraint
@@ -147,7 +147,7 @@ traj_hard = NamedTrajectory(
 
 # Soft constraint (via terminal objective):
 traj_soft = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     goal=(x = x_goal,)  # For reference only
@@ -189,7 +189,7 @@ obj_knot_all = KnotPointObjective(
     (x, u) -> x[1]^2 + u[1]^2,
     [:x, :u],
     traj;
-    times=1:T  # All time steps
+    times=1:N  # All time steps
 )
 # Equivalent to manually summing costs
 
@@ -225,9 +225,9 @@ obj_waypoints = sum(
 
 traj_global = NamedTrajectory(
     (
-        x = randn(2, T),
-        u = randn(1, T),
-        Δt = fill(0.1, T)
+        x = randn(2, N),
+        u = randn(1, N),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u,
@@ -292,7 +292,7 @@ obj_energy = (
 # Fast trajectories with bounded controls
 
 traj_mintime = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(u = 1.0, Δt = (0.01, 0.5))
@@ -310,7 +310,7 @@ obj_mintime = (
 # Implementable controls with derivative penalties
 
 traj_smooth_obj = NamedTrajectory(
-    (x = randn(2, T), u = randn(2, T), du = zeros(2, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(2, N), du = zeros(2, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     initial=(u = [0.0, 0.0],),

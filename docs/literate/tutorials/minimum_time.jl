@@ -49,16 +49,16 @@ println("System: 2D damped oscillator with symmetric control coupling")
 
 # ## Step 2: Trajectory Setup
 
-T = 40  # Number of time steps (fewer than before)
+N = 40# Number of time steps (fewer than before)
 Δt_init = 0.15  # Initial guess for time step
 
 x_init = [0.0, 0.0]
 x_goal = [1.0, 0.0]
 
 # Initial guess
-x_guess = hcat([x_init + (x_goal - x_init) * (t/(T-1)) for t in 0:T-1]...)
-u_guess = 0.1 * randn(1, T)
-Δt_guess = fill(Δt_init, T)
+x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t in 0:T-1]...)
+u_guess = 0.1 * randn(1, N)
+Δt_guess = fill(Δt_init, N)
 
 println("\nProblem setup:")
 println("  Time steps: $T")
@@ -156,7 +156,7 @@ println("="^50)
 Δt_fixed = total_time_mintime / T
 
 traj_fixed = NamedTrajectory(
-    (x = x_guess, u = u_guess, Δt = fill(Δt_fixed, T));
+    (x = x_guess, u = u_guess, Δt = fill(Δt_fixed, N));
     timestep=:Δt,
     controls=:u,
     initial=(x = x_init,),

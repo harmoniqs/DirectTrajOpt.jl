@@ -17,10 +17,10 @@ using NamedTrajectories
 
 # ```math
 # \begin{align*}
-# \underset{x_{1:T}, u_{1:T}}{\text{minimize}} \quad & J(x_{1:T}, u_{1:T}) \\
-# \text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0, \quad k = 1, \ldots, T-1\\
-# & c_k(x_k, u_k) \geq 0, \quad k = 1, \ldots, T \\
-# & x_1 = x_{\text{init}}, \quad x_T = x_{\text{goal}} \\
+# \underset{x_{1:N}, u_{1:N}}{\text{minimize}} \quad & J(x_{1:N}, u_{1:N}) \\
+# \text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0, \quad k = 1, \ldots, N-1\\
+# & c_k(x_k, u_k) \geq 0, \quad k = 1, \ldots, N \\
+# & x_1 = x_{\text{init}}, \quad x_N = x_{\text{goal}} \\
 # \end{align*}
 # ```
 
@@ -37,15 +37,15 @@ using NamedTrajectories
 
 # Create a NamedTrajectory with your state and control variables:
 
-T = 50  # number of time steps
+N = 50  # number of time steps
 n_states = 2
 n_controls = 1
 
 traj = NamedTrajectory(
     (
-        x = randn(n_states, T),
-        u = randn(n_controls, T),
-        Δt = fill(0.1, T)
+        x = randn(n_states, N),
+        u = randn(n_controls, N),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u,
@@ -118,10 +118,10 @@ solve!(prob; max_iter=100, verbose=true)
 # Define trajectory with bounds (including derivative variable)
 traj_advanced = NamedTrajectory(
     (
-        x = randn(2, T),
-        u = randn(1, T),
-        du = zeros(1, T),
-        Δt = fill(0.1, T)
+        x = randn(2, N),
+        u = randn(1, N),
+        du = zeros(1, N),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u,

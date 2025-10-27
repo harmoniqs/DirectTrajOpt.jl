@@ -420,7 +420,7 @@ end
     include("../../test/test_utils.jl")
 
     # Create trajectory with 3 variables
-    T = 10
+    N = 10
     x_dim = 2
     u_dim = 1
     a_dim = 1  # Additional variable
@@ -428,10 +428,10 @@ end
     
     traj = NamedTrajectory(
         (
-            x = randn(x_dim, T),
-            u = randn(u_dim, T),
-            a = randn(a_dim, T),
-            Δt = fill(Δt, T),
+            x = randn(x_dim, N),
+            u = randn(u_dim, N),
+            a = randn(a_dim, N),
+            Δt = fill(Δt, N),
         );
         controls=(:u, :a),
         timestep=:Δt,

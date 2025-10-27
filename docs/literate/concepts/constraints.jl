@@ -7,9 +7,9 @@ using DirectTrajOpt
 using NamedTrajectories
 using LinearAlgebra
 
-T = 50
+N = 50
 traj = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt, controls=:u
 )
 
@@ -18,7 +18,7 @@ traj = NamedTrajectory(
 # Box constraints on variables:
 
 traj_bounds = NamedTrajectory(
-    (x = randn(2, T), u = randn(2, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
     timestep=:Δt, controls=:u,
     bounds=(
         x = 5.0,                          # -5 ≤ x ≤ 5
@@ -29,7 +29,7 @@ traj_bounds = NamedTrajectory(
 
 # Per-component bounds:
 traj_component_bounds = NamedTrajectory(
-    (x = randn(2, T), u = randn(2, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
     timestep=:Δt, controls=:u,
     bounds=(u = ([-1.0, -2.0], [1.0, 3.0]),)  # Different bounds per component
 )
@@ -39,7 +39,7 @@ traj_component_bounds = NamedTrajectory(
 # **Inequality**: `c(x, u) ≥ 0` (preferred - easier to satisfy)
 constraint_ineq = NonlinearKnotPointConstraint(
     u -> [1.0 - norm(u)],  # ||u|| ≤ 1
-    :u, traj; times=1:T, equality=false
+    :u, traj; times=1:N, equality=false
 )
 
 # **Equality**: `c(x, u) = 0` (more restrictive)
@@ -60,7 +60,7 @@ constraint_multi = NonlinearKnotPointConstraint(
 obs_center, obs_radius = [0.5, 0.5], 0.2
 constraint_obstacle = NonlinearKnotPointConstraint(
     x -> [norm(x - obs_center)^2 - obs_radius^2],
-    :x, traj; times=1:T, equality=false
+    :x, traj; times=1:N, equality=false
 )
 
 # **Multiple obstacles**:
@@ -89,7 +89,7 @@ constraint_energy = NonlinearKnotPointConstraint(
 
 # All times, specific times, or ranges:
 constraint_all = NonlinearKnotPointConstraint(
-    u -> [1.0 - norm(u)], :u, traj; times=1:T, equality=false
+    u -> [1.0 - norm(u)], :u, traj; times=1:N, equality=false
 )
 
 constraint_specific = NonlinearKnotPointConstraint(
@@ -118,7 +118,7 @@ prob = DirectTrajOptProblem(traj, obj, integrator; constraints=constraints)
 # |----------------|------|------|----------|
 # | Bounds | `l ≤ v ≤ u` | Very cheap | Physical limits |
 # | Dynamics | `xₖ₊₁ = Φ(xₖ, uₖ)` | Moderate | System evolution |
-# | Boundary | `x₁ = x₀, xₜ = xf` | Cheap | Initial/final states |
+# | Boundary | `x₁ = x₀, xₖ = xf` | Cheap | Initial/final states |
 # | Nonlinear inequality | `c(x, u) ≥ 0` | Moderate | Obstacles, limits |
 # | Nonlinear equality | `c(x, u) = 0` | Expensive | Exact requirements |
 

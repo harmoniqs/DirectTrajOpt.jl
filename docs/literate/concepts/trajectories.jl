@@ -16,13 +16,13 @@ using NamedTrajectories
 
 # ### Minimal Example
 
-T = 10  # number of time steps
+N = 10  # number of time steps
 
 # Specify component data as a NamedTuple:
 data = (
-    x = randn(2, T),    # 2D state
-    u = randn(1, T),    # 1D control
-    Δt = fill(0.1, T)   # time step
+    x = randn(2, N),    # 2D state
+    u = randn(1, N),    # 1D control
+    Δt = fill(0.1, N)   # time step
 )
 
 traj = NamedTrajectory(
@@ -43,10 +43,10 @@ println("Total time: ", sum(traj.Δt))
 
 traj_multi = NamedTrajectory(
     (
-        position = randn(3, T),  # 3D position
-        velocity = randn(3, T),  # 3D velocity
-        u = randn(2, T),
-        Δt = fill(0.1, T)
+        position = randn(3, N),  # 3D position
+        velocity = randn(3, N),  # 3D velocity
+        u = randn(2, N),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u
@@ -57,10 +57,10 @@ traj_multi = NamedTrajectory(
 
 traj_multi_control = NamedTrajectory(
     (
-        x = randn(2, T),
-        u1 = randn(1, T),
-        u2 = randn(1, T),
-        Δt = fill(0.1, T)
+        x = randn(2, N),
+        u1 = randn(1, N),
+        u2 = randn(1, N),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=(:u1, :u2)
@@ -70,14 +70,14 @@ traj_multi_control = NamedTrajectory(
 
 # **Fixed time**: All time steps equal (constant Δt)
 traj_fixed_time = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,  # symbol pointing to timestep component
     controls=:u
 )
 
 # **Free time**: Each time step is a decision variable (with bounds)
 traj_free_time = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=(:u, :Δt),  # Include Δt in controls for optimization
     bounds=(Δt = (0.01, 0.5),)  # Set bounds on time steps
@@ -89,7 +89,7 @@ traj_free_time = NamedTrajectory(
 
 # Fix the starting state:
 traj_initial = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     initial=(x = [0.0, 0.0],)  # x₁ = [0, 0]
@@ -97,7 +97,7 @@ traj_initial = NamedTrajectory(
 
 # Can also fix initial controls:
 traj_initial_u = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     initial=(x = [0.0, 0.0], u = [0.0])  # x₁ = [0, 0], u₁ = 0
@@ -107,26 +107,26 @@ traj_initial_u = NamedTrajectory(
 
 # Fix the ending state:
 traj_final = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
-    final=(x = [1.0, 0.0],)  # xₜ = [1, 0]
+    final=(x = [1.0, 0.0],)  # xₖ = [1, 0]
 )
 
 # ### Goal Conditions
 
 # Similar to final, but typically used with terminal cost instead of hard constraint:
 traj_goal = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
-    goal=(x = [1.0, 0.0],)  # target: xₜ → [1, 0]
+    goal=(x = [1.0, 0.0],)  # target: xₖ → [1, 0]
 )
 
 # ### Complete Example
 
 traj_complete = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     initial=(x = [0.0, 0.0], u = [0.0]),
@@ -143,7 +143,7 @@ traj_complete = NamedTrajectory(
 # A single number creates symmetric bounds: `-bound ≤ var ≤ bound`
 
 traj_scalar_bound = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(u = 1.0,)  # -1 ≤ u ≤ 1 for all components
@@ -158,7 +158,7 @@ println("u bounds: ", traj_scalar_bound.bounds.u)
 # A tuple `(lower, upper)` creates asymmetric bounds:
 
 traj_tuple_bound = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(u = (-2.0, 1.0),)  # -2 ≤ u ≤ 1
@@ -172,7 +172,7 @@ println("u bounds: ", traj_tuple_bound.bounds.u)
 # A vector creates component-specific symmetric bounds:
 
 traj_vector_bound = NamedTrajectory(
-    (x = randn(2, T), u = randn(2, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(u = [1.0, 2.0],)  # -1 ≤ u₁ ≤ 1, -2 ≤ u₂ ≤ 2
@@ -186,7 +186,7 @@ println("u bounds: ", traj_vector_bound.bounds.u)
 # The most general form - specify lower and upper for each component:
 
 traj_full_bound = NamedTrajectory(
-    (x = randn(2, T), u = randn(2, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(u = ([-2.0, -1.0], [1.0, 3.0]),)  # -2 ≤ u₁ ≤ 1, -1 ≤ u₂ ≤ 3
@@ -198,7 +198,7 @@ println("u bounds: ", traj_full_bound.bounds.u)
 # ### Multiple Variable Bounds
 
 traj_multi_bounds = NamedTrajectory(
-    (x = randn(2, T), u = randn(2, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(
@@ -213,7 +213,7 @@ traj_multi_bounds = NamedTrajectory(
 # For free-time problems, bound the time steps:
 
 traj_time_bounds = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(
@@ -225,8 +225,8 @@ traj_time_bounds = NamedTrajectory(
 # ## Accessing Trajectory Data
 
 # ### Direct Access
-x_data = traj.x           # Get all states (2 × T matrix)
-u_data = traj.u           # Get all controls (1 × T matrix)
+x_data = traj.x           # Get all states (2 × N matrix)
+u_data = traj.u           # Get all controls (1 × N matrix)
 x_final = traj.x[:, end]  # Get final state
 
 # ### Metadata
@@ -252,13 +252,13 @@ x_init = [0.0, 0.0]
 x_goal = [1.0, 1.0]
 
 # Linear interpolation
-x_guess = hcat([x_init + (x_goal - x_init) * (t / (T-1)) for t in 0:T-1]...)
+x_guess = hcat([x_init + (x_goal - x_init) * (t / (N-1)) for t in 0:N-1]...)
 
 traj_good_init = NamedTrajectory(
     (
         x = x_guess,
-        u = zeros(1, T),
-        Δt = fill(0.1, T)
+        u = zeros(1, N),
+        Δt = fill(0.1, N)
     );
     timestep=:Δt,
     controls=:u,

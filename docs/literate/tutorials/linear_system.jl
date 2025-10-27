@@ -12,7 +12,7 @@
 # \dot{x} = (G_0 + u_1 G_1) x
 # ```
 
-# **Goal:** Drive from `x(0) = [0, 0]` to `x(T) = [1, 0]`
+# **Goal:** Drive from `x(0) = [0, 0]` to `x(N) = [1, 0]`
 
 # **Objective:** Minimize control effort `∫ ||u||² dt`
 
@@ -41,9 +41,9 @@ G = u -> G_drift + sum(u .* G_drives)
 # ## Step 2: Create the Trajectory
 
 # Time parameters
-T = 50          # number of time steps
+N = 50# number of time steps
 Δt = 0.1        # time step size
-total_time = T * Δt  # 5 seconds
+total_time = N * Δt  # 5 seconds
 
 println("Total time: $total_time seconds")
 
@@ -52,15 +52,15 @@ x_init = [0.0, 0.0]
 x_goal = [1.0, 0.0]
 
 # Create initial guess with linear interpolation
-x_guess = hcat([x_init + (x_goal - x_init) * (t/(T-1)) for t in 0:T-1]...)
-u_guess = zeros(1, T)
+x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t in 0:N-1]...)
+u_guess = zeros(1, N)
 
 # Create the trajectory
 traj = NamedTrajectory(
     (
         x = x_guess,
         u = u_guess,
-        Δt = fill(Δt, T)
+        Δt = fill(Δt, N)
     );
     timestep=:Δt,
     controls=:u,
@@ -143,7 +143,7 @@ function verify_dynamics(x, u, Δt, G, k)
 end
 
 println("\nDynamics verification (error at selected time steps):")
-for k in [1, 10, 25, 40, T-1]
+for k in [1, 10, 25, 40, N-1]
     error = verify_dynamics(x_sol, u_sol, prob.trajectory.Δt, G, k)
     println("  k=$k: error = ", error)
 end
@@ -159,7 +159,7 @@ println("="^50)
 println("\nState trajectory (first 10 and last 10 time steps):")
 println("Time | x₁      | x₂")
 println("-"^25)
-for k in [1:10; (T-9):T]
+for k in [1:10; (N-9):N]
     t = times[k]
     println(@sprintf("%.2f | %7.4f | %7.4f", t, x_sol[1,k], x_sol[2,k]))
 end
@@ -167,7 +167,7 @@ end
 println("\nControl trajectory (first 10 and last 10 time steps):")
 println("Time | u")
 println("-"^15)
-for k in [1:10; (T-9):T]
+for k in [1:10; (N-9):N]
     t = times[k]
     println(@sprintf("%.2f | %7.4f", t, u_sol[1,k]))
 end
@@ -191,7 +191,7 @@ end
 # Limit the control: `-1.0 ≤ u ≤ 1.0`
 # ```julia
 # traj_bounded = NamedTrajectory(
-#     (x = x_guess, u = u_guess, Δt = fill(Δt, T));
+#     (x = x_guess, u = u_guess, Δt = fill(Δt, N));
 #     timestep=:Δt,
 #     controls=:u,
 #     initial=(x = x_init,),
@@ -208,7 +208,7 @@ end
 # Use soft goal constraint instead:
 # ```julia
 # traj_soft = NamedTrajectory(
-#     (x = x_guess, u = u_guess, Δt = fill(Δt, T));
+#     (x = x_guess, u = u_guess, Δt = fill(Δt, N));
 #     timestep=:Δt,
 #     controls=:u,
 #     initial=(x = x_init,)  # No final constraint

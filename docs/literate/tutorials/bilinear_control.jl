@@ -62,12 +62,12 @@ println("  u₂ couples x₂ and x₃")
 
 # ### Time Discretization
 
-T = 60
+N = 60
 Δt = 0.15
-total_time = T * Δt
+total_time = N * Δt
 
 println("\nTime discretization:")
-println("  Time steps: $T")
+println("  Time steps: $N")
 println("  Step size: $Δt")
 println("  Total time: $total_time seconds")
 
@@ -83,10 +83,10 @@ println("  Goal state: $x_goal")
 # ### Initial Guess
 
 # Linear interpolation for states
-x_guess = hcat([x_init + (x_goal - x_init) * (t/(T-1)) for t in 0:T-1]...)
+x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t in 0:N-1]...)
 
 # Small random controls
-u_guess = 0.1 * randn(2, T)
+u_guess = 0.1 * randn(2, N)
 
 # ## Step 3: Create Trajectory with Bounds
 
@@ -96,7 +96,7 @@ traj = NamedTrajectory(
     (
         x = x_guess,
         u = u_guess,
-        Δt = fill(Δt, T)
+        Δt = fill(Δt, N)
     );
     timestep=:Δt,
     controls=:u,
@@ -182,7 +182,7 @@ println("="^50)
 println("\nState trajectory (selected time points):")
 println("Time  |   x₁    |   x₂    |   x₃")
 println("-"^40)
-for k in [1, 10, 20, 30, 40, 50, T]
+for k in [1, 10, 20, 30, 40, 50, N]
     t = times[k]
     println(@sprintf("%.2f | %7.4f | %7.4f | %7.4f", 
         t, x_sol[1,k], x_sol[2,k], x_sol[3,k]))
@@ -191,7 +191,7 @@ end
 println("\nControl trajectory (selected time points):")
 println("Time  |   u₁    |   u₂")
 println("-"^30)
-for k in [1, 10, 20, 30, 40, 50, T]
+for k in [1, 10, 20, 30, 40, 50, N]
     t = times[k]
     println(@sprintf("%.2f | %7.4f | %7.4f", 
         t, u_sol[1,k], u_sol[2,k]))
@@ -201,7 +201,7 @@ end
 
 println("\nDynamics verification:")
 max_error = 0.0
-for k in 1:T-1
+for k in 1:N-1
     x_k = x_sol[:, k]
     u_k = u_sol[:, k]
     Δt_k = prob.trajectory.Δt[k]
@@ -223,7 +223,7 @@ println("="^50)
 
 # Try with higher control penalty
 traj_high = NamedTrajectory(
-    (x = x_guess, u = 0.1*randn(2,T), Δt = fill(Δt, T));
+    (x = x_guess, u = 0.1*randn(2,N), Δt = fill(Δt, N));
     timestep=:Δt, controls=:u,
     initial=(x = x_init,), final=(x = x_goal,),
     bounds=(u = 1.0,)

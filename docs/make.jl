@@ -5,6 +5,7 @@ pages = [
     "Home" => "index.md",
     "Getting Started" => [
         "Quickstart" => "generated/quickstart.md",
+        "Complete Example" => "generated/example.md",
     ],
     "Core Concepts" => [
         "Problem Formulation" => "generated/concepts/problem_formulation.md",

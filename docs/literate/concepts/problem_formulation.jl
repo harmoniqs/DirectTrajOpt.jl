@@ -12,10 +12,10 @@
 
 # ```math
 # \begin{align*}
-# \underset{x_{1:T}, u_{1:T}}{\text{minimize}} \quad & J(x_{1:T}, u_{1:T}) \\
-# \text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0, \quad k = 1, \ldots, T-1\\
-# & c_k(x_k, u_k) \geq 0, \quad k = 1, \ldots, T \\
-# & x_1 = x_{\text{init}}, \quad x_T = x_{\text{goal}} \\
+# \underset{x_{1:N}, u_{1:N}}{\text{minimize}} \quad & J(x_{1:N}, u_{1:N}) \\
+# \text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0, \quad k = 1, \ldots, N-1\\
+# & c_k(x_k, u_k) \geq 0, \quad k = 1, \ldots, N \\
+# & x_1 = x_{\text{init}}, \quad x_N = x_{\text{goal}} \\
 # \end{align*}
 # ```
 
@@ -23,19 +23,19 @@
 
 # ## Decision Variables
 
-# ### States: `x₁, x₂, ..., xₜ`
+# ### States: `x₁, x₂, ..., xₖ`
 # The **state** represents the configuration of your system at each time step.
 # - For a robot arm: joint angles and velocities
 # - For a spacecraft: position and velocity
 # - For a quantum system: state vector or unitary operator
 
-# ### Controls: `u₁, u₂, ..., uₜ`
+# ### Controls: `u₁, u₂, ..., uₖ`
 # The **control** (or input) represents what you can actuate.
 # - For a robot: motor torques
 # - For a spacecraft: thruster forces
 # - For quantum systems: electromagnetic field amplitudes
 
-# ### Time Steps: `Δt₁, Δt₂, ..., Δtₜ`
+# ### Time Steps: `Δt₁, Δt₂, ..., Δtₖ`
 # The **time step** can be:
 # - **Fixed**: All Δt are equal and constant
 # - **Free**: Each Δt is a decision variable (for minimum time problems)
@@ -48,7 +48,7 @@
 # ### Control Effort
 # Minimize energy by penalizing large controls:
 # ```math
-# J = \sum_{k=1}^{T} \|u_k\|^2
+# J = \sum_{k=1}^{N} \|u_k\|^2
 # ```
 
 using DirectTrajOpt
@@ -56,9 +56,9 @@ using NamedTrajectories
 using LinearAlgebra
 
 # Example:
-T = 10
+N = 10
 traj = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt, controls=:u
 )
 
@@ -67,7 +67,7 @@ obj_effort = QuadraticRegularizer(:u, traj, 1.0)
 # ### Minimum Time
 # Minimize trajectory duration:
 # ```math
-# J = \sum_{k=1}^{T} \Delta t_k
+# J = \sum_{k=1}^{N} \Delta t_k
 # ```
 
 obj_time = MinimumTimeObjective(traj, 0.1)  # weight = 0.1
@@ -75,7 +75,7 @@ obj_time = MinimumTimeObjective(traj, 0.1)  # weight = 0.1
 # ### Terminal Cost
 # Penalize deviation from goal at final time:
 # ```math
-# J = \|x_T - x_{\text{goal}}\|^2
+# J = \|x_N - x_{\text{goal}}\|^2
 # ```
 
 x_goal = [1.0, 0.0]
@@ -133,7 +133,7 @@ integrator = BilinearIntegrator(G, traj, :x, :u)
 # ```
 
 traj_bounded = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     bounds=(u = (-1.0, 1.0),)  # -1 ≤ u ≤ 1
@@ -155,11 +155,11 @@ constraint = NonlinearKnotPointConstraint(
 # ### Initial Condition: `x₁ = x_init`
 # Fixes the starting state.
 
-# ### Final Condition: `xₜ = x_goal`
+# ### Final Condition: `xₖ = x_goal`
 # Fixes the ending state (or penalizes deviation via terminal cost).
 
 traj_bc = NamedTrajectory(
-    (x = randn(2, T), u = randn(1, T), Δt = fill(0.1, T));
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
     timestep=:Δt,
     controls=:u,
     initial=(x = [0.0, 0.0],),  # Fixed initial state
@@ -183,7 +183,7 @@ traj_bc = NamedTrajectory(
 # & g(z) \geq 0
 # \end{align*}
 # ```
-# where `z = [x₁, u₁, x₂, u₂, ..., xₜ, uₜ, Δt₁, ..., Δtₜ]` is the decision vector.
+# where `z = [x₁, u₁, x₂, u₂, ..., xₙ, uₙ, Δt₁, ..., Δtₙ]` is the decision vector.
 
 # ## When to Use DirectTrajOpt
 
@@ -206,7 +206,7 @@ traj_bc = NamedTrajectory(
 # | Objective | `J(x, u)` | `Objective` (sum of terms) |
 # | Dynamics | `f(xₖ₊₁, xₖ, uₖ) = 0` | `AbstractIntegrator` |
 # | Path Constraints | `c(x, u) ≥ 0` | `AbstractConstraint` |
-# | Boundary Conditions | `x₁ = x_init, xₜ = x_goal` | `initial`, `final` in trajectory |
+# | Boundary Conditions | `x₁ = x_init, xₖ = x_goal` | `initial`, `final` in trajectory |
 
 # ## Next Steps
 

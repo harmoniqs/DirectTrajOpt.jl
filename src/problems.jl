@@ -96,10 +96,10 @@ Extract and create constraints from a NamedTrajectory's initial, final, and boun
 
 # Details
 The function automatically handles time indices based on which constraints are specified:
-- If both initial and final constraints exist for a component, bounds apply to interior points (2:T-1)
-- If only initial exists, bounds apply from second point onward (2:T)
-- If only final exists, bounds apply up to second-to-last point (1:T-1)
-- If neither exist, bounds apply to all time points (1:T)
+- If both initial and final constraints exist for a component, bounds apply to interior points (2:N-1)
+- If only initial exists, bounds apply from second point onward (2:N)
+- If only final exists, bounds apply up to second-to-last point (1:N-1)
+- If neither exist, bounds apply to all time points (1:N)
 """
 function get_trajectory_constraints(traj::NamedTrajectory)
 
