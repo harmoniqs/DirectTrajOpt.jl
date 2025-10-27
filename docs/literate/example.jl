@@ -8,6 +8,7 @@
 using DirectTrajOpt
 using NamedTrajectories
 using LinearAlgebra
+using CairoMakie
 
 # ## Problem Setup
 
@@ -73,6 +74,10 @@ obj = (
 
 prob = DirectTrajOptProblem(traj, obj, integrator)
 solve!(prob; max_iter=50)
+
+# ## Visualize Solution
+
+plot(prob.trajectory) # See NamedTrajectories.jl documentation for plotting options
 
 # ## Analyze Solution
 

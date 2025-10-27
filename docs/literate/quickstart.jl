@@ -21,6 +21,7 @@
 using DirectTrajOpt
 using NamedTrajectories
 using LinearAlgebra
+using CairoMakie
 
 # ## A Minimal Example
 
@@ -41,7 +42,8 @@ traj = NamedTrajectory(
     timestep=:Δt,
     controls=:u,
     initial=(x = [0.0, 0.0],),
-    final=(x = [1.0, 0.0],)
+    final=(x = [1.0, 0.0],),
+    bounds=(Δt = (0.05, 0.2), u = 1.0)
 )
 
 # ### Step 2: Define the Dynamics
@@ -69,6 +71,10 @@ solve!(prob; max_iter=100, verbose=false)
 
 # ### Step 5: Access the Solution
 
+# Let's look at the results.
+
+plot(prob.trajectory)
+
 # The optimized trajectory is stored in `prob.trajectory`:
 
 println("Final state: ", prob.trajectory.x[:, end])
@@ -82,13 +88,3 @@ println("Control norm: ", norm(prob.trajectory.u))
 # - **Smooth controls**: Penalize derivatives for smooth, implementable controls
 # - **Free time**: Optimize trajectory duration
 
-# ## Next Steps
-
-# - **Core Concepts**: Understand trajectories, integrators, objectives, and constraints in depth
-# - **Tutorials**: Work through progressively complex examples
-# - **API Reference**: Explore all available features
-
-# ---
-
-# That's it! You've solved your first trajectory optimization problem. 
-# Check out the tutorials to learn more advanced techniques.
