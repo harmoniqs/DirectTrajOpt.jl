@@ -88,7 +88,7 @@ function GlobalEqualityConstraint(
     @assert name ∈ traj.global_names
     @assert length(val) == traj.global_dims[name]
 
-    indices = traj.dim * traj.T .+ traj.global_components[name]
+    indices = traj.dim * traj.N .+ traj.global_components[name]
     return EqualityConstraint(indices, val, label)
 end
 
@@ -103,8 +103,8 @@ function TimeStepsAllEqualConstraint(
     label="timesteps all equal constraint"
 )
     @assert traj.timestep isa Symbol
-    indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.T-1]
-    bar_index = index(traj.T, traj.components[traj.timestep][1], traj.dim)
+    indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.N-1]
+    bar_index = index(traj.N, traj.components[traj.timestep][1], traj.dim)
     return AllEqualConstraint(indices, bar_index, label)
 end
 
@@ -181,7 +181,7 @@ function GlobalBoundsConstraint(
     @assert length(bounds[1]) == length(bounds[2]) == traj.global_dims[name]
     @assert all(bounds[1] .<= bounds[2])
 
-    indices = traj.dim * traj.T .+ traj.global_components[name]
+    indices = traj.dim * traj.N .+ traj.global_components[name]
 
     bounds = collect(zip(bounds...))
 
@@ -234,7 +234,7 @@ end
 #     name::Symbol,
 #     traj::NamedTrajectory;
 #     indices=1:traj.dims[name],
-#     ts=(name ∈ keys(traj.initial) ? 2 : 1):(name ∈ keys(traj.final) ? traj.T-1 : traj.T),
+#     ts=(name ∈ keys(traj.initial) ? 2 : 1):(name ∈ keys(traj.final) ? traj.N-1 : traj.N),
 #     label="L1 slack constraint on $name[$(indices)]"
 # )
 #     @assert all(i ∈ 1:traj.dims[name] for i ∈ indices)
@@ -242,8 +242,8 @@ end
 #     s1_name = Symbol("s1_$name")
 #     s2_name = Symbol("s2_$name")
 
-#     add_component!(traj, s1_name, rand(length(indices), traj.T))
-#     add_component!(traj, s2_name, rand(length(indices), traj.T))
+#     add_component!(traj, s1_name, rand(length(indices), traj.N))
+#     add_component!(traj, s2_name, rand(length(indices), traj.N))
 
 #     x_indices = stack(slice(t, traj.components[name][indices], traj.dim) for t ∈ ts)
 #     s1_indices = stack(slice(t, traj.components[s1_name], traj.dim) for t ∈ ts)
@@ -270,7 +270,7 @@ function DurationConstraint(
     label="duration constraint of $value"
 )
     @assert traj.timestep isa Symbol
-    indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.T]
+    indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.N]
     return TotalConstraint(indices, value ,label)
 end
 
@@ -291,16 +291,16 @@ function SymmetricControlConstraint(
     even_pairs = Vector{Tuple{Int64,Int64}}()
     odd_pairs = Vector{Tuple{Int64,Int64}}()
 
-    component_indicies = [slice(t, traj.components[name], traj.dim)[idx] for t ∈ 1:traj.T]
+    component_indicies = [slice(t, traj.components[name], traj.dim)[idx] for t ∈ 1:traj.N]
     if(even)
-        even_pairs = vcat(even_pairs,reduce(vcat,[collect(zip(component_indicies[[idx,traj.T - idx+1]]...)) for idx in 1:traj.T ÷ 2]))
+        even_pairs = vcat(even_pairs,reduce(vcat,[collect(zip(component_indicies[[idx,traj.N - idx+1]]...)) for idx in 1:traj.N ÷ 2]))
     else 
-        odd_pairs = vcat(odd_pairs,reduce(vcat,[collect(zip(component_indicies[[idx,traj.T - idx+1]]...)) for idx in 1:traj.T ÷ 2]))
+        odd_pairs = vcat(odd_pairs,reduce(vcat,[collect(zip(component_indicies[[idx,traj.N - idx+1]]...)) for idx in 1:traj.N ÷ 2]))
     end 
 
     if traj.timestep isa Symbol
-        time_indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.T]
-        even_pairs = vcat(even_pairs,[(time_indices[idx],time_indices[traj.T + 1 - idx]) for idx ∈ 1:traj.T÷2]) 
+        time_indices = [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.N]
+        even_pairs = vcat(even_pairs,[(time_indices[idx],time_indices[traj.N + 1 - idx]) for idx ∈ 1:traj.N÷2]) 
     end 
 
     return SymmetryConstraint(

@@ -20,13 +20,31 @@ using TestItems
 """
     Objective
 
-A structure for defining objective functions.
-    
-Fields:
-    `L`: the objective function
-    `∇L`: the gradient of the objective function
-    `∂²L`: the Hessian of the objective function
-    `∂²L_structure`: the structure of the Hessian of the objective function
+A structure representing an objective function for trajectory optimization.
+
+An objective function consists of the cost function itself along with its first
+and second derivatives for gradient-based optimization. The structure supports
+automatic differentiation and sparse Hessian representations.
+
+# Fields
+- `L::Function`: Objective function that takes trajectory vector Z⃗ and returns a scalar cost
+- `∇L::Function`: Gradient function returning ∂L/∂Z⃗
+- `∂²L::Union{Function, Nothing}`: Hessian function returning non-zero Hessian entries
+- `∂²L_structure::Union{Function, Nothing}`: Function returning sparsity structure of Hessian
+
+# Operators
+Objectives support addition and scalar multiplication:
+- `obj1 + obj2`: Combine objectives by summing costs and derivatives
+- `α * obj`: Scale objective by constant α
+
+# Example
+```julia
+# Create a regularization objective
+obj = QuadraticRegularizer(:u, traj, 1e-2)
+
+# Combine multiple objectives  
+total_obj = obj1 + obj2 + 0.1 * obj3
+```
 """
 struct Objective{F1, F2, F3, F4}
 	L::F1
@@ -71,7 +89,7 @@ Base.show(io::IO, ::Objective) = print(io, "Objective(L, ∇L, ∂²L, ∂²L_st
 
 function NullObjective(Z::NamedTrajectory)
 	L(::AbstractVector{<:Real}) = 0.0
-    ∇L(::AbstractVector{R}) where R<:Real = zeros(R, Z.dim * Z.T + Z.global_dim)
+    ∇L(::AbstractVector{R}) where R<:Real = zeros(R, Z.dim * Z.N + Z.global_dim)
     ∂²L_structure() = []
     ∂²L(::AbstractVector{R}) where R<:Real = R[]
 	return Objective(L, ∇L, ∂²L, ∂²L_structure)

@@ -46,20 +46,72 @@
 </div>
 <!--```-->
 
-**DirectTrajOpt.jl** provides abstractions and utilities for setting up and solving direct trajectory optimization problems of the form:
+**DirectTrajOpt.jl** provides a framework for setting up and solving direct trajectory optimization problems using nonlinear programming.
+
+## Problem Formulation
+
+DirectTrajOpt solves problems of the form:
 
 ```math
 \begin{align*}
-\underset{x_{1:N}, u_{1:N-1}}{\text{minimize}} \quad & J(x_{1:N}, u_{1:N-1}) \\
-\text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0\\
-& c_k(x_k, u_k) \geq 0 \\
-& x_1 = x_{\text{init}} \\
+\underset{x_{1:N}, u_{1:N}}{\text{minimize}} \quad & J(x_{1:N}, u_{1:N}) \\
+\text{subject to} \quad & f(x_{k+1}, x_k, u_k, \Delta t, t_k) = 0, \quad k = 1, \ldots, N-1\\
+& c_k(x_k, u_k) \geq 0, \quad k = 1, \ldots, N \\
+& x_1 = x_{\text{init}}, \quad x_N = x_{\text{goal}} \\
 \end{align*}
 ```
 
-where $J(x_{1:N}, u_{1:N-1})$ is a user-defined cost function, $f(x_{k+1}, x_k, u_k, \Delta t, t_k)$ is an *integrator* funtion encoding the dynamics of the system, and $c_k(x_k, u_k)$ are user-defined constraints.
+where:
+- `J(x, u)` is the objective function to minimize
+- `f(·)` represents system dynamics encoded via *integrators*
+- `c(·)` represents additional nonlinear constraints
+- `x` is the state trajectory
+- `u` is the control trajectory
 
-The underlying nonlinear solver is [Ipopt.jl](https://github.com/jump-dev/Ipopt.jl), which is a Julia interface to the [Ipopt](https://coin-or.github.io/Ipopt/) solver. 
+The underlying nonlinear solver is [Ipopt.jl](https://github.com/jump-dev/Ipopt.jl).
+
+## Installation
+
+```julia
+using Pkg
+Pkg.add("DirectTrajOpt")
+```
+
+## Quick Example
+
+```julia
+using DirectTrajOpt
+using NamedTrajectories
+
+# Define trajectory
+traj = NamedTrajectory(
+    (x = randn(2, 50), u = randn(1, 50), Δt = fill(0.1, 50));
+    timestep=:Δt,
+    controls=:u,
+    initial=(x = [0.0, 0.0],),
+    final=(x = [1.0, 0.0],)
+)
+
+# Define dynamics
+A = [-0.1 1.0; -1.0 -0.1]
+B = reshape([0.0, 1.0], 2, 1)
+integrator = BilinearIntegrator([A B], traj, :x, :u)
+
+# Define objective
+obj = QuadraticRegularizer(:u, traj, 1.0)
+
+# Create and solve problem
+prob = DirectTrajOptProblem(traj, obj, integrator)
+solve!(prob; max_iter=100)
+```
+
+## Key Features
+
+- **Flexible dynamics**: Define system evolution via integrators
+- **Modular objectives**: Combine multiple cost terms (regularization, minimum time, etc.)
+- **Constraint support**: Bounds, equality, and general nonlinear constraints  
+- **Automatic differentiation**: Efficient gradients and Hessians
+- **Sparse formulations**: Exploits problem structure for efficiency 
 
 
 ### Building Documentation

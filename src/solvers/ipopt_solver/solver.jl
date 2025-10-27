@@ -6,28 +6,35 @@ using Ipopt
 using TestItemRunner
 
 """
-   solve!(prob::DirectTrajOptProblem;
-        init_traj=nothing,
-        save_path=nothing,
-        max_iter=prob.ipopt_options.max_iter,
-        linear_solver=prob.ipopt_options.linear_solver,
-        print_level=prob.ipopt_options.print_level,
-        remove_slack_variables=false,
+    solve!(
+        prob::DirectTrajOptProblem;
+        options::IpoptOptions=IpoptOptions(),
+        max_iter::Int=options.max_iter,
+        verbose::Bool=true,
+        linear_solver::String=options.linear_solver,
+        print_level::Int=options.print_level,
         callback=nothing
-        # state_type=:unitary,
-        # print_fidelity=false,
     )
 
-    Call optimization solver to solve the quantum control problem with parameters and callbacks.
+Solve a direct trajectory optimization problem using Ipopt.
 
 # Arguments
-- `prob::DirectTrajOptProblem`: The quantum control problem to solve.
-- `init_traj::NamedTrajectory`: Initial guess for the control trajectory. If not provided, a random guess will be generated.
-- `save_path::String`: Path to save the problem after optimization.
+- `prob::DirectTrajOptProblem`: The trajectory optimization problem to solve.
+- `options::IpoptOptions`: Ipopt solver options. Default is `IpoptOptions()`.
 - `max_iter::Int`: Maximum number of iterations for the optimization solver.
-- `linear_solver::String`: Linear solver to use for the optimization solver (e.g., "mumps", "paradiso", etc).
-- `print_level::Int`: Verbosity level for the solver.
-- `callback::Function`: Callback function to call during optimization steps.
+- `verbose::Bool`: If `true`, print solver progress information.
+- `linear_solver::String`: Linear solver to use (e.g., "mumps", "pardiso", "ma27", "ma57", "ma77", "ma86", "ma97").
+- `print_level::Int`: Ipopt print level (0-12). Higher values provide more detailed output.
+- `callback::Function`: Optional callback function to execute during optimization.
+
+# Returns
+- `nothing`: The problem's trajectory is updated in place with the optimized solution.
+
+# Example
+```julia
+prob = DirectTrajOptProblem(trajectory, objective, dynamics)
+solve!(prob; max_iter=100, verbose=true)
+```
 """
 function DC.solve!(
     prob::DirectTrajOptProblem;
@@ -45,11 +52,7 @@ function DC.solve!(
     optimizer, variables = get_optimizer_and_variables(prob, options, callback, verbose=verbose)
     MOI.optimize!(optimizer)
 
-    # TODO: if `_callback_update_trajectory` is employed by default, then this call to `update_trajectory!` becomes superfluous.
     update_trajectory!(prob, optimizer, variables)
-
-    # TODO: this is broken, it mixes up component names
-    # remove_slack_variables!(prob)
 
     return nothing
 end
@@ -70,7 +73,7 @@ function remove_slack_variables!(prob::DirectTrajOptProblem)
 end
 
 function get_num_variables(prob::DirectTrajOptProblem)
-    n_vars = prob.trajectory.dim * prob.trajectory.T
+    n_vars = prob.trajectory.dim * prob.trajectory.N
 
     for global_vars_i ∈ values(prob.trajectory.global_data)
         n_global_vars = length(global_vars_i)
@@ -81,7 +84,7 @@ function get_num_variables(prob::DirectTrajOptProblem)
 end
 
 function get_nonlinear_constraints(prob)
-    n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.T - 1)
+    n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.N - 1)
 
     nl_cons = fill(MOI.NLPBoundsPair(0.0, 0.0), n_dynamics_constraints)
 
@@ -153,7 +156,7 @@ function set_variables!(
     optimizer::Ipopt.Optimizer,
     traj::NamedTrajectory
 )
-    data_dim = traj.dim * traj.T
+    data_dim = traj.dim * traj.N
 
     # add variables
     variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
@@ -229,7 +232,7 @@ end
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
 
-    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.T-1, equality=false)
+    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.N-1, equality=false)
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
 

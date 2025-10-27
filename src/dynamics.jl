@@ -52,9 +52,9 @@ function hessian_structure(
 end
 
 function get_full_hessian(μ∂²f::AbstractMatrix, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     μ∂²F = spzeros(Z_dim, Z_dim)
-    for k = 1:traj.T-1
+    for k = 1:traj.N-1
         μ∂²F[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= μ∂²f
     end
     return μ∂²F
@@ -65,17 +65,39 @@ end
 """
     TrajectoryDynamics
 
-A struct for trajectory optimization dynamics, represented by integrators that compute
-single time step dynamics, and functions for jacobians and hessians.
+Represents the dynamics of a trajectory optimization problem through integrators.
+
+This structure encapsulates the dynamics constraints that enforce consistency between
+consecutive time steps in the trajectory. It uses integrators to define how the state
+evolves from one time step to the next and provides automatic differentiation support
+through Jacobian and Hessian computations.
 
 # Fields
-- `integrators::Union{Nothing, Vector{<:AbstractIntegrator}}`: Vector of integrators.
-- `F!::Function`: Function to compute trajectory dynamics.
-- `∂F!::Function`: Function to compute the Jacobian of the dynamics.
-- `∂fs::Vector{SparseMatrixCSC{Float64, Int}}`: Vector of Jacobian matrices.
-- `μ∂²F!::Union{Function, Nothing}`: Function to compute the Hessian of the Lagrangian.
-- `μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}}`: Vector of Hessian matrices.
-- `dim::Int`: Total dimension of the dynamics.
+- `F!::Function`: In-place function computing dynamics violations δ = f(zₖ, zₖ₊₁)
+- `∂F!::Function`: In-place function computing Jacobian of dynamics
+- `∂fs::Vector{SparseMatrixCSC}`: Cached Jacobian matrices for each time step
+- `μ∂²F!::Function`: In-place function computing Hessian of Lagrangian
+- `μ∂²fs::Vector{SparseMatrixCSC}`: Cached Hessian matrices for each time step
+- `μ∂²F_structure::SparseMatrixCSC`: Sparsity structure of full trajectory Hessian
+- `dim::Int`: Total dimension of dynamics (sum of all integrator state dimensions)
+
+# Constructor
+```julia
+TrajectoryDynamics(
+    integrators::Vector{<:AbstractIntegrator},
+    traj::NamedTrajectory;
+    verbose=false
+)
+```
+
+Create trajectory dynamics from integrators and a trajectory structure.
+
+# Example
+```julia
+G = rand(2, 2)
+integrator = BilinearIntegrator(G, traj, :x, :u)
+dynamics = TrajectoryDynamics(integrator, traj)
+```
 """
 struct TrajectoryDynamics{F1, F2, F3} 
     F!::F1
@@ -86,15 +108,6 @@ struct TrajectoryDynamics{F1, F2, F3}
     μ∂²F_structure::SparseMatrixCSC{Float64, Int}
     dim::Int
 
-    """
-        TrajectoryDynamics(
-            integrators::Vector{<:AbstractIntegrator},
-            traj::NamedTrajectory;
-            verbose=false
-        )
-
-    Construct a `TrajectoryDynamics` object from a vector of integrators and a trajectory.
-    """
     function TrajectoryDynamics(
         integrators::Vector{<:AbstractIntegrator},
         traj::NamedTrajectory;
@@ -120,7 +133,7 @@ struct TrajectoryDynamics{F1, F2, F3}
             Z⃗::AbstractVector
         )
             for (integrator!, comps) ∈ zip(integrators, dynamics_comps)
-                Threads.@threads for k = 1:traj.T-1
+                Threads.@threads for k = 1:traj.N-1
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
                     integrator!(δ[slice(k, comps, dynamics_dim)], zₖ, zₖ₊₁, k)
@@ -134,7 +147,7 @@ struct TrajectoryDynamics{F1, F2, F3}
             Z⃗::AbstractVector
         )
             for (integrator, comps) ∈ zip(integrators, dynamics_comps)
-                Threads.@threads for k = 1:traj.T-1
+                Threads.@threads for k = 1:traj.N-1
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
                     jacobian!(∂fs[k][comps, :], integrator, zₖ, zₖ₊₁, k)
@@ -153,7 +166,7 @@ struct TrajectoryDynamics{F1, F2, F3}
                 μ∂²f .= 0.0
             end
             for (integrator, comps) ∈ zip(integrators, dynamics_comps)
-                Threads.@threads for k = 1:traj.T-1
+                Threads.@threads for k = 1:traj.N-1
                     zₖ = Z⃗[slice(k, traj.dim)]
                     zₖ₊₁ = Z⃗[slice(k + 1, traj.dim)]
                     μₖ = μ⃗[slice(k, comps, dynamics_dim)]
@@ -164,10 +177,10 @@ struct TrajectoryDynamics{F1, F2, F3}
         end
 
         ∂f_structure = jacobian_structure(integrators, traj)
-        ∂fs = [copy(∂f_structure) for _ = 1:traj.T-1]
+        ∂fs = [copy(∂f_structure) for _ = 1:traj.N-1]
 
         μ∂²f_structure = hessian_structure(integrators, traj)
-        μ∂²fs = [copy(μ∂²f_structure) for _ = 1:traj.T-1]
+        μ∂²fs = [copy(μ∂²f_structure) for _ = 1:traj.N-1]
 
         return new{typeof(F!), typeof(∂F!), typeof(μ∂²F!)}(
             F!,
@@ -203,18 +216,18 @@ function NullTrajectoryDynamics()
 end
 
 function get_full_jacobian(D::TrajectoryDynamics, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.T + traj.global_dim
-    ∂F = spzeros(D.dim * (traj.T - 1), Z_dim)
-    for k = 1:traj.T-1
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    ∂F = spzeros(D.dim * (traj.N - 1), Z_dim)
+    for k = 1:traj.N-1
         ∂F[slice(k, D.dim), slice(k, 1:2traj.dim, traj.dim)] += D.∂fs[k]
     end
     return ∂F
 end
 
 function get_full_hessian(D::TrajectoryDynamics, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     μ∂²F = spzeros(Z_dim, Z_dim)
-    for k = 1:traj.T-1
+    for k = 1:traj.N-1
         μ∂²F[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= D.μ∂²fs[k]
     end
     return μ∂²F
@@ -235,7 +248,7 @@ end
     D = TrajectoryDynamics(integrator, traj)
 
     F̂ = Z⃗ -> begin
-        δ = zeros(eltype(Z⃗), D.dim * (traj.T - 1))
+        δ = zeros(eltype(Z⃗), D.dim * (traj.N - 1))
         D.F!(δ, Z⃗)
         return δ
     end
@@ -248,7 +261,7 @@ end
 
     @test all(jacobian .≈ jacobian_autodiff)
 
-    μ = randn(D.dim * (traj.T - 1))
+    μ = randn(D.dim * (traj.N - 1))
 
     hessian_autodiff = ForwardDiff.hessian(Z⃗ -> μ'F̂(Z⃗), traj.datavec)
 
@@ -274,7 +287,7 @@ end
     D = TrajectoryDynamics(integrators, traj)
 
     F̂ = Z⃗ -> begin
-        δ = zeros(eltype(Z⃗), D.dim * (traj.T - 1))
+        δ = zeros(eltype(Z⃗), D.dim * (traj.N - 1))
         D.F!(δ, Z⃗)
         return δ
     end
@@ -285,7 +298,7 @@ end
 
     @test all(Dynamics.get_full_jacobian(D, traj) .≈ jacobian_autodiff)
 
-    μ = randn(D.dim * (traj.T - 1))
+    μ = randn(D.dim * (traj.N - 1))
 
     hessian_autodiff = ForwardDiff.hessian(Z⃗ -> μ'F̂(Z⃗), traj.datavec)
 

@@ -1,6 +1,6 @@
 export TimeDependentBilinearIntegrator
 
-using OrdinaryDiffEq
+using OrdinaryDiffEqTsit5
 using ForwardDiff
 
 # -------------------------------------------------------------------------------- #
@@ -28,7 +28,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         linear_spline::Bool = false
     ) where F <: Function
 
-        @assert traj.T > 1 "Trajectory must have at least two timesteps."
+        @assert traj.N > 1 "Trajectory must have at least two timesteps."
         
         function f!(dx, x_, p, τ)
             t_, Δt, u_ = p[1], p[2], p[3:end]
@@ -59,7 +59,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         Δt₀ = 1.0
         probs = [
             ODEProblem(f!, x₀, (0.0, 1.0), [t₀; Δt₀; u₀...])
-            for _ in 1:traj.T - 1
+            for _ in 1:traj.N - 1
         ]
 
         return new{F}(
@@ -82,7 +82,6 @@ end
     zₖ::AbstractVector,
     zₖ₊₁::AbstractVector,
     k::Int;
-    algorithm::OrdinaryDiffEq.OrdinaryDiffEqCore.OrdinaryDiffEqAlgorithm=Tsit5(),
     # atol=1e-6,
     # rtol=1e-6,
     kwargs...
@@ -101,7 +100,7 @@ end
     end
 
     probₖ = remake(B.probs[k], u0 = xₖ, p = pₖ)
-    solₖ = solve(probₖ, algorithm;  kwargs...)
+    solₖ = solve(probₖ, Tsit5();  kwargs...)
     δₖ[:] = xₖ₊₁ - solₖ[:, end]
 end
 

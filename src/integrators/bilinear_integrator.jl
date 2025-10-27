@@ -104,6 +104,48 @@ end
 # Bilinear Integrator
 # -------------------------------------------------------------------------------- #
 
+"""
+    BilinearIntegrator <: AbstractBilinearIntegrator
+
+Integrator for control-linear dynamics of the form ẋ = G(u)x.
+
+This integrator uses matrix exponential methods to compute accurate state transitions for
+bilinear systems where the system matrix depends linearly on the control input.
+
+# Fields
+- `G::Function`: Function mapping control u to system matrix G(u)
+- `x_comps::Vector{Int}`: Component indices for state variables
+- `u_comps::Vector{Int}`: Component indices for control variables  
+- `Δt_comp::Int`: Component index for time step
+- `z_dim::Int`: Total dimension of knot point
+- `x_dim::Int`: State dimension
+- `u_dim::Int`: Control dimension
+
+# Constructors
+```julia
+BilinearIntegrator(G::Function, traj::NamedTrajectory, x::Symbol, u::Symbol)
+BilinearIntegrator(G::Function, traj::NamedTrajectory, xs::Vector{Symbol}, u::Symbol)
+```
+
+# Arguments
+- `G`: Function taking control u and returning state matrix (x_dim × x_dim)
+- `traj`: NamedTrajectory containing the optimization variables
+- `x` or `xs`: State variable name(s)
+- `u`: Control variable name
+
+# Dynamics
+Computes the constraint: x_{k+1} - exp(Δt * G(u_k)) * x_k = 0
+
+# Example
+```julia
+# Linear dynamics: ẋ = (A + Σᵢ uᵢ Bᵢ) x
+A = [-0.1 1.0; -1.0 -0.1]
+B = [0.0 0.0; 0.0 1.0]
+G = u -> A + u[1] * B
+
+integrator = BilinearIntegrator(G, traj, :x, :u)
+```
+"""
 struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
     G::F
     x_comps::Vector{Int}

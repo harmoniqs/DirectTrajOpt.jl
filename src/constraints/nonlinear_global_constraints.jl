@@ -33,7 +33,7 @@ struct NonlinearGlobalConstraint <: AbstractNonlinearConstraint
         equality::Bool=true,
     )
         global_comps = vcat([traj.global_components[name] for name in global_names]...)
-        offset_global_comps = traj.dim * traj.T .+ global_comps
+        offset_global_comps = traj.dim * traj.N .+ global_comps
 
         g_eval = g(traj.global_data[global_comps])
         @assert g_eval isa AbstractVector{Float64}
@@ -97,9 +97,9 @@ function get_full_jacobian(
     NLC::NonlinearGlobalConstraint, 
     traj::NamedTrajectory
 )
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     ∂g_full = spzeros(NLC.dim, Z_dim)
-    ∂g_full[1:NLC.dim, traj.dim * traj.T + 1:Z_dim] = NLC.∂gs
+    ∂g_full[1:NLC.dim, traj.dim * traj.N + 1:Z_dim] = NLC.∂gs
     return ∂g_full
 end
 
@@ -107,9 +107,9 @@ function get_full_hessian(
     NLC::NonlinearGlobalConstraint, 
     traj::NamedTrajectory
 )
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     μ∂²g_full = spzeros(Z_dim, Z_dim)
-    g_comps = traj.dim * traj.T + 1:Z_dim
+    g_comps = traj.dim * traj.N + 1:Z_dim
     μ∂²g_full[g_comps, g_comps] = NLC.μ∂²gs
     return μ∂²g_full
 end
@@ -140,7 +140,7 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
         global_names::AbstractVector{Symbol},
         traj::NamedTrajectory,
         params::AbstractVector;
-        times::AbstractVector{Int}=1:traj.T,
+        times::AbstractVector{Int}=1:traj.N,
         equality::Bool=true,
         jacobian_structure::Union{Nothing, SparseMatrixCSC}=nothing,
         hessian_structure::Union{Nothing, SparseMatrixCSC}=nothing,
@@ -150,7 +150,7 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
         # collect the components and global components
         x_comps = vcat([traj.components[name] for name in names]...)
         global_comps = vcat([traj.global_components[name] for name in global_names]...)
-        offset_global_comps = traj.dim * traj.T .+ global_comps
+        offset_global_comps = traj.dim * traj.N .+ global_comps
 
         # append global data to the trajectory (each slice indexes into Z⃗, creating xg)
         xg_slices = [vcat(slice(t, x_comps, traj.dim), offset_global_comps) for t in times]
@@ -231,7 +231,7 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
         names::AbstractVector{Symbol},
         global_names::AbstractVector{Symbol},
         traj::NamedTrajectory;
-        times::AbstractVector{Int}=1:traj.T,
+        times::AbstractVector{Int}=1:traj.N,
         kwargs...
     )
         params = [nothing for _ in times]
@@ -257,8 +257,8 @@ function get_full_jacobian(
     NLC::NonlinearGlobalKnotPointConstraint, 
     traj::NamedTrajectory
 )
-    Z_dim = traj.dim * traj.T + traj.global_dim
-    global_slice = traj.dim * traj.T .+ (1:traj.global_dim)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    global_slice = traj.dim * traj.N .+ (1:traj.global_dim)
     ∂g_full = spzeros(NLC.dim, Z_dim) 
     for (i, (k, ∂gₖ)) ∈ enumerate(zip(NLC.times, NLC.∂gs))
         # Disjoint
@@ -272,8 +272,8 @@ function get_full_hessian(
     NLC::NonlinearGlobalKnotPointConstraint, 
     traj::NamedTrajectory
 )
-    Z_dim = traj.dim * traj.T + traj.global_dim
-    global_slice = traj.dim * traj.T .+ (1:traj.global_dim)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    global_slice = traj.dim * traj.N .+ (1:traj.global_dim)
     μ∂²g_full = spzeros(Z_dim, Z_dim)
     for (k, μ∂²gₖ) ∈ zip(NLC.times, NLC.μ∂²gs)
         # Overlapping
@@ -295,7 +295,7 @@ end
     g_dim = 1
 
     NLC = NonlinearGlobalConstraint(g_fn, :g, traj; equality=false)
-    G_DIM = traj.dim * traj.T .+ traj.global_components[:g]
+    G_DIM = traj.dim * traj.N .+ traj.global_components[:g]
 
     ĝ(Z⃗) = g_fn(Z⃗[G_DIM])
 
@@ -337,15 +337,15 @@ end
     end
 
     g_dim = 2
-    times = 1:traj.T
+    times = 1:traj.N
 
     NLC = NonlinearGlobalKnotPointConstraint(g_fn, [:u], [:g], traj; times=times, equality=false)
     U_DIM(k) = slice(k, traj.components[:u], traj.dim)
-    G_DIM = traj.dim * traj.T .+ traj.global_components[:g]
+    G_DIM = traj.dim * traj.N .+ traj.global_components[:g]
 
     ĝ(Z⃗) = vcat([g_fn(Z⃗[vcat(U_DIM(k), G_DIM)]) for k ∈ times]...)
 
-    δ = zeros(g_dim * traj.T)
+    δ = zeros(g_dim * traj.N)
 
     NLC.g!(δ, vec(traj))
 
@@ -363,7 +363,7 @@ end
 
     @test ∂g_full ≈ ∂g_autodiff
 
-    μ = randn(g_dim * traj.T)
+    μ = randn(g_dim * traj.N)
 
     NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
 

@@ -28,8 +28,8 @@ function GlobalObjective(
     traj::NamedTrajectory;
     Q::Float64=1.0
 )
-    Z_dim = traj.dim * traj.T + traj.global_dim
-    g_comps = vcat([traj.dim * traj.T .+ traj.global_components[name] for name in global_names]...)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    g_comps = vcat([traj.dim * traj.N .+ traj.global_components[name] for name in global_names]...)
     
     L(Z⃗::AbstractVector{<:Real}) = Q * ℓ(Z⃗[g_comps])
 
@@ -68,15 +68,15 @@ function GlobalKnotPointObjective(
     global_names::AbstractVector{Symbol},
     traj::NamedTrajectory,
     params::AbstractVector;
-    times::AbstractVector{Int}=1:traj.T,
-    Qs::AbstractVector{Float64}=ones(traj.T),
+    times::AbstractVector{Int}=1:traj.N,
+    Qs::AbstractVector{Float64}=ones(traj.N),
 )
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
 
-    Z_dim = traj.dim * traj.T + traj.global_dim
+    Z_dim = traj.dim * traj.N + traj.global_dim
     x_comps = vcat([traj.components[name] for name in names]...)
-    g_comps = vcat([traj.dim * traj.T .+ traj.global_components[name] for name in global_names]...)
+    g_comps = vcat([traj.dim * traj.N .+ traj.global_components[name] for name in global_names]...)
     
     xg_slices = [vcat([slice(t, x_comps, traj.dim), g_comps]...) for t in times]
     
@@ -143,7 +143,7 @@ function GlobalKnotPointObjective(
     names::AbstractVector{Symbol},
     global_names::AbstractVector{Symbol},
     traj::NamedTrajectory;
-    times::AbstractVector{Int}=1:traj.T,
+    times::AbstractVector{Int}=1:traj.N,
     kwargs...
 )
     params = [nothing for _ in times]
@@ -166,7 +166,7 @@ function TerminalObjective(
         global_names,
         traj;
         Qs=[Q],
-        times=[traj.T],
+        times=[traj.N],
         kwargs...
     )
 end
@@ -186,7 +186,7 @@ end
     Q = 2.0
 
     OBJ = GlobalObjective(L, :g, traj, Q=Q)
-    G_COMP = traj.dim * traj.T .+ traj.global_components[:g]
+    G_COMP = traj.dim * traj.N .+ traj.global_components[:g]
     L̂(Z⃗) = Q * L(Z⃗[G_COMP])
 
     @test OBJ.L(vec(traj)) ≈ L̂(vec(traj))
@@ -219,10 +219,10 @@ end
     end
 
     Qs = [1.0, 2.0]
-    times = [1, traj.T]
+    times = [1, traj.N]
 
     OBJ = GlobalKnotPointObjective(L, [:u], [:g], traj, times=times, Qs=Qs)
-    G_COMP = traj.dim * traj.T .+ traj.global_components[:g]
+    G_COMP = traj.dim * traj.N .+ traj.global_components[:g]
     U_COMP(k) = slice(k, traj.components[:u], traj.dim)
     L̂(Z⃗) = sum(Q * L(Z⃗[vcat(U_COMP(k), G_COMP)]) for (Q, k) ∈ zip(Qs, times))
 
