@@ -31,8 +31,7 @@ function test_integrator(
     show_hessian_diff=false,
     test_equality=true,
     atol=1e-5,
-    rtol=1e-5,
-    kwargs...
+    rtol=1e-5
 )
 
     z_dim = integrator.z_dim
@@ -49,7 +48,7 @@ function test_integrator(
 
     f̂ = zz -> begin
         δ = zeros(eltype(zz), x_dim)
-        integrator(δ, zz[1:z_dim], zz[z_dim+1:end], k; kwargs...)
+        integrator(δ, zz[1:z_dim], zz[z_dim+1:end], k)
         return δ
     end
 
