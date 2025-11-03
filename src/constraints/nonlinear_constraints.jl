@@ -67,22 +67,27 @@ struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
     )
         @assert length(params) == length(times) "params must have the same length as times"
 
+        # Compute component indices once for use in closures and structure setup
+        # This is in the closure, not pre-computed at call sites
         x_comps = vcat([traj.components[name] for name in names]...)
-        x_slices = [slice(t, x_comps, traj.dim) for t in times]
 
         # inspect view of knot point data
         Z⃗ = vec(traj)
-        @assert g(Z⃗[x_slices[1]], params[1]) isa AbstractVector{Float64}
-        g_dim = length(g(Z⃗[x_slices[1]], params[1]))
+        x_slice_test = slice(1, x_comps, traj.dim)
+        @assert g(Z⃗[x_slice_test], params[1]) isa AbstractVector{Float64}
+        g_dim = length(g(Z⃗[x_slice_test], params[1]))
 
+        # Evaluation functions compute slice indices dynamically at each timestep
         @views function g!(δ::AbstractVector, Z⃗::AbstractVector)
-            for (i, x_slice) ∈ enumerate(x_slices)
+            for (i, t) ∈ enumerate(times)
+                x_slice = slice(t, x_comps, traj.dim)
                 δ[slice(i, g_dim)] = g(Z⃗[x_slice], params[i])
             end
         end
 
         @views function ∂g!(∂gs::Vector{<:AbstractMatrix}, Z⃗::AbstractVector)
-            for (i, (x_slice, ∂g)) ∈ enumerate(zip(x_slices, ∂gs))
+            for (i, (t, ∂g)) ∈ enumerate(zip(times, ∂gs))
+                x_slice = slice(t, x_comps, traj.dim)
                 # Disjoint
                 ForwardDiff.jacobian!(
                     ∂g[:, x_comps], 
@@ -97,7 +102,8 @@ struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
             Z⃗::AbstractVector, 
             μ::AbstractVector
         )
-            for (i, (x_slice, μ∂²g)) ∈ enumerate(zip(x_slices, μ∂²gs))
+            for (i, (t, μ∂²g)) ∈ enumerate(zip(times, μ∂²gs))
+                x_slice = slice(t, x_comps, traj.dim)
                 # Disjoint
                 ForwardDiff.hessian!(
                     μ∂²g[x_comps, x_comps], 

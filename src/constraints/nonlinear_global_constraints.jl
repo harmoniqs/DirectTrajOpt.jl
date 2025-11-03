@@ -147,30 +147,32 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
     )
         @assert length(params) == length(times) "params must have the same length as times"
 
-        # collect the components and global components
+        # collect the components and global components (computed once for use in closures)
         x_comps = vcat([traj.components[name] for name in names]...)
         global_comps = vcat([traj.global_components[name] for name in global_names]...)
         offset_global_comps = traj.dim * traj.N .+ global_comps
-
-        # append global data to the trajectory (each slice indexes into Z⃗, creating xg)
-        xg_slices = [vcat(slice(t, x_comps, traj.dim), offset_global_comps) for t in times]
 
         # append global data comps to each knot point (indexes into knot points)
         xg_comps = vcat(x_comps, traj.dim .+ global_comps)
         z_dim = traj.dim + traj.global_dim
 
         Z⃗ = vec(traj)
-        @assert g(Z⃗[xg_slices[1]], params[1]) isa AbstractVector{Float64}
-        g_dim = length(g(Z⃗[xg_slices[1]], params[1]))
+        # Test with first timestep
+        xg_slice_test = vcat(slice(1, x_comps, traj.dim), offset_global_comps)
+        @assert g(Z⃗[xg_slice_test], params[1]) isa AbstractVector{Float64}
+        g_dim = length(g(Z⃗[xg_slice_test], params[1]))
 
+        # Evaluation functions compute slice indices dynamically at each timestep
         @views function g!(δ::AbstractVector, Z⃗::AbstractVector)
-            for (i, xg_slice) ∈ enumerate(xg_slices)
+            for (i, t) ∈ enumerate(times)
+                xg_slice = vcat(slice(t, x_comps, traj.dim), offset_global_comps)
                 δ[slice(i, g_dim)] = g(Z⃗[xg_slice], params[i])
             end
         end
 
         @views function ∂g!(∂gs::Vector{<:AbstractMatrix}, Z⃗::AbstractVector)
-            for (i, (xg_slice, ∂g)) ∈ enumerate(zip(xg_slices, ∂gs))
+            for (i, (t, ∂g)) ∈ enumerate(zip(times, ∂gs))
+                xg_slice = vcat(slice(t, x_comps, traj.dim), offset_global_comps)
                 # Disjoint
                 ForwardDiff.jacobian!(
                     ∂g[:, xg_comps], 
@@ -185,7 +187,8 @@ struct NonlinearGlobalKnotPointConstraint <: AbstractNonlinearConstraint
             Z⃗::AbstractVector, 
             μ::AbstractVector
         )
-            for (i, (xg_slice, μ∂²g)) ∈ enumerate(zip(xg_slices, μ∂²gs))
+            for (i, (t, μ∂²g)) ∈ enumerate(zip(times, μ∂²gs))
+                xg_slice = vcat(slice(t, x_comps, traj.dim), offset_global_comps)
                 # Disjoint
                 ForwardDiff.hessian!(
                     μ∂²g[xg_comps, xg_comps], 

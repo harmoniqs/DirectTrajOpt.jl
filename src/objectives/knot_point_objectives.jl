@@ -87,12 +87,13 @@ function KnotPointObjective(
     @assert length(params) == length(times) "params must have the same length as times"
 
     Z_dim = traj.dim * traj.N + traj.global_dim
+    # Compute component indices once for use in closures
     x_comps = vcat([traj.components[name] for name in names]...)
-    x_slices = [slice(t, x_comps, traj.dim) for t in times]
 
     function L(Z⃗::AbstractVector{<:Real})
         loss = 0.0
-        for (i, x_slice) in enumerate(x_slices)
+        for (i, t) in enumerate(times)
+            x_slice = slice(t, x_comps, traj.dim)
             x = Z⃗[x_slice]
             loss += Qs[i] * ℓ(x, params[i])
         end
@@ -101,7 +102,8 @@ function KnotPointObjective(
 
     @views function ∇L(Z⃗::AbstractVector{<:Real})
         ∇ = zeros(Z_dim)
-        for (i, x_slice) in enumerate(x_slices)
+        for (i, t) in enumerate(times)
+            x_slice = slice(t, x_comps, traj.dim)
             # Disjoint
             ForwardDiff.gradient!(
                 ∇[x_slice], 
@@ -114,7 +116,8 @@ function KnotPointObjective(
 
     function ∂²L_structure()
         structure = spzeros(Z_dim, Z_dim)
-        for x_slice in x_slices
+        for t in times
+            x_slice = slice(t, x_comps, traj.dim)
             structure[x_slice, x_slice] .= 1.0
         end
         structure_pairs = collect(zip(findnz(structure)[1:2]...))
@@ -124,7 +127,8 @@ function KnotPointObjective(
     @views function ∂²L(Z⃗::AbstractVector{<:Real})
         ∂²L_values = zeros(length(∂²L_structure()))
         ∂²ℓ_length = length(x_comps)^2
-        for (i, x_slice) in enumerate(x_slices)
+        for (i, t) in enumerate(times)
+            x_slice = slice(t, x_comps, traj.dim)
             # Disjoint
             ForwardDiff.hessian!(
                 ∂²L_values[(i - 1) * ∂²ℓ_length + 1:i * ∂²ℓ_length],

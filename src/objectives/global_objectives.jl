@@ -75,14 +75,14 @@ function GlobalKnotPointObjective(
     @assert length(params) == length(times) "params must have the same length as times"
 
     Z_dim = traj.dim * traj.N + traj.global_dim
+    # Compute component indices once for use in closures
     x_comps = vcat([traj.components[name] for name in names]...)
     g_comps = vcat([traj.dim * traj.N .+ traj.global_components[name] for name in global_names]...)
     
-    xg_slices = [vcat([slice(t, x_comps, traj.dim), g_comps]...) for t in times]
-    
     function L(Z⃗::AbstractVector{<:Real})
         loss = 0.0
-        for (i, xg_slice) in enumerate(xg_slices)
+        for (i, t) in enumerate(times)
+            xg_slice = vcat(slice(t, x_comps, traj.dim), g_comps)
             loss += Qs[i] * ℓ(Z⃗[xg_slice], params[i])
         end
         return loss
@@ -90,16 +90,18 @@ function GlobalKnotPointObjective(
 
     @views function ∇L(Z⃗::AbstractVector{<:Real})
         ∇ = zeros(Z_dim)
-        for (i, x_slice) in enumerate(xg_slices)
+        for (i, t) in enumerate(times)
+            xg_slice = vcat(slice(t, x_comps, traj.dim), g_comps)
             # Global parameters are shared
-            ∇[x_slice] .+= ForwardDiff.gradient(xg -> Qs[i] * ℓ(xg, params[i]), Z⃗[x_slice])
+            ∇[xg_slice] .+= ForwardDiff.gradient(xg -> Qs[i] * ℓ(xg, params[i]), Z⃗[xg_slice])
         end
         return ∇
     end
 
     function ∂²L_structure()
         structure = spzeros(Z_dim, Z_dim)
-        for xg_slice in xg_slices
+        for t in times
+            xg_slice = vcat(slice(t, x_comps, traj.dim), g_comps)
             structure[xg_slice, xg_slice] .= 1.0
         end
         structure_pairs = collect(zip(findnz(structure)[1:2]...))
@@ -115,8 +117,11 @@ function GlobalKnotPointObjective(
         
         # Build a mapping from slice to structure
         structure_map = [
-            [structure_pairs[(i, j)] for j in xg_slice for i in xg_slice]
-            for xg_slice in xg_slices
+            begin
+                xg_slice = vcat(slice(t, x_comps, traj.dim), g_comps)
+                [structure_pairs[(i, j)] for j in xg_slice for i in xg_slice]
+            end
+            for t in times
         ]
         return structure_map
     end
@@ -127,7 +132,8 @@ function GlobalKnotPointObjective(
 
     @views function ∂²L(Z⃗::AbstractVector{<:Real})
         ∂²L_values = zeros(∂²L_structure_length)
-        for (i, xg_slice) in enumerate(xg_slices)
+        for (i, t) in enumerate(times)
+            xg_slice = vcat(slice(t, x_comps, traj.dim), g_comps)
             ∂²ℓ = ForwardDiff.hessian(xg -> Qs[i] * ℓ(xg, params[i]), Z⃗[xg_slice])
             # Global parameters are shared
             ∂²L_values[∂²L_slices[i]] .+= ∂²ℓ[:]
