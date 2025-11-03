@@ -22,7 +22,7 @@ A direct trajectory optimization problem containing all information needed for s
 # Fields
 - `trajectory::NamedTrajectory`: The trajectory containing optimization variables and data
 - `objective::Objective`: The objective function to minimize
-- `dynamics::TrajectoryDynamics`: The system dynamics (integrators)
+- `integrators::Vector{<:AbstractIntegrator}`: The integrators defining system dynamics
 - `constraints::Vector{<:AbstractConstraint}`: Constraints on the trajectory
 
 # Constructors
@@ -37,6 +37,7 @@ DirectTrajOptProblem(
 
 Create a problem from a trajectory, objective, and integrators. Trajectory constraints
 (initial, final, bounds) are automatically extracted and added to the constraint list.
+The dynamics object is created by the evaluator at solve time.
 
 # Example
 ```julia
@@ -49,7 +50,7 @@ prob = DirectTrajOptProblem(traj, obj, integrator)
 mutable struct DirectTrajOptProblem
     trajectory::NamedTrajectory
     objective::Objective
-    dynamics::TrajectoryDynamics
+    integrators::Vector{<:AbstractIntegrator}
     constraints::Vector{<:AbstractConstraint}
 end
 
@@ -59,10 +60,9 @@ function DirectTrajOptProblem(
     integrators::Vector{<:AbstractIntegrator};
     constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
 )
-    dynamics = TrajectoryDynamics(integrators, traj)
     traj_constraints = get_trajectory_constraints(traj)
     append!(constraints, traj_constraints)
-    return DirectTrajOptProblem(traj, obj, dynamics, constraints)
+    return DirectTrajOptProblem(traj, obj, integrators, constraints)
 end
 
 function DirectTrajOptProblem(
@@ -137,7 +137,6 @@ function get_trajectory_constraints(traj::NamedTrajectory)
 
     return cons
 end
-
 
 function Base.show(io::IO, prob::DirectTrajOptProblem)
     println(io, "DirectTrajOptProblem")

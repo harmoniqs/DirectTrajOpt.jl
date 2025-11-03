@@ -1,67 +1,63 @@
 export DerivativeIntegrator
 
 struct DerivativeIntegrator <: AbstractIntegrator
-    x_comps::Vector{Int} # e.g. a
-    u_comps::Vector{Int} # e.g. ȧ 
-    Δt_comp::Int
-    z_dim::Int
-    x_dim::Int
-    u_dim::Int
+    x_name::Symbol
+    ẋ_name::Symbol
 
     function DerivativeIntegrator(
         traj::NamedTrajectory,
         x::Symbol,
-        ẋ::Symbol
+        ẋ::Symbol
     )
-        @assert traj.dims[x] == traj.dims[ẋ]
+        @assert traj.dims[x] == traj.dims[ẋ]
 
         return new(
-            traj.components[x],
-            traj.components[ẋ],
-            traj.components[traj.timestep][1],
-            traj.dim,
-            traj.dims[x],
-            traj.dims[ẋ]
+            x,
+            ẋ
         )
     end
 end
 
 function (D::DerivativeIntegrator)(
     δₖ::AbstractVector,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector,
+    zₖ::KnotPoint,
+    zₖ₊₁::KnotPoint,
     k::Int
 )
-    aₖ = zₖ[D.x_comps]
-    ȧₖ = zₖ[D.u_comps]
-    Δtₖ = zₖ[D.Δt_comp]
-    aₖ₊₁ = zₖ₊₁[D.x_comps]
-    δₖ .= aₖ₊₁ - aₖ - Δtₖ * ȧₖ
+    aₖ = zₖ[D.x_name]
+    ȧₖ = zₖ[D.ẋ_name]
+    Δtₖ = zₖ.timestep
+    aₖ₊₁ = zₖ₊₁[D.x_name]
+    δₖ .= aₖ₊₁ - aₖ - Δtₖ * ȧₖ
     return nothing
 end
 
 function jacobian!(
     ∂D::AbstractMatrix,
     D::DerivativeIntegrator,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector,
+    zₖ::KnotPoint,
+    zₖ₊₁::KnotPoint,
     k::Int
 )
-    # ∂ẋₖD 
-    Δtₖ = zₖ[D.Δt_comp]
-    ∂D[:, D.u_comps] = -Δtₖ * I(D.x_dim)
+    # ∂ẋₖD 
+    Δtₖ = zₖ.timestep
+    ẋ_comps = zₖ.components[D.ẋ_name]
+    x_dim = length(zₖ[D.x_name])
+    ∂D[:, ẋ_comps] = -Δtₖ * I(x_dim)
 
     # ∂ΔtₖD
-    ẋₖ = zₖ[D.u_comps]
-    ∂D[:, D.Δt_comp] = -ẋₖ
+    ẋₖ = zₖ[D.ẋ_name]
+    Δt_comp = zₖ.components[zₖ.names[findfirst(==(:Δt), zₖ.names)]][1]
+    ∂D[:, Δt_comp] = -ẋₖ
     return nothing
 end
 
-function jacobian_structure(D::DerivativeIntegrator)
-    x_dim = D.x_dim
-    z_dim = D.z_dim
-    x_comps = D.x_comps
-    ẋ_comps = D.u_comps
+function jacobian_structure(D::DerivativeIntegrator, traj::NamedTrajectory)
+    x_dim = traj.dims[D.x_name]
+    z_dim = traj.dim
+    x_comps = traj.components[D.x_name]
+    ẋ_comps = traj.components[D.ẋ_name]
+    Δt_comp = traj.components[traj.timestep][1]
 
     ∂D = spzeros(x_dim, 2 * z_dim)
 
@@ -75,10 +71,10 @@ function jacobian_structure(D::DerivativeIntegrator)
 
     # dynamic (updated)
 
-    # ∂ẋₖD
-    ∂D[:, ẋ_comps] = I(x_dim)
+    # ∂ẋₖD
+    ∂D[:, ẋ_comps] = I(x_dim)
     # ∂ΔtₖD
-    ∂D[:, D.Δt_comp] = ones(x_dim) 
+    ∂D[:, Δt_comp] = ones(x_dim) 
 
     return ∂D
 end
@@ -86,23 +82,31 @@ end
 function hessian_of_lagrangian(
     D::DerivativeIntegrator,
     μₖ::AbstractVector,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector,
+    zₖ::KnotPoint,
+    zₖ₊₁::KnotPoint,
     k::Int
 )
-    μ∂²D = spzeros(2D.z_dim, 2D.z_dim)
+    z_dim = length(zₖ.data)
+    ẋ_comps = zₖ.components[D.ẋ_name]
+    Δt_comp = zₖ.components[zₖ.names[findfirst(==(:Δt), zₖ.names)]][1]
+    
+    μ∂²D = spzeros(2z_dim, 2z_dim)
 
-    # μ∂Δtₖ∂ẋₖD
-    μ∂²D[D.u_comps, D.Δt_comp] += -μₖ 
-    # μ∂²D[D.Δt_comp, D.u_comps] += -μₖ
+    # μ∂Δtₖ∂ẋₖD
+    μ∂²D[ẋ_comps, Δt_comp] += -μₖ 
+    # μ∂²D[Δt_comp, ẋ_comps] += -μₖ
 
     return μ∂²D
 end
 
-function hessian_structure(D::DerivativeIntegrator) 
-    μ∂²D = spzeros(2D.z_dim, 2D.z_dim) 
-    μ∂²D[D.u_comps, D.Δt_comp] .= 1
-    # μ∂²D[D.Δt_comp, D.u_comps] .= 1
+function hessian_structure(D::DerivativeIntegrator, traj::NamedTrajectory) 
+    z_dim = traj.dim
+    ẋ_comps = traj.components[D.ẋ_name]
+    Δt_comp = traj.components[traj.timestep][1]
+    
+    μ∂²D = spzeros(2z_dim, 2z_dim) 
+    μ∂²D[ẋ_comps, Δt_comp] .= 1
+    # μ∂²D[Δt_comp, ẋ_comps] .= 1
     return μ∂²D
 end
 
@@ -110,5 +114,5 @@ end
     include("../../test/test_utils.jl")
     traj = named_trajectory_type_1()
     D = DerivativeIntegrator(traj, :a, :da)
-    test_integrator(D)
+    test_integrator(D, traj)
 end

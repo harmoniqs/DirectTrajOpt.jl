@@ -10,13 +10,9 @@ using ForwardDiff
 struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     G::F
     probs::Vector{ODEProblem}
-    x_comps::Vector{Int}
-    u_comps::Vector{Int}
-    t_comp::Int
-    Δt_comp::Int
-    z_dim::Int
-    x_dim::Int
-    u_dim::Int
+    x_name::Symbol
+    u_name::Symbol
+    t_name::Symbol
     linear_spline::Bool
 
     function TimeDependentBilinearIntegrator(
@@ -43,11 +39,10 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
             return nothing
         end
 
-        x_comp = traj.components[x]
-        u_comp = traj.components[u]
+        x_dim = traj.dims[x]
         u_dim = traj.dims[u]
 
-        x₀ = zeros(length(x_comp))
+        x₀ = zeros(x_dim)
 
         if linear_spline
             u₀ = zeros(2u_dim)
@@ -65,13 +60,9 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         return new{F}(
             G,
             probs,
-            x_comp,
-            u_comp,
-            traj.components[t][1],
-            traj.components[traj.timestep][1],
-            traj.dim,
-            traj.dims[x],
-            traj.dims[u],
+            x,
+            u,
+            t,
             linear_spline
         )
     end
@@ -79,19 +70,19 @@ end
 
 @views function (B::TimeDependentBilinearIntegrator)(
     δₖ::AbstractVector,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector,
+    zₖ::KnotPoint,
+    zₖ₊₁::KnotPoint,
     k::Int;
     # atol=1e-6,
     # rtol=1e-6,
     kwargs...
 )
-    xₖ = zₖ[B.x_comps]
-    xₖ₊₁ = zₖ₊₁[B.x_comps]
-    uₖ = zₖ[B.u_comps]
-    uₖ₊₁ = zₖ₊₁[B.u_comps]
-    tₖ = zₖ[B.t_comp]
-    Δtₖ = zₖ[B.Δt_comp]
+    xₖ = zₖ[B.x_name]
+    xₖ₊₁ = zₖ₊₁[B.x_name]
+    uₖ = zₖ[B.u_name]
+    uₖ₊₁ = zₖ₊₁[B.u_name]
+    tₖ = zₖ[B.t_name]
+    Δtₖ = zₖ.timestep
 
     if B.linear_spline
         pₖ = [tₖ; Δtₖ; uₖ; uₖ₊₁]
@@ -104,16 +95,16 @@ end
     δₖ[:] = xₖ₊₁ - solₖ[:, end]
 end
 
-function jacobian_structure(B::TimeDependentBilinearIntegrator)
+function jacobian_structure(B::TimeDependentBilinearIntegrator, traj::NamedTrajectory)
 
-    z_dim = B.z_dim
-    x_dim = B.x_dim
-    u_dim = B.u_dim
+    z_dim = traj.dim
+    x_dim = traj.dims[B.x_name]
+    u_dim = traj.dims[B.u_name]
 
-    x_comps = B.x_comps
-    u_comps = B.u_comps
-    t_comp = B.t_comp
-    Δt_comp = B.Δt_comp
+    x_comps = traj.components[B.x_name]
+    u_comps = traj.components[B.u_name]
+    t_comp = traj.components[B.t_name][1]
+    Δt_comp = traj.components[traj.timestep][1]
 
     ∂f = spzeros(x_dim, 2 * z_dim)
 
@@ -138,17 +129,23 @@ function jacobian_structure(B::TimeDependentBilinearIntegrator)
     return ∂f
 end
 
-function hessian_structure(B::TimeDependentBilinearIntegrator)
+function hessian_structure(B::TimeDependentBilinearIntegrator, traj::NamedTrajectory)
+
+    z_dim = traj.dim
+    t_comp = traj.components[B.t_name][1]
+    Δt_comp = traj.components[traj.timestep][1]
+    u_comps = traj.components[B.u_name]
+    x_comps = traj.components[B.x_name]
 
     if B.linear_spline
-        p_comps = [B.t_comp; B.Δt_comp; B.u_comps; B.z_dim .+ B.u_comps]
+        p_comps = [t_comp; Δt_comp; u_comps; z_dim .+ u_comps]
     else
-        p_comps = [B.t_comp; B.Δt_comp; B.u_comps]
+        p_comps = [t_comp; Δt_comp; u_comps]
     end
 
-    μ∂²f = spzeros(2 * B.z_dim, 2 * B.z_dim)
+    μ∂²f = spzeros(2 * z_dim, 2 * z_dim)
 
-    μ∂²f[B.x_comps, p_comps] .= 1.0
+    μ∂²f[x_comps, p_comps] .= 1.0
 
     μ∂²f[p_comps, p_comps] .= 1.0
 
@@ -157,7 +154,7 @@ end
 
 # ============================================================================ #
 
-@testitem "testing zoh TimeDependentBilinearIntegrator" begin
+@testitem "testing TimeDependentBilinearIntegrator" begin
     include("../../test/test_utils.jl")
 
     G, traj = bilinear_dynamics_and_trajectory(add_time=true)
@@ -166,6 +163,6 @@ end
     B = TimeDependentBilinearIntegrator((a, t) -> G(a), traj, :x, :u, :t)
 
     test_integrator(
-        B, test_equality=false, atol=0.0, rtol=5e-2, reltol=1e-6, abstol=1e-6
+        B, traj, test_equality=false, rtol=1e-5, atol=1e-5
     )
 end

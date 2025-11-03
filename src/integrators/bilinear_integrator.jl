@@ -13,28 +13,61 @@ abstract type AbstractBilinearIntegrator <: AbstractIntegrator end
 @views function jacobian!(
     ∂f::AbstractMatrix,
     B!::AbstractBilinearIntegrator,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector,
+    zₖ::KnotPoint,
+    zₖ₊₁::KnotPoint,
     k::Int
 )
+    # Extract data vectors from KnotPoints for ForwardDiff
+    zₖ_vec = zₖ.data
+    zₖ₊₁_vec = zₖ₊₁.data
+    z_dim = length(zₖ_vec)
+    
+    # Get the timestep component index (assumes it's named :Δt or traj.timestep)
+    # The timestep is stored in the data vector at a specific component
+    timestep_indices = zₖ.components[zₖ.names[findfirst(==(:Δt), zₖ.names)]]
+    timestep_idx = first(timestep_indices)
+    
     ForwardDiff.jacobian!(
         ∂f,
-        (δ, zz) -> B!(δ, zz[1:B!.z_dim], zz[B!.z_dim+1:end], k),
-        zeros(B!.x_dim),
-        [zₖ; zₖ₊₁]
+        (δ, zz) -> begin
+            # Reconstruct KnotPoints from concatenated vector for integrator call
+            # Extract timestep from the data vector
+            Δt_k = zz[timestep_idx]
+            Δt_k₊₁ = zz[z_dim + timestep_idx]
+            
+            zₖ_temp = KnotPoint(
+                zₖ.t, 
+                view(zz, 1:z_dim), 
+                Δt_k,
+                zₖ.components, 
+                zₖ.names, 
+                zₖ.control_names
+            )
+            zₖ₊₁_temp = KnotPoint(
+                zₖ₊₁.t, 
+                view(zz, z_dim+1:2*z_dim), 
+                Δt_k₊₁,
+                zₖ₊₁.components, 
+                zₖ₊₁.names, 
+                zₖ₊₁.control_names
+            )
+            B!(δ, zₖ_temp, zₖ₊₁_temp, k)
+        end,
+        zeros(length(zₖ[B!.x_name])),
+        [zₖ_vec; zₖ₊₁_vec]
     )
     return nothing
 end
 
-function jacobian_structure(B::AbstractBilinearIntegrator)
+function jacobian_structure(B::AbstractBilinearIntegrator, traj::NamedTrajectory)
 
-    z_dim = B.z_dim
-    x_dim = B.x_dim
-    u_dim = B.u_dim
+    z_dim = traj.dim
+    x_dim = traj.dims[B.x_name]
+    u_dim = traj.dims[B.u_name]
 
-    x_comps = B.x_comps
-    u_comps = B.u_comps
-    Δt_comp = B.Δt_comp
+    x_comps = traj.components[B.x_name]
+    u_comps = traj.components[B.u_name]
+    Δt_comp = traj.components[traj.timestep][1]
 
     ∂f = spzeros(x_dim, 2 * z_dim)
 
@@ -57,30 +90,61 @@ end
 @views function hessian_of_lagrangian(
     B!::AbstractBilinearIntegrator,
     μₖ::AbstractVector,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector,
+    zₖ::KnotPoint,
+    zₖ₊₁::KnotPoint,
     k::Int
 )
+    # Extract data vectors from KnotPoints for ForwardDiff
+    zₖ_vec = zₖ.data
+    zₖ₊₁_vec = zₖ₊₁.data
+    z_dim = length(zₖ_vec)
+    
+    # Get the timestep component index
+    timestep_indices = zₖ.components[zₖ.names[findfirst(==(:Δt), zₖ.names)]]
+    timestep_idx = first(timestep_indices)
+    
     return ForwardDiff.hessian(
         zz -> begin
-            δ = zeros(eltype(zz), B!.x_dim)
-            B!(δ, zz[1:B!.z_dim], zz[B!.z_dim+1:end], k)
+            δ = zeros(eltype(zz), length(zₖ[B!.x_name]))
+            # Extract timestep from the data vector
+            Δt_k = zz[timestep_idx]
+            Δt_k₊₁ = zz[z_dim + timestep_idx]
+            
+            # Reconstruct KnotPoints from concatenated vector
+            zₖ_temp = KnotPoint(
+                zₖ.t, 
+                view(zz, 1:z_dim), 
+                Δt_k,
+                zₖ.components, 
+                zₖ.names, 
+                zₖ.control_names
+            )
+            zₖ₊₁_temp = KnotPoint(
+                zₖ₊₁.t, 
+                view(zz, z_dim+1:2*z_dim), 
+                Δt_k₊₁,
+                zₖ₊₁.components, 
+                zₖ₊₁.names, 
+                zₖ₊₁.control_names
+            )
+            B!(δ, zₖ_temp, zₖ₊₁_temp, k)
             return μₖ'δ
         end,
-        [zₖ; zₖ₊₁]
+        [zₖ_vec; zₖ₊₁_vec]
     )
 end
 
-function hessian_structure(B::AbstractBilinearIntegrator)
+function hessian_structure(B::AbstractBilinearIntegrator, traj::NamedTrajectory)
 
-    x_comps = B.x_comps
-    u_comps = B.u_comps
-    Δt_comp = B.Δt_comp
+    x_comps = traj.components[B.x_name]
+    u_comps = traj.components[B.u_name]
+    Δt_comp = traj.components[traj.timestep][1]
 
-    x_dim = B.x_dim
-    u_dim = B.u_dim
+    x_dim = traj.dims[B.x_name]
+    u_dim = traj.dims[B.u_name]
+    z_dim = traj.dim
 
-    μ∂²f = spzeros(2 * B.z_dim, 2 * B.z_dim)
+    μ∂²f = spzeros(2 * z_dim, 2 * z_dim)
 
     # μ∂ₓₖ∂ᵤf & μ∂ᵤ∂ₓₖf
     μ∂²f[x_comps, u_comps] = ones(x_dim, u_dim)
@@ -148,54 +212,38 @@ integrator = BilinearIntegrator(G, traj, :x, :u)
 """
 struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
     G::F
-    x_comps::Vector{Int}
-    u_comps::Vector{Int}
-    Δt_comp::Int
-    z_dim::Int
-    x_dim::Int
-    u_dim::Int
+    x_name::Symbol
+    u_name::Symbol
 
     function BilinearIntegrator(
         G::F,
         traj::NamedTrajectory,
-        xs::AbstractVector{Symbol},
+        x::Symbol,
         u::Symbol
     ) where F <: Function
-        x_dim = sum(traj.dims[x] for x in xs)
+        x_dim = traj.dims[x]
         u_dim = traj.dims[u]
 
         @assert size(G(ones(u_dim))) == (x_dim, x_dim)
 
-        x_comps = vcat([traj.components[x] for x in xs]...)
-        u_comps = traj.components[u]
-        Δt_comp = traj.components[traj.timestep][1]
-
         return new{F}(
             G,
-            x_comps,
-            u_comps,
-            Δt_comp,
-            traj.dim,
-            x_dim,
-            u_dim
+            x,
+            u
         )
-    end
-
-    function BilinearIntegrator(G::Function, traj::NamedTrajectory, x::Symbol, u::Symbol)
-        BilinearIntegrator(G, traj, [x], u)
     end
 end
 
 @views function (B::BilinearIntegrator)(
     δₖ::AbstractVector,
-    zₖ::AbstractVector,
-    zₖ₊₁::AbstractVector,
+    zₖ::KnotPoint,
+    zₖ₊₁::KnotPoint,
     k::Int
 )
-    xₖ₊₁ = zₖ₊₁[B.x_comps]
-    xₖ = zₖ[B.x_comps]
-    uₖ = zₖ[B.u_comps]
-    Δtₖ = zₖ[B.Δt_comp]
+    xₖ = zₖ[B.x_name]
+    xₖ₊₁ = zₖ₊₁[B.x_name]
+    uₖ = zₖ[B.u_name]
+    Δtₖ = zₖ.timestep
     δₖ[:] = xₖ₊₁ - expv(Δtₖ, B.G(uₖ), xₖ)
 end
 
@@ -207,6 +255,6 @@ end
 
     B = BilinearIntegrator(G, traj, :x, :u)
 
-    test_integrator(B, atol=1e-3)
+    test_integrator(B, traj, atol=1e-3)
 end
 

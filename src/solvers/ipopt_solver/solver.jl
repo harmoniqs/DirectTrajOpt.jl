@@ -84,7 +84,20 @@ function get_num_variables(prob::DirectTrajOptProblem)
 end
 
 function get_nonlinear_constraints(prob)
-    n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.N - 1)
+    # Compute dynamics dimension from integrators (same as TrajectoryDynamics does)
+    dynamics_dim = 0
+    # TODO: this is hacky as time integrator is being checked for, which should really bea linear constraint
+    for integrator in prob.integrators
+        # Get the state dimension from the trajectory using the integrator's x_name or t_name
+        if hasfield(typeof(integrator), :x_name)
+            dynamics_dim += prob.trajectory.dims[integrator.x_name]
+        elseif hasfield(typeof(integrator), :t_name)
+            dynamics_dim += prob.trajectory.dims[integrator.t_name]
+        else
+            error("Integrator type $(typeof(integrator)) must have either x_name or t_name field")
+        end
+    end
+    n_dynamics_constraints = dynamics_dim * (prob.trajectory.N - 1)
 
     nl_cons = fill(MOI.NLPBoundsPair(0.0, 0.0), n_dynamics_constraints)
 
@@ -110,7 +123,7 @@ function get_optimizer_and_variables(
     end
 
     # get evaluator
-    evaluator = IpoptEvaluator(prob; eval_hessian=options.eval_hessian)
+    evaluator = IpoptEvaluator(prob; eval_hessian=options.eval_hessian, verbose=verbose)
 
     # get the MOI specific nonlinear constraints
     nl_cons = get_nonlinear_constraints(prob)

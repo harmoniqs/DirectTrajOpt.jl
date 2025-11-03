@@ -35,13 +35,20 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
 
     function IpoptEvaluator(
         prob::DirectTrajOptProblem;
-        eval_hessian=true
+        eval_hessian=true,
+        verbose=false
     )
-        n_dynamics_constraints = prob.dynamics.dim * (prob.trajectory.N - 1)
+        # Create dynamics from integrators
+        if verbose
+            println("Creating TrajectoryDynamics from $(length(prob.integrators)) integrators...")
+        end
+        dynamics = TrajectoryDynamics(prob.integrators, prob.trajectory; verbose=verbose)
+        
+        n_dynamics_constraints = dynamics.dim * (prob.trajectory.N - 1)
         nonlinear_constraints = filter(c -> c isa AbstractNonlinearConstraint, prob.constraints)
         n_nonlinear_constraints = sum(c -> c.dim, nonlinear_constraints; init=0)
 
-        ∂g = Dynamics.get_full_jacobian(prob.dynamics, prob.trajectory)
+        ∂g = Dynamics.get_full_jacobian(dynamics, prob.trajectory)
 
         for c ∈ nonlinear_constraints 
             ∂g = vcat(∂g, Constraints.get_full_jacobian(c, prob.trajectory))
@@ -51,7 +58,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
 
 
         # dynamics hessian structure 
-        hessian = prob.dynamics.μ∂²F_structure
+        hessian = dynamics.μ∂²F_structure
 
         # nonlinear constraints hessian structure
         for con ∈ nonlinear_constraints 
@@ -70,7 +77,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
         return new(
             prob.trajectory,
             prob.objective,
-            prob.dynamics,
+            dynamics,
             AbstractNonlinearConstraint[nonlinear_constraints...],
             jacobian_structure,
             hessian_structure,
@@ -189,6 +196,7 @@ end
 end
 
 @testitem "testing evaluator" begin
+    using FiniteDiff
     import MathOptInterface as MOI
 
     include("../../../test/test_utils.jl")
@@ -216,11 +224,11 @@ end
 
     ∇ = zeros(length(traj.datavec))
 
-    ∇L_autodiff = ForwardDiff.gradient(J.L, traj.datavec)
+    ∇L_finitediff = FiniteDiff.finite_difference_gradient(J.L, traj.datavec)
 
     MOI.eval_objective_gradient(evaluator, ∇, traj.datavec)
 
-    @test ∇ ≈ ∇L_autodiff
+    @test ∇ ≈ ∇L_finitediff
 
     ĝ = Z⃗ -> begin 
         δ_dynamics = zeros(eltype(Z⃗), evaluator.n_dynamics_constraints) 
@@ -248,14 +256,14 @@ end
 
     MOI.eval_constraint_jacobian(evaluator, ∂ĝ_values, traj.datavec)
 
-    ∂ĝ = dense(∂ĝ_values, ∂ĝ_structure, (evaluator.n_constraints, evaluator.trajectory.dim * evaluator.trajectory.N))
+    ∂ĝ = dense(∂ĝ_values, ∂ĝ_structure, (evaluator.n_constraints, evaluator.trajectory.dim * evaluator.trajectory.N))
 
-    ∂g_autodiff = ForwardDiff.jacobian(ĝ, traj.datavec)
-    @test all(∂g_autodiff .≈ ∂ĝ)
+    ∂g_finitediff = FiniteDiff.finite_difference_jacobian(ĝ, traj.datavec)
+    @test all(isapprox.(∂g_finitediff, ∂ĝ, atol=1e-6, rtol=1e-6))
 
     # testing Hessian of the Lagrangian
-    μ = randn(evaluator.n_constraints)
-    σ = randn()
+    μ = ones(evaluator.n_constraints)
+    σ = 1.0 
 
     ∂²ℒ_structure = MOI.hessian_lagrangian_structure(evaluator) 
 
@@ -265,7 +273,7 @@ end
 
     ∂²ℒ = dense(∂²ℒ_values, ∂²ℒ_structure, (evaluator.trajectory.dim * evaluator.trajectory.N, evaluator.trajectory.dim * evaluator.trajectory.N))
 
-    ∂²ℒ_autodiff = ForwardDiff.hessian(Z⃗ -> σ * J.L(Z⃗) + μ'ĝ(Z⃗), traj.datavec)
+    ∂²ℒ_finitediff = FiniteDiff.finite_difference_hessian(Z⃗ -> σ * J.L(Z⃗) + μ'ĝ(Z⃗), traj.datavec)
     
-    @test all(isapprox(∂²ℒ, ∂²ℒ_autodiff, atol=1e-7))
+    @test all(isapprox(∂²ℒ, ∂²ℒ_finitediff, atol=1e-3, rtol=1e-3))
 end

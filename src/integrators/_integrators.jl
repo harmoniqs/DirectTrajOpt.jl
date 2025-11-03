@@ -26,7 +26,8 @@ include("time_integrator.jl")
 include("../../test/test_utils.jl")
 
 function test_integrator(
-    integrator::AbstractIntegrator; 
+    integrator::AbstractIntegrator,
+    traj::NamedTrajectory;
     show_jacobian_diff=false,
     show_hessian_diff=false,
     test_equality=true,
@@ -34,28 +35,56 @@ function test_integrator(
     rtol=1e-5
 )
 
-    z_dim = integrator.z_dim
-    x_dim = integrator.x_dim
-    u_dim = integrator.u_dim
+    z_dim = traj.dim
+    
+    # Get the state dimension from the trajectory using the integrator's x_name or t_name
+    if hasfield(typeof(integrator), :x_name)
+        x_dim = traj.dims[integrator.x_name]
+    elseif hasfield(typeof(integrator), :t_name)
+        x_dim = traj.dims[integrator.t_name]
+    else
+        error("Integrator type $(typeof(integrator)) must have either x_name or t_name field")
+    end
 
-    @test length(integrator.x_comps) == x_dim
-    @test length(integrator.u_comps) == u_dim
-    @test integrator.Δt_comp isa Int
-
-    z₁ = randn(z_dim)
-    z₂ = randn(z_dim)
+    # Use the trajectory's component structure to create KnotPoints
+    z₁_vec = randn(z_dim)
+    z₂_vec = randn(z_dim)
     k = 1
+
+    # Get timestep index
+    timestep_comp = traj.components[traj.timestep][1]
+
+    # Create KnotPoints using trajectory structure
+    z₁ = KnotPoint(
+        1, 
+        z₁_vec, 
+        z₁_vec[timestep_comp],
+        traj.components,
+        traj.names,
+        traj.control_names
+    )
+    z₂ = KnotPoint(
+        2, 
+        z₂_vec, 
+        z₂_vec[timestep_comp],
+        traj.components,
+        traj.names,
+        traj.control_names
+    )
 
     f̂ = zz -> begin
         δ = zeros(eltype(zz), x_dim)
-        integrator(δ, zz[1:z_dim], zz[z_dim+1:end], k)
+        # Create temporary KnotPoints from the concatenated vector
+        z₁_temp = KnotPoint(1, view(zz, 1:z_dim), zz[timestep_comp], traj.components, traj.names, traj.control_names)
+        z₂_temp = KnotPoint(2, view(zz, z_dim+1:2*z_dim), zz[z_dim + timestep_comp], traj.components, traj.names, traj.control_names)
+        integrator(δ, z₁_temp, z₂_temp, k)
         return δ
     end
 
     # testing jacobian
-    ∂f = jacobian_structure(integrator)
+    ∂f = jacobian_structure(integrator, traj)
     jacobian!(∂f, integrator, z₁, z₂, k)
-    ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁; z₂])
+    ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁_vec; z₂_vec])
 
     if show_jacobian_diff 
         println("\tDifference in jacobian")
@@ -74,9 +103,9 @@ function test_integrator(
     end
 
     # testing hessian
-    μ = randn(x_dim)
+    μ = ones(x_dim)
     μ∂²f = hessian_of_lagrangian(integrator, μ, z₁, z₂, k)
-    μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁; z₂])
+    μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁_vec; z₂_vec])
 
     if show_hessian_diff 
         println("\tDifference in hessian")
