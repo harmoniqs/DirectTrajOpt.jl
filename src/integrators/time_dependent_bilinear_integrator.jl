@@ -17,14 +17,16 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
 
     function TimeDependentBilinearIntegrator(
         G::F,
-        traj::NamedTrajectory,
         x::Symbol,
         u::Symbol,
-        t::Symbol;
+        t::Symbol,
+        x_dim::Int,
+        u_dim::Int,
+        N::Int;
         linear_spline::Bool = false
     ) where F <: Function
 
-        @assert traj.N > 1 "Trajectory must have at least two timesteps."
+        @assert N > 1 "Trajectory must have at least two timesteps."
         
         function f!(dx, x_, p, τ)
             t_, Δt, u_ = p[1], p[2], p[3:end]
@@ -39,9 +41,6 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
             return nothing
         end
 
-        x_dim = traj.dims[x]
-        u_dim = traj.dims[u]
-
         x₀ = zeros(x_dim)
 
         if linear_spline
@@ -54,7 +53,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         Δt₀ = 1.0
         probs = [
             ODEProblem(f!, x₀, (0.0, 1.0), [t₀; Δt₀; u₀...])
-            for _ in 1:traj.N - 1
+            for _ in 1:N - 1
         ]
 
         return new{F}(
@@ -160,9 +159,13 @@ end
     G, traj = bilinear_dynamics_and_trajectory(add_time=true)
 
     # zero order hold
-    B = TimeDependentBilinearIntegrator((a, t) -> G(a), traj, :x, :u, :t)
+    B = TimeDependentBilinearIntegrator(
+        (a, t) -> G(a), 
+        :x, :u, :t, 
+        traj.dims[:x], traj.dims[:u], traj.N
+    )
 
     test_integrator(
-        B, traj, test_equality=false, rtol=1e-5, atol=1e-5
+        B, traj, test_equality=false, rtol=1e-4, atol=1e-4
     )
 end

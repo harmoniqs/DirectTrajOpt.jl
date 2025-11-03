@@ -5,12 +5,9 @@ struct DerivativeIntegrator <: AbstractIntegrator
     ẋ_name::Symbol
 
     function DerivativeIntegrator(
-        traj::NamedTrajectory,
         x::Symbol,
         ẋ::Symbol
     )
-        @assert traj.dims[x] == traj.dims[ẋ]
-
         return new(
             x,
             ẋ
@@ -113,6 +110,6 @@ end
 @testitem "testing DerivativeIntegrator" begin
     include("../../test/test_utils.jl")
     traj = named_trajectory_type_1()
-    D = DerivativeIntegrator(traj, :a, :da)
+    D = DerivativeIntegrator(:a, :da)
     test_integrator(D, traj)
 end

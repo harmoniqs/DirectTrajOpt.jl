@@ -43,7 +43,7 @@ The dynamics object is created by the evaluator at solve time.
 ```julia
 traj = NamedTrajectory((x = rand(2, 10), u = rand(1, 10)), timestep=:Δt)
 obj = QuadraticRegularizer(:u, traj, 1.0)
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u)
 prob = DirectTrajOptProblem(traj, obj, integrator)
 ```
 """

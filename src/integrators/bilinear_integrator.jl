@@ -187,14 +187,12 @@ bilinear systems where the system matrix depends linearly on the control input.
 
 # Constructors
 ```julia
-BilinearIntegrator(G::Function, traj::NamedTrajectory, x::Symbol, u::Symbol)
-BilinearIntegrator(G::Function, traj::NamedTrajectory, xs::Vector{Symbol}, u::Symbol)
+BilinearIntegrator(G::Function, x::Symbol, u::Symbol)
 ```
 
 # Arguments
 - `G`: Function taking control u and returning state matrix (x_dim × x_dim)
-- `traj`: NamedTrajectory containing the optimization variables
-- `x` or `xs`: State variable name(s)
+- `x`: State variable name
 - `u`: Control variable name
 
 # Dynamics
@@ -207,7 +205,7 @@ A = [-0.1 1.0; -1.0 -0.1]
 B = [0.0 0.0; 0.0 1.0]
 G = u -> A + u[1] * B
 
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u)
 ```
 """
 struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
@@ -217,15 +215,9 @@ struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
 
     function BilinearIntegrator(
         G::F,
-        traj::NamedTrajectory,
         x::Symbol,
         u::Symbol
     ) where F <: Function
-        x_dim = traj.dims[x]
-        u_dim = traj.dims[u]
-
-        @assert size(G(ones(u_dim))) == (x_dim, x_dim)
-
         return new{F}(
             G,
             x,
@@ -253,7 +245,7 @@ end
 
     G, traj = bilinear_dynamics_and_trajectory()
 
-    B = BilinearIntegrator(G, traj, :x, :u)
+    B = BilinearIntegrator(G, :x, :u)
 
     test_integrator(B, traj, atol=1e-3)
 end

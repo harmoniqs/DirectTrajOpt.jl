@@ -104,7 +104,7 @@ Create trajectory dynamics from integrators and a trajectory structure.
 # Example
 ```julia
 G = rand(2, 2)
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u)
 dynamics = TrajectoryDynamics(integrator, traj)
 ```
 """
@@ -265,7 +265,7 @@ end
 
     G, traj = bilinear_dynamics_and_trajectory()
 
-    integrator = BilinearIntegrator(G, traj, :x, :u)
+    integrator = BilinearIntegrator(G, :x, :u)
 
     D = TrajectoryDynamics(integrator, traj)
 
@@ -302,9 +302,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, traj, :x, :u),
-        DerivativeIntegrator(traj, :u, :du),
-        DerivativeIntegrator(traj, :du, :ddu)
+        BilinearIntegrator(G, :x, :u),
+        DerivativeIntegrator(:u, :du),
+        DerivativeIntegrator(:du, :ddu)
     ]
 
     D = TrajectoryDynamics(integrators, traj)

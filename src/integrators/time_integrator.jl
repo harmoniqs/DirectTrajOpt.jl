@@ -4,8 +4,7 @@ struct TimeIntegrator <: AbstractIntegrator
     t_name::Symbol
 
     function TimeIntegrator(
-        traj::NamedTrajectory,
-        t::Symbol,
+        t::Symbol
     )
         return new(
             t

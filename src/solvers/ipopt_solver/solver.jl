@@ -235,9 +235,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, traj, :x, :u),
-        DerivativeIntegrator(traj, :u, :du),
-        DerivativeIntegrator(traj, :du, :ddu)
+        BilinearIntegrator(G, :x, :u),
+        DerivativeIntegrator(:u, :du),
+        DerivativeIntegrator(:du, :ddu)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
