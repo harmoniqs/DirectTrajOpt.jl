@@ -226,6 +226,7 @@ struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
     end
 end
 
+# TODO: need to worry about global params 
 @views function (B::BilinearIntegrator)(
     δₖ::AbstractVector,
     zₖ::KnotPoint,

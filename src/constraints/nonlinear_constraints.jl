@@ -4,6 +4,7 @@ export NonlinearKnotPointConstraint
 # NonlinearKnotPointConstraint
 # ----------------------------------------------------------------------------- #
 
+# TODO: don't want function fields
 struct NonlinearKnotPointConstraint{F1, F2, F3} <: AbstractNonlinearConstraint
     g!::F1
     ∂g!::F2

@@ -144,6 +144,8 @@ struct TrajectoryDynamics{F1, F2, F3}
             Z⃗::AbstractVector
         )
             # Wrap datavector in NamedTrajectory to access KnotPoints
+            # TODO: replace data in stored traj
+            # TODO: make sure these are views and not allocating
             Z_traj = NamedTrajectory(traj; datavec=Z⃗)
             for (integrator!, comps) ∈ zip(integrators, dynamics_comps)
                 Threads.@threads for k = 1:traj.N-1

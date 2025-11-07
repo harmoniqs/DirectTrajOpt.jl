@@ -4,7 +4,7 @@ struct TimeIntegrator <: AbstractIntegrator
     t_name::Symbol
 
     function TimeIntegrator(
-        t::Symbol
+        t::Symbol=:t
     )
         return new(
             t
@@ -37,21 +37,20 @@ function jacobian!(
 end
 
 function jacobian_structure(D::TimeIntegrator, traj::NamedTrajectory)
-    x_dim = traj.dims[D.t_name]
     z_dim = traj.dim
-    x_comps = traj.components[D.t_name]
+    t_comp = traj.components[D.t_name][1]
     Δt_comp = traj.components[traj.timestep][1]
 
-    ∂D = spzeros(x_dim, 2 * z_dim)
+    ∂D = spzeros(1, 2 * z_dim)
 
     # static components (not updated)
 
     # ∂xₖ₊₁D
-    ∂D[:, z_dim .+ x_comps] = I(x_dim)
+    ∂D[:, z_dim + t_comp] .= 1.0
     # ∂xₖD
-    ∂D[:, x_comps] = -I(x_dim)
+    ∂D[:, t_comp] .= -1.0
     # ∂ΔtₖD
-    ∂D[:, Δt_comp] = -I(x_dim)
+    ∂D[:, Δt_comp] .= -1.0
 
     return ∂D
 end
