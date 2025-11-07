@@ -36,7 +36,7 @@ abstract type AbstractBilinearIntegrator <: AbstractIntegrator end
             Δt_k₊₁ = zz[z_dim + timestep_idx]
             
             zₖ_temp = KnotPoint(
-                zₖ.t, 
+                zₖ.k, 
                 view(zz, 1:z_dim), 
                 Δt_k,
                 zₖ.components, 
@@ -44,7 +44,7 @@ abstract type AbstractBilinearIntegrator <: AbstractIntegrator end
                 zₖ.control_names
             )
             zₖ₊₁_temp = KnotPoint(
-                zₖ₊₁.t, 
+                zₖ₊₁.k, 
                 view(zz, z_dim+1:2*z_dim), 
                 Δt_k₊₁,
                 zₖ₊₁.components, 
@@ -112,7 +112,7 @@ end
             
             # Reconstruct KnotPoints from concatenated vector
             zₖ_temp = KnotPoint(
-                zₖ.t, 
+                zₖ.k, 
                 view(zz, 1:z_dim), 
                 Δt_k,
                 zₖ.components, 
@@ -120,7 +120,7 @@ end
                 zₖ.control_names
             )
             zₖ₊₁_temp = KnotPoint(
-                zₖ₊₁.t, 
+                zₖ₊₁.k, 
                 view(zz, z_dim+1:2*z_dim), 
                 Δt_k₊₁,
                 zₖ₊₁.components, 
