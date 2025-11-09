@@ -128,10 +128,21 @@ end
 )
     evaluator.dynamics.F!(g[1:evaluator.n_dynamics_constraints], Z⃗)
 
+    # Wrap Z⃗ as NamedTrajectory for constraint evaluation
+    # Extract trajectory data and global data separately
+    traj_data = Z⃗[1:evaluator.trajectory.dim * evaluator.trajectory.N]
+    global_data = Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
+    
+    traj = NamedTrajectory(
+        evaluator.trajectory;
+        datavec=traj_data,
+        global_data=global_data
+    )
+    
     # loop over nonlinear constraints, incrementing offset
     offset = evaluator.n_dynamics_constraints
     for con ∈ evaluator.constraints
-        con.g!(g[offset .+ (1:con.dim)], Z⃗)
+        g[offset .+ (1:con.dim)] .= Constraints.constraint_value(con, traj)
         offset += con.dim
     end
 
@@ -230,13 +241,13 @@ end
 
     @test ∇ ≈ ∇L_finitediff
 
-    ĝ = Z⃗ -> begin 
+    ĝ = Z⃗ -> begin 
         δ_dynamics = zeros(eltype(Z⃗), evaluator.n_dynamics_constraints) 
         evaluator.dynamics.F!(δ_dynamics, Z⃗)
         δ_nonlinear = zeros(eltype(Z⃗), 0)
         for con ∈ filter(c -> c isa AbstractNonlinearConstraint, evaluator.constraints)
-            δ_con = zeros(eltype(Z⃗), con.dim)
-            con.g!(δ_con, Z⃗)
+            traj_wrap = NamedTrajectory(Z⃗, evaluator.trajectory.components, evaluator.trajectory.N)
+            δ_con = Constraints.constraint_value(con, traj_wrap)
             δ_nonlinear = vcat(δ_nonlinear, δ_con)
         end
         return vcat(δ_dynamics, δ_nonlinear)

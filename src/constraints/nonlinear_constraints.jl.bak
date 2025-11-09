@@ -99,7 +99,7 @@ struct NonlinearKnotPointConstraint{F, F2, F3} <: AbstractNonlinearConstraint
         g_dim = length(g(Z⃗[x_slice_test], params[1]))
 
         # Create sparsity structures
-        ∂g_structure = jacobian_structure_single(names, traj, g_dim)
+        ∂g_structure = jacobian_structure_single(names, traj)
         ∂gs = [copy(∂g_structure) for _ in times]
 
         μ∂²g_structure = hessian_structure_single(names, traj)
@@ -180,9 +180,9 @@ struct NonlinearKnotPointConstraint{F, F2, F3} <: AbstractNonlinearConstraint
 end
 
 # Helper functions for structure (moved outside struct)
-function jacobian_structure_single(names::Vector{Symbol}, traj::NamedTrajectory, g_dim::Int)
+function jacobian_structure_single(names::Vector{Symbol}, traj::NamedTrajectory)
     x_comps = vcat([traj.components[name] for name in names]...)
-    ∂g = spzeros(g_dim, traj.dim)
+    ∂g = spzeros(traj.dim, traj.dim)
     ∂g[:, x_comps] .= 1.0
     return ∂g
 end
@@ -527,8 +527,8 @@ end
     U_SLICE(k) = slice(k, traj.components[:u], traj.dim)
     ĝ(Z⃗) = vcat([g(Z⃗[U_SLICE(k)]) for k ∈ times]...)
 
-    δ1 = Constraints.constraint_value(NLC1, traj)
-    δ2 = Constraints.constraint_value(NLC2, traj)
+    δ1 = Constraints.constraint_value(NLC1, vec(traj), traj)
+    δ2 = Constraints.constraint_value(NLC2, vec(traj), traj)
 
     @test δ1 ≈ δ2
     @test δ1 ≈ ĝ(vec(traj))
@@ -556,20 +556,20 @@ end
     ĝ(Z⃗) = vcat([g_concat(Z⃗[XU_SLICE(k)]) for k ∈ times]...)
 
     # Test constraint_value
-    δ = Constraints.constraint_value(NLC, traj)
+    δ = Constraints.constraint_value(NLC, vec(traj), traj)
     @test δ ≈ ĝ(vec(traj))
     
     # Test jacobian!
-    NLC.∂g!(NLC.∂gs, vec(traj))
-    ∂g_full = Constraints.get_full_jacobian(NLC, traj)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    ∂g_full = spzeros(NLC.dim, Z_dim)
+    Constraints.jacobian!(∂g_full[:, 1:traj.dim * traj.N], NLC, vec(traj), traj)
     ∂g_autodiff = ForwardDiff.jacobian(ĝ, vec(traj))
 
     @test ∂g_full[:, 1:traj.dim * traj.N] ≈ ∂g_autodiff
 
     # Test hessian_of_lagrangian
     μ = randn(g_dim * traj.N)
-    NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
-    μ∂²g_full = Constraints.get_full_hessian(NLC, traj)
+    μ∂²g_full = Constraints.hessian_of_lagrangian(NLC, μ, vec(traj), traj)
     hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), vec(traj))
 
     @test μ∂²g_full[1:traj.dim * traj.N, 1:traj.dim * traj.N] ≈ hessian_autodiff
@@ -600,20 +600,20 @@ end
     ĝ(Z⃗) = vcat([g_separate(Z⃗[X_SLICE(k)], Z⃗[U_SLICE(k)]) for k ∈ times]...)
 
     # Test constraint_value
-    δ = Constraints.constraint_value(NLC, traj)
+    δ = Constraints.constraint_value(NLC, vec(traj), traj)
     @test δ ≈ ĝ(vec(traj))
     
     # Test jacobian!
-    NLC.∂g!(NLC.∂gs, vec(traj))
-    ∂g_full = Constraints.get_full_jacobian(NLC, traj)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    ∂g_full = spzeros(NLC.dim, Z_dim)
+    Constraints.jacobian!(∂g_full[:, 1:traj.dim * traj.N], NLC, vec(traj), traj)
     ∂g_autodiff = ForwardDiff.jacobian(ĝ, vec(traj))
 
     @test ∂g_full[:, 1:traj.dim * traj.N] ≈ ∂g_autodiff
 
     # Test hessian_of_lagrangian
     μ = randn(g_dim * traj.N)
-    NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
-    μ∂²g_full = Constraints.get_full_hessian(NLC, traj)
+    μ∂²g_full = Constraints.hessian_of_lagrangian(NLC, μ, vec(traj), traj)
     hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), vec(traj))
 
     @test μ∂²g_full[1:traj.dim * traj.N, 1:traj.dim * traj.N] ≈ hessian_autodiff
@@ -659,20 +659,20 @@ end
     ĝ(Z⃗) = vcat([g_three(Z⃗[X_SLICE(k)], Z⃗[U_SLICE(k)], Z⃗[A_SLICE(k)]) for k ∈ times]...)
 
     # Test constraint_value
-    δ = Constraints.constraint_value(NLC, traj)
+    δ = Constraints.constraint_value(NLC, vec(traj), traj)
     @test δ ≈ ĝ(vec(traj))
     
     # Test jacobian!
-    NLC.∂g!(NLC.∂gs, vec(traj))
-    ∂g_full = Constraints.get_full_jacobian(NLC, traj)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    ∂g_full = spzeros(NLC.dim, Z_dim)
+    Constraints.jacobian!(∂g_full[:, 1:traj.dim * traj.N], NLC, vec(traj), traj)
     ∂g_autodiff = ForwardDiff.jacobian(ĝ, vec(traj))
 
     @test ∂g_full[:, 1:traj.dim * traj.N] ≈ ∂g_autodiff
 
     # Test hessian_of_lagrangian
     μ = randn(g_dim * traj.N)
-    NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
-    μ∂²g_full = Constraints.get_full_hessian(NLC, traj)
+    μ∂²g_full = Constraints.hessian_of_lagrangian(NLC, μ, vec(traj), traj)
     hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), vec(traj))
 
     @test μ∂²g_full[1:traj.dim * traj.N, 1:traj.dim * traj.N] ≈ hessian_autodiff
@@ -697,8 +697,8 @@ end
     @test NLC_eq.equality == true
 
     # Both should compute same values, just interpreted differently
-    δ_ineq = Constraints.constraint_value(NLC_ineq, traj)
-    δ_eq = Constraints.constraint_value(NLC_eq, traj)
+    δ_ineq = Constraints.constraint_value(NLC_ineq, vec(traj), traj)
+    δ_eq = Constraints.constraint_value(NLC_eq, vec(traj), traj)
     
     @test δ_ineq ≈ δ_eq
 end
@@ -724,7 +724,7 @@ end
     X_SLICE(k) = slice(k, traj.components[:x], traj.dim)
     ĝ(Z⃗) = vcat([g(Z⃗[X_SLICE(k)]) for k ∈ times]...)
 
-    δ = Constraints.constraint_value(NLC, traj)
+    δ = Constraints.constraint_value(NLC, vec(traj), traj)
 
     @test δ ≈ ĝ(vec(traj))
 end

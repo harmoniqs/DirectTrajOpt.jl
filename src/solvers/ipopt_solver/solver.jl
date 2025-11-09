@@ -252,3 +252,89 @@ end
     solve!(prob; max_iter=100)
 end
 
+@testitem "testing solver with NonlinearGlobalKnotPointConstraint" begin
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_global=true)
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u),
+        DerivativeIntegrator(:u, :du),
+        DerivativeIntegrator(:du, :ddu)
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+    
+    # Add global objective - minimize global parameter
+    J += GlobalObjective(g -> norm(g)^2, :g, traj; Q=1.0)
+
+    # Knot point constraint with global dependency
+    # Couples control magnitude with global parameter
+    g_ug = NonlinearGlobalKnotPointConstraint(
+        ug -> begin
+            u = ug[1:traj.dims[:u]]
+            g = ug[traj.dims[:u] + 1:end]
+            return [norm(u) * (1.0 + norm(g)) - 2.0]
+        end,
+        [:u], [:g], traj;
+        times=2:traj.N-1,
+        equality=false
+    )
+
+    prob = DirectTrajOptProblem(
+        traj, J, integrators; 
+        constraints=AbstractConstraint[g_ug]
+    )
+
+    solve!(prob; max_iter=100)
+    
+    # Verify constraint is satisfied at each timestep
+    for k in 2:traj.N-1
+        u = traj[k][:u]
+        g = traj.global_data[traj.global_components[:g]]
+        @test norm(u) * (1.0 + norm(g)) <= 2.0 + 1e-6
+    end
+end
+
+@testitem "testing solver with NonlinearGlobalConstraint" begin
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_global=true)
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u),
+        DerivativeIntegrator(:u, :du),
+        DerivativeIntegrator(:du, :ddu)
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+    
+    # Add global objective - minimize global parameter
+    J += GlobalObjective(g -> norm(g)^2, :g, traj; Q=10.0)
+
+    # Pure global constraint - bounds the global parameter
+    g_global = NonlinearGlobalConstraint(
+        g -> [norm(g) - 0.5],
+        :g, traj;
+        equality=false
+    )
+
+    prob = DirectTrajOptProblem(
+        traj, J, integrators; 
+        constraints=AbstractConstraint[g_global]
+    )
+
+    solve!(prob; max_iter=100)
+    
+    # Verify global variable is within constraint
+    @test norm(traj.global_data[traj.global_components[:g]]) <= 0.5 + 1e-6
+end
+

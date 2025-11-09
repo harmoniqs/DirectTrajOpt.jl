@@ -143,10 +143,12 @@ struct TrajectoryDynamics{F1, F2, F3}
             δ::AbstractVector,
             Z⃗::AbstractVector
         )
-            # Wrap datavector in NamedTrajectory to access KnotPoints
+            # Extract trajectory data from Z⃗ (Z⃗ = [trajectory_data..., global_data...])
+            traj_data = Z⃗[1:traj.dim * traj.N]
+            # Wrap trajectory data in NamedTrajectory to access KnotPoints
             # TODO: replace data in stored traj
             # TODO: make sure these are views and not allocating
-            Z_traj = NamedTrajectory(traj; datavec=Z⃗)
+            Z_traj = NamedTrajectory(traj; datavec=traj_data)
             for (integrator!, comps) ∈ zip(integrators, dynamics_comps)
                 Threads.@threads for k = 1:traj.N-1
                     zₖ = Z_traj[k]
@@ -161,8 +163,10 @@ struct TrajectoryDynamics{F1, F2, F3}
             ∂fs::Vector{SparseMatrixCSC{Float64, Int}},
             Z⃗::AbstractVector
         )
-            # Wrap datavector in NamedTrajectory to access KnotPoints
-            Z_traj = NamedTrajectory(traj; datavec=Z⃗)
+            # Extract trajectory data from Z⃗ (Z⃗ = [trajectory_data..., global_data...])
+            traj_data = Z⃗[1:traj.dim * traj.N]
+            # Wrap trajectory data in NamedTrajectory to access KnotPoints
+            Z_traj = NamedTrajectory(traj; datavec=traj_data)
             for (integrator, comps) ∈ zip(integrators, dynamics_comps)
                 Threads.@threads for k = 1:traj.N-1
                     zₖ = Z_traj[k]
@@ -182,8 +186,10 @@ struct TrajectoryDynamics{F1, F2, F3}
             for μ∂²f ∈ μ∂²fs
                 μ∂²f .= 0.0
             end
-            # Wrap datavector in NamedTrajectory to access KnotPoints
-            Z_traj = NamedTrajectory(traj; datavec=Z⃗)
+            # Extract trajectory data from Z⃗ (Z⃗ = [trajectory_data..., global_data...])
+            traj_data = Z⃗[1:traj.dim * traj.N]
+            # Wrap trajectory data in NamedTrajectory to access KnotPoints
+            Z_traj = NamedTrajectory(traj; datavec=traj_data)
             for (integrator, comps) ∈ zip(integrators, dynamics_comps)
                 Threads.@threads for k = 1:traj.N-1
                     zₖ = Z_traj[k]
