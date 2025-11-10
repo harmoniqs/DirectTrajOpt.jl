@@ -236,10 +236,10 @@ end
 """
     hessian_of_lagrangian!(constraint::NonlinearGlobalKnotPointConstraint, traj::NamedTrajectory, μ::AbstractVector)
 
-Compute all Hessians weighted by Lagrange multipliers and store in constraint.μ∂²gs. 
+Compute Hessian weighted by Lagrange multipliers for constraint with global and knot point variables.
 Each stored Hessian is (combined_dim × combined_dim).
 """
-function hessian_of_lagrangian!(
+function Constraints.hessian_of_lagrangian!(
     constraint::NonlinearGlobalKnotPointConstraint,
     traj::NamedTrajectory,
     μ::AbstractVector
@@ -274,7 +274,7 @@ end
 Assemble full sparse Jacobian from stored (g_dim × combined_dim) blocks.
 Each block corresponds to one timestep and has non-zero entries for both knot point and global variables.
 """
-function get_full_jacobian(
+function Constraints.get_full_jacobian(
     constraint::NonlinearGlobalKnotPointConstraint, 
     traj::NamedTrajectory
 )
@@ -307,8 +307,8 @@ end
 Assemble full sparse Hessian from stored (combined_dim × combined_dim) blocks.
 Accumulates contributions since global variables appear in multiple timesteps.
 """
-function get_full_hessian(
-    constraint::NonlinearGlobalKnotPointConstraint, 
+function Constraints.get_full_hessian(
+    constraint::NonlinearGlobalKnotPointConstraint,
     traj::NamedTrajectory
 )
     Z_dim = traj.dim * traj.N + traj.global_dim

@@ -30,9 +30,9 @@ abstract type AbstractNonlinearConstraint <: AbstractConstraint end
 # ----------------------------------------------------------------------------- #
 
 """
-    constraint_value(constraint, Z⃗::AbstractVector)
+    constraint_value(constraint, traj::NamedTrajectory)
 
-Evaluate the constraint at the given trajectory vector.
+Evaluate the constraint at the given trajectory.
 """
 function constraint_value end
 
@@ -44,7 +44,7 @@ Return the sparsity structure of the constraint Jacobian.
 function jacobian_structure end
 
 """
-    jacobian!(∂g, constraint, Z⃗::AbstractVector)
+    jacobian!(constraint, traj::NamedTrajectory)
 
 Compute the Jacobian of the constraint in-place.
 """
@@ -58,11 +58,25 @@ Return the sparsity structure of the constraint Hessian.
 function hessian_structure end
 
 """
-    hessian_of_lagrangian(constraint, μ::AbstractVector, Z⃗::AbstractVector)
+    hessian_of_lagrangian!(constraint, traj::NamedTrajectory, μ::AbstractVector)
 
-Compute the Hessian of the Lagrangian (μ'g) for the constraint.
+Compute the Hessian of the Lagrangian (μ'g) for the constraint in-place.
 """
-function hessian_of_lagrangian end
+function hessian_of_lagrangian! end
+
+"""
+    get_full_jacobian(constraint, traj::NamedTrajectory)
+
+Assemble the full sparse Jacobian matrix from compact per-timestep blocks.
+"""
+function get_full_jacobian end
+
+"""
+    get_full_hessian(constraint, traj::NamedTrajectory)
+
+Assemble the full sparse Hessian matrix from compact per-timestep blocks.
+"""
+function get_full_hessian end
 
 # Linear constraints
 include("linear/equality_constraint.jl")

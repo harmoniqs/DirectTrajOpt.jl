@@ -155,7 +155,7 @@ end
 
 Compute Hessian weighted by Lagrange multipliers and store in constraint.μ∂²g (global_dim × global_dim).
 """
-function hessian_of_lagrangian!(
+function Constraints.hessian_of_lagrangian!(
     constraint::NonlinearGlobalConstraint,
     traj::NamedTrajectory,
     μ::AbstractVector
@@ -180,8 +180,8 @@ end
 
 Assemble full sparse Jacobian (dim × Z_dim) with non-zeros only in global variable columns.
 """
-function get_full_jacobian(
-    constraint::NonlinearGlobalConstraint, 
+function Constraints.get_full_jacobian(
+    constraint::NonlinearGlobalConstraint,
     traj::NamedTrajectory
 )
     Z_dim = traj.dim * traj.N + traj.global_dim
@@ -199,10 +199,10 @@ end
 """
     get_full_hessian(constraint::NonlinearGlobalConstraint, traj::NamedTrajectory)
 
-Assemble full sparse Hessian (Z_dim × Z_dim) with non-zeros only in global×global block.
+Assemble full Hessian (Z_dim × Z_dim) from compact (global_dim × global_dim) block.
 """
-function get_full_hessian(
-    constraint::NonlinearGlobalConstraint, 
+function Constraints.get_full_hessian(
+    constraint::NonlinearGlobalConstraint,
     traj::NamedTrajectory
 )
     Z_dim = traj.dim * traj.N + traj.global_dim
