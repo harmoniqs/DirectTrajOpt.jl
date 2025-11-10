@@ -172,12 +172,19 @@ end
     ∂::AbstractVector,
     Z⃗::AbstractVector
 )
+    # Wrap Z⃗ into trajectory for constraint evaluation
+    Z = NamedTrajectory(
+        evaluator.trajectory;
+        datavec=Z⃗[1:evaluator.trajectory.dim * evaluator.trajectory.N],
+        global_data=Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
+    )
+
     evaluator.dynamics.∂F!(evaluator.dynamics.∂fs, Z⃗)
 
     ∂g = Dynamics.get_full_jacobian(evaluator.dynamics, evaluator.trajectory)
 
     for c ∈ evaluator.constraints
-        c.∂g!(c.∂gs, Z⃗)
+        Constraints.jacobian!(c, Z)
         ∂g = vcat(∂g, Constraints.get_full_jacobian(c, evaluator.trajectory))
     end 
 
@@ -215,7 +222,7 @@ end
     # evaluate other nonlinear_constraints
     offset = evaluator.n_dynamics_constraints
     for con ∈ evaluator.constraints
-        con.μ∂²g!(con.μ∂²gs, Z⃗, μ[offset .+ (1:con.dim)])
+        Constraints.hessian_of_lagrangian!(con, Z, μ[offset .+ (1:con.dim)])
         ∂²ℒ .+= Constraints.get_full_hessian(con, evaluator.trajectory)
         offset += con.dim
     end  
@@ -256,7 +263,7 @@ end
     g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.N-1, equality=false)
 
     prob = DirectTrajOptProblem(traj, J, integrators; 
-        # constraints=AbstractConstraint[g_u_norm]
+        constraints=AbstractConstraint[g_u_norm]
     )
 
     evaluator = IpoptEvaluator(prob)
@@ -333,6 +340,5 @@ end
         return σ * Objectives.objective_value(J, traj_wrap) + μ'ĝ(Z⃗)
     end
     
-    show_diffs(∂²ℒ, triu(sparse(∂²ℒ_finitediff)); atol=1e-6)
     @test all(isapprox.(triu(∂²ℒ), triu(sparse(∂²ℒ_finitediff)), atol=1e-2))
 end

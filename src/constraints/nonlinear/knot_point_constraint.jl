@@ -7,12 +7,12 @@ using ..Constraints
 # ----------------------------------------------------------------------------- #
 
 """
-    NonlinearKnotPointConstraint{F, F2, F3} <: AbstractNonlinearConstraint
+    NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
 
 Constraint applied at individual knot points over a trajectory.
 
-Similar to TrajectoryDynamics, this struct stores the constraint function, evaluation methods,
-and pre-allocated storage for efficient repeated evaluations.
+Stores constraint function g, variable names, and pre-allocated storage for Jacobians/Hessians.
+Each stored Jacobian is (g_dim × var_dim) for a single knot point, assembled into full structure by get_full_jacobian.
 
 # Fields
 - `g::F`: Constraint function mapping (variables..., params) -> constraint values
@@ -21,23 +21,21 @@ and pre-allocated storage for efficient repeated evaluations.
 - `times::Vector{Int}`: Time indices where constraint is applied
 - `params::Vector`: Parameters for each time index (e.g., time-varying targets)
 - `g_dim::Int`: Dimension of constraint output at each time step
+- `var_dim::Int`: Combined dimension of all constrained variables
 - `dim::Int`: Total constraint dimension (g_dim * length(times))
-- `∂g!::F2`: In-place function computing Jacobians across all timesteps
-- `∂gs::Vector{SparseMatrixCSC{Float64, Int}}`: Pre-allocated Jacobian storage
-- `μ∂²g!::F3`: In-place function computing weighted Hessians across all timesteps
-- `μ∂²gs::Vector{SparseMatrixCSC{Float64, Int}}`: Pre-allocated Hessian storage
+- `∂gs::Vector{SparseMatrixCSC{Float64, Int}}`: Pre-allocated Jacobian storage (g_dim × var_dim per timestep)
+- `μ∂²gs::Vector{SparseMatrixCSC{Float64, Int}}`: Pre-allocated Hessian storage (var_dim × var_dim per timestep)
 """
-struct NonlinearKnotPointConstraint{F, F2, F3} <: AbstractNonlinearConstraint
+struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
     g::F
     var_names::Vector{Symbol}
     equality::Bool
     times::Vector{Int}
     params::Vector
     g_dim::Int
+    var_dim::Int
     dim::Int
-    ∂g!::F2
     ∂gs::Vector{SparseMatrixCSC{Float64, Int}}
-    μ∂²g!::F3
     μ∂²gs::Vector{SparseMatrixCSC{Float64, Int}}
 
     """
@@ -63,6 +61,8 @@ struct NonlinearKnotPointConstraint{F, F2, F3} <: AbstractNonlinearConstraint
     - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
     - `times::AbstractVector{Int}=1:traj.N`: Time indices at which the constraint is enforced.
     - `params::AbstractVector=fill(nothing, length(times))`: Parameters for each time step (e.g., time-varying targets).
+    - `jacobian_structure::Union{Nothing, SparseMatrixCSC}=nothing`: Optional sparse matrix defining Jacobian sparsity pattern (g_dim × var_dim).
+    - `hessian_structure::Union{Nothing, SparseMatrixCSC}=nothing`: Optional sparse matrix defining Hessian sparsity pattern (var_dim × var_dim).
 
     # Examples
     ```julia
@@ -77,6 +77,15 @@ struct NonlinearKnotPointConstraint{F, F2, F3} <: AbstractNonlinearConstraint
         (x, u) -> [x[1] - u[1]^2],
         [:x, :u], traj
     )
+
+    # With custom sparsity structures
+    ∂g_structure = sparse([1, 1], [1, 2], [1.0, 1.0], 1, 3)
+    μ∂²g_structure = sparse([1, 2, 3], [1, 2, 3], [1.0, 1.0, 1.0], 3, 3)
+    constraint = NonlinearKnotPointConstraint(
+        g, [:x, :u], traj;
+        jacobian_structure=∂g_structure,
+        hessian_structure=μ∂²g_structure
+    )
     ```
     """
     function NonlinearKnotPointConstraint(
@@ -86,11 +95,14 @@ struct NonlinearKnotPointConstraint{F, F2, F3} <: AbstractNonlinearConstraint
         params::AbstractVector;
         equality::Bool=true,
         times::AbstractVector{Int}=1:traj.N,
+        jacobian_structure::Union{Nothing, SparseMatrixCSC}=nothing,
+        hessian_structure::Union{Nothing, SparseMatrixCSC}=nothing,
     )
         @assert length(params) == length(times) "params must have the same length as times"
 
         # Get component indices for all variables
         x_comps = vcat([traj.components[name] for name in names]...)
+        var_dim = length(x_comps)
 
         # Determine constraint dimension by evaluating with first parameter
         Z⃗ = vec(traj)
@@ -98,100 +110,38 @@ struct NonlinearKnotPointConstraint{F, F2, F3} <: AbstractNonlinearConstraint
         @assert g(Z⃗[x_slice_test], params[1]) isa AbstractVector{<:Real}
         g_dim = length(g(Z⃗[x_slice_test], params[1]))
 
-        # Create sparsity structures
-        ∂g_structure = jacobian_structure_single(names, traj, g_dim)
-        ∂gs = [copy(∂g_structure) for _ in times]
-
-        μ∂²g_structure = hessian_structure_single(names, traj)
-        μ∂²gs = [copy(μ∂²g_structure) for _ in times]
-
-        # Create wrapper functions - they will capture g, names, times, params through closure
-        @views function ∂g!(
-            ∂gs::Vector{SparseMatrixCSC{Float64, Int}},
-            Z⃗::AbstractVector
-        )
-            # Wrap datavector in NamedTrajectory to access KnotPoints
-            Z_traj = NamedTrajectory(traj; datavec=Z⃗)
-            for (i, t) ∈ enumerate(times)
-                zₖ = Z_traj[t]
-                # Extract relevant variables
-                x_vals = vcat([zₖ[name] for name in names]...)
-                x_comps = vcat([zₖ.components[name] for name in names]...)
-                
-                # Compute Jacobian
-                ∂g_local = zeros(g_dim, length(x_vals))
-                ForwardDiff.jacobian!(
-                    ∂g_local,
-                    x -> g(x, params[i]),
-                    x_vals
-                )
-                
-                # Map to full structure
-                fill!(∂gs[i], 0.0)
-                ∂gs[i][:, x_comps] = ∂g_local
-            end
-            return nothing
+        # Pre-allocate storage using provided structures or default sparse matrices filled with ones
+        if !isnothing(jacobian_structure)
+            @assert size(jacobian_structure) == (g_dim, var_dim) "jacobian_structure must be (g_dim=$g_dim × var_dim=$var_dim)"
+            ∂gs = [copy(jacobian_structure) for _ in times]
+        else
+            # Default: sparse matrix filled with ones (indicates all entries may be non-zero)
+            ∂g_default = sparse(ones(g_dim, var_dim))
+            ∂gs = [copy(∂g_default) for _ in times]
         end
 
-        @views function μ∂²g!(
-            μ∂²gs::Vector{SparseMatrixCSC{Float64, Int}},
-            Z⃗::AbstractVector,
-            μ⃗::AbstractVector
-        )
-            # Wrap datavector in NamedTrajectory to access KnotPoints
-            Z_traj = NamedTrajectory(traj; datavec=Z⃗)
-            for (i, t) ∈ enumerate(times)
-                zₖ = Z_traj[t]
-                μₖ = μ⃗[slice(i, g_dim)]
-                
-                # Extract relevant variables
-                x_vals = vcat([zₖ[name] for name in names]...)
-                x_comps = vcat([zₖ.components[name] for name in names]...)
-                
-                # Compute Hessian
-                μ∂²g_local = zeros(length(x_vals), length(x_vals))
-                ForwardDiff.hessian!(
-                    μ∂²g_local,
-                    x -> μₖ' * g(x, params[i]),
-                    x_vals
-                )
-                
-                # Map to full structure
-                fill!(μ∂²gs[i], 0.0)
-                μ∂²gs[i][x_comps, x_comps] = μ∂²g_local
-            end
-            return nothing
+        if !isnothing(hessian_structure)
+            @assert size(hessian_structure) == (var_dim, var_dim) "hessian_structure must be (var_dim=$var_dim × var_dim=$var_dim)"
+            μ∂²gs = [copy(hessian_structure) for _ in times]
+        else
+            # Default: sparse matrix filled with ones (indicates all entries may be non-zero)
+            μ∂²g_default = sparse(ones(var_dim, var_dim))
+            μ∂²gs = [copy(μ∂²g_default) for _ in times]
         end
 
-        return new{typeof(g), typeof(∂g!), typeof(μ∂²g!)}(
+        return new{typeof(g)}(
             g,
             names,
             equality,
             times,
             params,
             g_dim,
+            var_dim,
             g_dim * length(times),
-            ∂g!,
             ∂gs,
-            μ∂²g!,
             μ∂²gs
         )
     end
-end
-
-# Helper functions for structure (moved outside struct)
-function jacobian_structure_single(names::Vector{Symbol}, traj::NamedTrajectory, g_dim::Int)
-    x_comps = vcat([traj.components[name] for name in names]...)
-    ∂g = spzeros(g_dim, traj.dim)
-    ∂g[:, x_comps] .= 1.0
-    return ∂g
-end
-
-function hessian_structure_single(names::Vector{Symbol}, traj::NamedTrajectory)
-    x_comps = vcat([traj.components[name] for name in names]...)
-    μ∂²g = spzeros(traj.dim, traj.dim)
-    μ∂²g[x_comps, x_comps] .= 1.0
-    return μ∂²g
 end
 
 # Convenience constructor without params - creates wrapper that ignores param argument
@@ -335,39 +285,26 @@ function Constraints.jacobian_structure(
 end
 
 """
-    jacobian!(∂g, constraint::NonlinearKnotPointConstraint, zₖ::KnotPoint, k::Int)
+    jacobian!(constraint::NonlinearKnotPointConstraint, traj::NamedTrajectory)
 
-Compute the Jacobian of the constraint at a single knot point.
+Compute all Jacobians and store them in constraint.∂gs. Each stored Jacobian is (g_dim × var_dim).
 """
 function Constraints.jacobian!(
-    ∂g::AbstractMatrix,
     constraint::NonlinearKnotPointConstraint,
-    zₖ::KnotPoint,
-    k::Int
+    traj::NamedTrajectory
 )
-    # Extract the relevant variable values
-    x_vals = vcat([zₖ[name] for name in constraint.var_names]...)
-    
-    # Find which index this timestep corresponds to in constraint.times
-    time_idx = findfirst(==(k), constraint.times)
-    if isnothing(time_idx)
-        error("Timestep $k not in constraint times $(constraint.times)")
+    @views for (i, t) ∈ enumerate(constraint.times)
+        zₖ = traj[t]
+        # Extract relevant variables
+        x_vals = vcat([zₖ[name] for name in constraint.var_names]...)
+        
+        # Compute Jacobian directly into sparse storage
+        ForwardDiff.jacobian!(
+            constraint.∂gs[i],
+            x -> constraint.g(x, constraint.params[i]),
+            x_vals
+        )
     end
-    
-    # Get component indices for the variables we're constraining
-    x_comps = vcat([zₖ.components[name] for name in constraint.var_names]...)
-    
-    # Compute Jacobian with respect to the concatenated variables
-    ∂g_local = zeros(constraint.g_dim, length(x_vals))
-    ForwardDiff.jacobian!(
-        ∂g_local,
-        x -> constraint.g(x, constraint.params[time_idx]),
-        x_vals
-    )
-    
-    # Map to the full knot point Jacobian (g_dim × traj.dim)
-    ∂g[:, x_comps] = ∂g_local
-    
     return nothing
 end
 
@@ -389,77 +326,82 @@ function Constraints.hessian_structure(
 end
 
 """
-    hessian_of_lagrangian(constraint::NonlinearKnotPointConstraint, μₖ::AbstractVector, zₖ::KnotPoint, k::Int)
+    hessian_of_lagrangian!(constraint::NonlinearKnotPointConstraint, traj::NamedTrajectory, μ::AbstractVector)
 
-Compute the Hessian of the Lagrangian (μ'g) for the constraint at a single knot point.
+Compute all Hessians weighted by Lagrange multipliers and store in constraint.μ∂²gs. 
+Each stored Hessian is (var_dim × var_dim).
 """
-function Constraints.hessian_of_lagrangian(
+function hessian_of_lagrangian!(
     constraint::NonlinearKnotPointConstraint,
-    μₖ::AbstractVector,
-    zₖ::KnotPoint,
-    k::Int
+    traj::NamedTrajectory,
+    μ::AbstractVector
 )
-    # Extract the relevant variable values
-    x_vals = vcat([zₖ[name] for name in constraint.var_names]...)
-    
-    # Find which index this timestep corresponds to in constraint.times
-    time_idx = findfirst(==(k), constraint.times)
-    if isnothing(time_idx)
-        error("Timestep $k not in constraint times $(constraint.times)")
+    @views for (i, t) ∈ enumerate(constraint.times)
+        zₖ = traj[t]
+        μₖ = μ[slice(i, constraint.g_dim)]
+        
+        # Extract relevant variables
+        x_vals = vcat([zₖ[name] for name in constraint.var_names]...)
+        
+        # Compute Hessian directly into sparse storage
+        ForwardDiff.hessian!(
+            constraint.μ∂²gs[i],
+            x -> μₖ' * constraint.g(x, constraint.params[i]),
+            x_vals
+        )
     end
-    
-    # Get component indices
-    x_comps = vcat([zₖ.components[name] for name in constraint.var_names]...)
-    
-    # Compute Hessian with respect to the concatenated variables
-    μ∂²g_local = zeros(length(x_vals), length(x_vals))
-    ForwardDiff.hessian!(
-        μ∂²g_local,
-        x -> μₖ' * constraint.g(x, constraint.params[time_idx]),
-        x_vals
-    )
-    
-    # Map to the full knot point Hessian (traj.dim × traj.dim)
-    μ∂²g = spzeros(zₖ.dim, zₖ.dim)
-    μ∂²g[x_comps, x_comps] = μ∂²g_local
-    
-    return μ∂²g
+    return nothing
 end
 
 # ----------------------------------------------------------------------------- #
-# Legacy helper functions (for backward compatibility)
+# Full Jacobian and Hessian Assembly
 # ----------------------------------------------------------------------------- #
 
+"""
+    get_full_jacobian(constraint::NonlinearKnotPointConstraint, traj::NamedTrajectory)
+
+Assemble full sparse Jacobian from stored (g_dim × var_dim) blocks.
+"""
 function get_full_jacobian(
-    NLC::NonlinearKnotPointConstraint, 
+    constraint::NonlinearKnotPointConstraint, 
     traj::NamedTrajectory
 )
     Z_dim = traj.dim * traj.N + traj.global_dim
-    ∂g_full = spzeros(NLC.dim, Z_dim)
+    ∂g_full = spzeros(constraint.dim, Z_dim)
     
-    @views for (i, t) ∈ enumerate(NLC.times)
-        # Use pre-computed Jacobian from storage
+    # Get variable component indices
+    x_comps = vcat([traj.components[name] for name in constraint.var_names]...)
+    
+    @views for (i, t) ∈ enumerate(constraint.times)
         # Rows: constraint equations for this timestep
-        row_range = slice(i, NLC.g_dim)
-        # Columns: trajectory components at timestep t
-        col_range = slice(t, 1:traj.dim, traj.dim)
-        ∂g_full[row_range, col_range] = NLC.∂gs[i]
+        row_range = slice(i, constraint.g_dim)
+        # Columns: constrained variables at timestep t
+        col_range = slice(t, x_comps, traj.dim)
+        ∂g_full[row_range, col_range] = constraint.∂gs[i]
     end
     
     return ∂g_full
 end
 
+"""
+    get_full_hessian(constraint::NonlinearKnotPointConstraint, traj::NamedTrajectory)
+
+Assemble full sparse Hessian from stored (var_dim × var_dim) blocks.
+"""
 function get_full_hessian(
-    NLC::NonlinearKnotPointConstraint, 
+    constraint::NonlinearKnotPointConstraint, 
     traj::NamedTrajectory
 )
     Z_dim = traj.dim * traj.N + traj.global_dim
     μ∂²g_full = spzeros(Z_dim, Z_dim)
     
-    @views for (i, t) ∈ enumerate(NLC.times)
-        # Use pre-computed Hessian from storage (block diagonal structure)
-        col_range = slice(t, 1:traj.dim, traj.dim)
-        μ∂²g_full[col_range, col_range] = NLC.μ∂²gs[i]
+    # Get variable component indices
+    x_comps = vcat([traj.components[name] for name in constraint.var_names]...)
+    
+    @views for (i, t) ∈ enumerate(constraint.times)
+        # Block diagonal structure: (var × var) blocks at each timestep
+        block_range = slice(t, x_comps, traj.dim)
+        μ∂²g_full[block_range, block_range] = constraint.μ∂²gs[i]
     end
     
     return μ∂²g_full
@@ -473,7 +415,7 @@ end
 
     using TrajectoryIndexingUtils
     
-    include("../../test/test_utils.jl")
+    include("../../../test/test_utils.jl")
 
     _, traj = bilinear_dynamics_and_trajectory()
 
@@ -511,7 +453,7 @@ end
 
     using TrajectoryIndexingUtils
     
-    include("../../test/test_utils.jl")
+    include("../../../test/test_utils.jl")
 
     _, traj = bilinear_dynamics_and_trajectory()
 
@@ -538,7 +480,7 @@ end
 
     using TrajectoryIndexingUtils
     
-    include("../../test/test_utils.jl")
+    include("../../../test/test_utils.jl")
 
     _, traj = bilinear_dynamics_and_trajectory()
 
@@ -568,7 +510,7 @@ end
 
     # Test hessian_of_lagrangian
     μ = randn(g_dim * traj.N)
-    NLC.μ∂²g!(NLC.μ∂²gs, vec(traj), μ)
+    Constraints.hessian_of_lagrangian!(NLC, traj, μ)
     μ∂²g_full = Constraints.get_full_hessian(NLC, traj)
     hessian_autodiff = ForwardDiff.hessian(Z -> μ'ĝ(Z), vec(traj))
 
@@ -579,7 +521,7 @@ end
 
     using TrajectoryIndexingUtils
     
-    include("../../test/test_utils.jl")
+    include("../../../test/test_utils.jl")
 
     _, traj = bilinear_dynamics_and_trajectory()
 
@@ -624,7 +566,7 @@ end
     using TrajectoryIndexingUtils
     using NamedTrajectories
     
-    include("../../test/test_utils.jl")
+    include("../../../test/test_utils.jl")
 
     # Create trajectory with 3 variables
     N = 10
@@ -682,7 +624,7 @@ end
 
     using TrajectoryIndexingUtils
     
-    include("../../test/test_utils.jl")
+    include("../../../test/test_utils.jl")
 
     _, traj = bilinear_dynamics_and_trajectory()
 
@@ -707,7 +649,7 @@ end
 
     using TrajectoryIndexingUtils
     
-    include("../../test/test_utils.jl")
+    include("../../../test/test_utils.jl")
 
     _, traj = bilinear_dynamics_and_trajectory()
 
@@ -729,3 +671,49 @@ end
     @test δ ≈ ĝ(vec(traj))
 end
 
+@testitem "NonlinearKnotPointConstraint - custom sparsity structures" begin
+
+    using TrajectoryIndexingUtils
+    
+    include("../../../test/test_utils.jl")
+
+    _, traj = bilinear_dynamics_and_trajectory()
+
+    # Constraint that only depends on first component of u
+    g(u) = [u[1]^2 - 1.0]
+    
+    g_dim = 1
+    var_dim = length(traj.components[:u])
+    
+    # Define sparse Jacobian structure: only first column is non-zero
+    ∂g_structure = spzeros(g_dim, var_dim)
+    ∂g_structure[1, 1] = 1.0
+    
+    # Define sparse Hessian structure: only (1,1) entry is non-zero
+    μ∂²g_structure = spzeros(var_dim, var_dim)
+    μ∂²g_structure[1, 1] = 1.0
+    
+    NLC = NonlinearKnotPointConstraint(
+        g, :u, traj;
+        jacobian_structure=∂g_structure,
+        hessian_structure=μ∂²g_structure,
+        equality=false
+    )
+    
+    # Check that storage was initialized with the structure
+    @test size(NLC.∂gs[1]) == (g_dim, var_dim)
+    @test size(NLC.μ∂²gs[1]) == (var_dim, var_dim)
+    
+    # Test that computation still works correctly
+    U_SLICE(k) = slice(k, traj.components[:u], traj.dim)
+    ĝ(Z⃗) = vcat([g(Z⃗[U_SLICE(k)]) for k ∈ 1:traj.N]...)
+    
+    δ = Constraints.constraint_value(NLC, traj)
+    @test δ ≈ ĝ(vec(traj))
+    
+    # Test jacobian! with custom structure
+    Constraints.jacobian!(NLC, traj)
+    ∂g_full = Constraints.get_full_jacobian(NLC, traj)
+    ∂g_autodiff = ForwardDiff.jacobian(ĝ, vec(traj))
+    @test ∂g_full[:, 1:traj.dim * traj.N] ≈ ∂g_autodiff
+end

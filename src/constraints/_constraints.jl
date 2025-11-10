@@ -64,8 +64,16 @@ Compute the Hessian of the Lagrangian (μ'g) for the constraint.
 """
 function hessian_of_lagrangian end
 
-include("linear_constraints.jl")
-include("nonlinear_constraints.jl")
-include("nonlinear_global_constraints.jl")
+# Linear constraints
+include("linear/equality_constraint.jl")
+include("linear/all_equal_constraint.jl")
+include("linear/bounds_constraint.jl")
+include("linear/total_constraint.jl")
+include("linear/symmetry_constraint.jl")
+
+# Nonlinear constraints
+include("nonlinear/knot_point_constraint.jl")
+include("nonlinear/global_constraint.jl")
+include("nonlinear/global_knot_point_constraint.jl")
 
 end
