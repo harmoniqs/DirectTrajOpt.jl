@@ -218,6 +218,20 @@ struct TrajectoryDynamics{F1, F2, F3}
             dynamics_dim
         )
     end
+    
+    # Inner constructor for direct field initialization (used by NullTrajectoryDynamics)
+    function TrajectoryDynamics{F1, F2, F3}(
+        traj::NamedTrajectory,
+        F!::F1,
+        ∂F!::F2,
+        ∂fs::Vector{SparseMatrixCSC{Float64, Int}},
+        μ∂²F!::F3,
+        μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}},
+        μ∂²F_structure::SparseMatrixCSC{Float64, Int},
+        dim::Int
+    ) where {F1, F2, F3}
+        return new{F1, F2, F3}(traj, F!, ∂F!, ∂fs, μ∂²F!, μ∂²fs, μ∂²F_structure, dim)
+    end
 end
 
 
@@ -230,9 +244,15 @@ function TrajectoryDynamics(
 end
 
 function NullTrajectoryDynamics()
-    # Create a minimal dummy trajectory
-    dummy_traj = NamedTrajectory((x = zeros(1, 1),), timestep=:Δt)
-    return TrajectoryDynamics(
+    # Create a minimal dummy trajectory with timestep component
+    dummy_traj = NamedTrajectory((x = zeros(1, 1), Δt = ones(1, 1)), timestep=:Δt)
+    
+    # Use new() to construct the struct directly
+    F1 = typeof((_, _) -> nothing)
+    F2 = typeof((_, _) -> nothing)
+    F3 = typeof((_, _, _) -> nothing)
+    
+    return TrajectoryDynamics{F1, F2, F3}(
         dummy_traj,
         (_, _) -> nothing,
         (_, _) -> nothing,

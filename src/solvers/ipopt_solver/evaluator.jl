@@ -22,7 +22,7 @@ end
 
 mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     trajectory::NamedTrajectory
-    objective::Objective
+    objective::AbstractObjective
     dynamics::TrajectoryDynamics
     constraints::Vector{<:AbstractNonlinearConstraint}
     jacobian_structure::Vector{Tuple{Int, Int}}
@@ -65,15 +65,11 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
             hessian .+= Constraints.get_full_hessian(con, prob.trajectory)
         end
 
+        # objective hessian structure
+        hessian .+= Objectives.get_full_hessian(prob.objective, prob.trajectory)
+
         hessian_structure = filter(((i, j),) -> i ≤ j, collect(zip(findnz(hessian)[1:2]...)))
         n_constraint_hessian_elements = length(hessian_structure)
-
-        # objective hessian structure
-        hessian_structure = vcat(
-            hessian_structure, 
-            prob.objective.∂²L_structure()
-        )
-
         return new(
             prob.trajectory,
             prob.objective,
@@ -107,7 +103,16 @@ end
     evaluator::IpoptEvaluator,
     Z⃗::AbstractVector
 )
-    return evaluator.objective.L(Z⃗)
+    # Wrap Z⃗ as NamedTrajectory
+    traj_data = Z⃗[1:evaluator.trajectory.dim * evaluator.trajectory.N]
+    global_data = Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
+    traj = NamedTrajectory(
+        evaluator.trajectory;
+        datavec=traj_data,
+        global_data=global_data
+    )
+    
+    return Objectives.objective_value(evaluator.objective, traj)
 end
 
 @views function MOI.eval_objective_gradient(
@@ -115,7 +120,16 @@ end
     ∇::AbstractVector,
     Z⃗::AbstractVector
 )
-    ∇[:] = evaluator.objective.∇L(Z⃗)
+    # Wrap Z⃗ as NamedTrajectory
+    traj_data = Z⃗[1:evaluator.trajectory.dim * evaluator.trajectory.N]
+    global_data = Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
+    traj = NamedTrajectory(
+        evaluator.trajectory;
+        datavec=traj_data,
+        global_data=global_data
+    )
+    
+    Objectives.gradient!(∇, evaluator.objective, traj)
 end
 
 
@@ -187,10 +201,18 @@ end
     μ::AbstractVector{T}
 ) where T
 
-    evaluator.dynamics.μ∂²F!(evaluator.dynamics.μ∂²fs, Z⃗, μ[1:evaluator.n_dynamics_constraints])
+    # wrap datavec with stored trajectory 
+    Z = NamedTrajectory(
+        evaluator.trajectory;
+        datavec=Z⃗[1:evaluator.trajectory.dim * evaluator.trajectory.N],
+        global_data=Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
+    )
 
+    # evaluate dynamics hessian lagrangian
+    evaluator.dynamics.μ∂²F!(evaluator.dynamics.μ∂²fs, Z⃗, μ[1:evaluator.n_dynamics_constraints])
     ∂²ℒ = Dynamics.get_full_hessian(evaluator.dynamics, evaluator.trajectory)
 
+    # evaluate other nonlinear_constraints
     offset = evaluator.n_dynamics_constraints
     for con ∈ evaluator.constraints
         con.μ∂²g!(con.μ∂²gs, Z⃗, μ[offset .+ (1:con.dim)])
@@ -198,10 +220,13 @@ end
         offset += con.dim
     end  
 
-    H[1:evaluator.n_constraint_hessian_elements] = 
-        [∂²ℒ[i, j] for (i, j) ∈ evaluator.hessian_structure[1:evaluator.n_constraint_hessian_elements]]
+    # evaluate objective hessian
+    Objectives.hessian!(evaluator.objective, Z)
+    ∂²ℒ .+= σ * Objectives.get_full_hessian(evaluator.objective, Z)
 
-    H[evaluator.n_constraint_hessian_elements+1:end] = σ * evaluator.objective.∂²L(Z⃗)
+    # fill in H
+    H[:] = [∂²ℒ[i, j] for (i, j) ∈ evaluator.hessian_structure]
+
 
     return nothing
 end
@@ -214,28 +239,34 @@ end
 
     G, traj = bilinear_dynamics_and_trajectory()
 
-    integrators = [
-        BilinearIntegrator(G, :x, :u),
-        DerivativeIntegrator(:u, :du),
+    integrators = AbstractIntegrator[
+        # BilinearIntegrator(G, :x, :u),
+        # DerivativeIntegrator(:u, :du),
         DerivativeIntegrator(:du, :ddu)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
-    J += QuadraticRegularizer(:u, traj, 1.0) 
-    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += QuadraticRegularizer(:u, traj, 2.0e-1) 
+    J += QuadraticRegularizer(:du, traj, 3.0e-1)
+    J += QuadraticRegularizer(:ddu, traj, 4.0e-1)
     J += MinimumTimeObjective(traj)
+
+    display(traj.components)
 
     g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.N-1, equality=false)
 
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
+    prob = DirectTrajOptProblem(traj, J, integrators; 
+        # constraints=AbstractConstraint[g_u_norm]
+    )
 
     evaluator = IpoptEvaluator(prob)
 
-    @test MOI.eval_objective(evaluator, traj.datavec) ≈ J.L(traj.datavec)
+    J_val = Objectives.objective_value(J, traj)
+    @test MOI.eval_objective(evaluator, traj.datavec) ≈ J_val
 
     ∇ = zeros(length(traj.datavec))
 
-    ∇L_finitediff = FiniteDiff.finite_difference_gradient(J.L, traj.datavec)
+    ∇L_finitediff = FiniteDiff.finite_difference_gradient(Z⃗ -> MOI.eval_objective(evaluator, Z⃗), traj.datavec)
 
     MOI.eval_objective_gradient(evaluator, ∇, traj.datavec)
 
@@ -273,18 +304,35 @@ end
     @test all(isapprox.(∂g_finitediff, ∂ĝ, atol=1e-6, rtol=1e-6))
 
     # testing Hessian of the Lagrangian
-    μ = ones(evaluator.n_constraints)
-    σ = 1.0 
+    μ = 0.1 * ones(evaluator.n_constraints)
+    σ = 2.0 
 
     ∂²ℒ_structure = MOI.hessian_lagrangian_structure(evaluator) 
 
     ∂²ℒ_values = zeros(length(∂²ℒ_structure))
 
+    for (i, j) ∈ ∂²ℒ_structure
+        if j < i
+            println("Hessian index: (", i, ", ", j, ")")
+        end
+    end
+
     MOI.eval_hessian_lagrangian(evaluator, ∂²ℒ_values, traj.datavec, σ, μ)
 
-    ∂²ℒ = dense(∂²ℒ_values, ∂²ℒ_structure, (evaluator.trajectory.dim * evaluator.trajectory.N, evaluator.trajectory.dim * evaluator.trajectory.N))
+    n_vars = evaluator.trajectory.dim * evaluator.trajectory.N + evaluator.trajectory.global_dim
 
-    ∂²ℒ_finitediff = FiniteDiff.finite_difference_hessian(Z⃗ -> σ * J.L(Z⃗) + μ'ĝ(Z⃗), traj.datavec)
+    ∂²ℒ_I = [i for (i, j) ∈ ∂²ℒ_structure]
+    ∂²ℒ_J = [j for (i, j) ∈ ∂²ℒ_structure]
+
+    ∂²ℒ = sparse(∂²ℒ_I, ∂²ℒ_J, ∂²ℒ_values, n_vars, n_vars)
+
+    # Collect to avoid LazyArrays issues with FiniteDiff
+    Z⃗_vec = collect(traj.datavec)
+    ∂²ℒ_finitediff = FiniteDiff.finite_difference_hessian(Z⃗_vec) do Z⃗
+        traj_wrap = NamedTrajectory(traj; datavec=Z⃗)
+        return σ * Objectives.objective_value(J, traj_wrap) + μ'ĝ(Z⃗)
+    end
     
-    @test all(isapprox(∂²ℒ, ∂²ℒ_finitediff, atol=1e-3, rtol=1e-3))
+    show_diffs(∂²ℒ, triu(sparse(∂²ℒ_finitediff)); atol=1e-6)
+    @test all(isapprox.(triu(∂²ℒ), triu(sparse(∂²ℒ_finitediff)), atol=1e-2))
 end

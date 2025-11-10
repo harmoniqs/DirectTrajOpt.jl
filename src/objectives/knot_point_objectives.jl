@@ -1,145 +1,103 @@
 export KnotPointObjective
 export TerminalObjective
 
+using TrajectoryIndexingUtils
 
 # ----------------------------------------------------------------------------- #
 # KnotPointObjective
 # ----------------------------------------------------------------------------- #
 
 """
-    KnotPointObjective(
-        ℓ::Function,
-        names::AbstractVector{Symbol},
-        traj::NamedTrajectory,
-        params::AbstractVector;
-        kwargs...
-    )
-    KnotPointObjective(
-        ℓ::Function,
-        names::AbstractVector{Symbol},
-        traj::NamedTrajectory;
-        kwargs...
-    )
-    KnotPointObjective(
-        ℓ::Function,
-        name::Symbol,
-        args...;
-        kwargs...
-    )
+    KnotPointObjective <: AbstractObjective
 
-Create a knot point summed objective function for trajectory optimization, where `ℓ(x, p)` 
-on trajectory knot point variables `x` with parameters `p`. If the parameters argument is 
-omitted, `ℓ(x)` is assumed to be a function of `x` only.
+Knot point summed objective function for trajectory optimization.
 
-For multiple variables, the function `ℓ` can accept either:
-- Separate arguments: `ℓ(x, u)` for variables `[:x, :u]`
-- Concatenated vector: `ℓ(xu)` where `xu = [x; u]`
+Stores the objective function ℓ that operates on extracted variable values:
+```math
+J = \\sum_{k \\in \\text{times}} Q_k \\ell(x_k, p_k)
+```
 
-The constructor automatically detects which form `ℓ` expects.
+where ℓ is evaluated on trajectory variables at each knot point.
 
-# Arguments
-- `ℓ::Function`: Function that defines the objective, `ℓ(x, p)` or `ℓ(x)`.
-  - For single variable: `ℓ(x)` where `x` is the variable values at a knot point
-  - For multiple variables: `ℓ(x, u)` or `ℓ(xu)` depending on preference
-- `names::AbstractVector{Symbol}`: Names of the trajectory variables to be optimized.
-- `traj::NamedTrajectory`: The trajectory on which the objective is defined.
-- `params::AbstractVector`: Parameters `p` for the objective function ℓ, for each time.
+# Fields
+- `ℓ::Function`: Objective function mapping (variables..., params) -> scalar cost
+- `var_names::Vector{Symbol}`: Names of trajectory variables the objective depends on
+- `times::Vector{Int}`: Time indices where objective is evaluated
+- `params::Vector`: Parameters for each time index
+- `Qs::Vector{Float64}`: Weights for each time index
+- `∂²Ls::Vector{SparseMatrixCSC{Float64, Int}}`: Preallocated sparse Hessian storage (one per timestep)
 
-# Keyword Arguments
-- `times::AbstractVector{Int}=1:traj.N`: Time indices at which the objective is evaluated.
-- `Qs::AbstractVector{Float64}=ones(traj.N)`: Weights for the objective function at each time.
+# Constructor
+```julia
+KnotPointObjective(
+    ℓ::Function,
+    names::Union{Symbol, AbstractVector{Symbol}},
+    traj::NamedTrajectory,
+    params::AbstractVector;
+    times::AbstractVector{Int}=1:traj.N,
+    Qs::AbstractVector{Float64}=ones(length(times))
+)
+```
+
+For single variable: `ℓ(x, p)` where `x` is the variable values at a knot point
+For multiple variables: `ℓ(x, u, p)` where each argument corresponds to a variable in `names`
 
 # Examples
 ```julia
-# Single variable objective
-obj = KnotPointObjective(
-    x -> norm(x)^2,
-    [:x], traj
-)
+# Single variable
+obj = KnotPointObjective((x, _) -> norm(x)^2, :x, traj, fill(nothing, traj.N))
 
-# Multiple variables with separate arguments (recommended)
-obj = KnotPointObjective(
-    (x, u) -> x[1]^2 + u[1]^2,
-    [:x, :u], traj
-)
+# Multiple variables - concatenated
+obj = KnotPointObjective((xu, _) -> xu[1]^2 + xu[2]^2, [:x, :u], traj, fill(nothing, traj.N))
 
-# Multiple variables with concatenated vector
+# With parameters and weights
 obj = KnotPointObjective(
-    xu -> xu[1]^2 + xu[3]^2,  # xu = [x[1], x[2], u[1]]
-    [:x, :u], traj
+    (x, p) -> norm(x - p)^2, :x, traj, [x_targets...];
+    times=1:10, Qs=[1.0, 2.0, ...]
 )
 ```
 """
+struct KnotPointObjective <: AbstractObjective
+    ℓ::Function
+    var_names::Vector{Symbol}
+    times::Vector{Int}
+    params::Vector
+    Qs::Vector{Float64}
+    ∂²ℓs::Vector{SparseMatrixCSC{Float64, Int}}
+end
+
 function KnotPointObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
     traj::NamedTrajectory,
     params::AbstractVector;
     times::AbstractVector{Int}=1:traj.N,
-    Qs::Union{Nothing, AbstractVector{Float64}}=nothing,
+    Qs::AbstractVector{Float64}=ones(length(times)),
+    hessian_structure::Union{Nothing, SparseMatrixCSC{Float64, Int}}=nothing
 )
-    # Default Qs to ones matching the length of times
-    if isnothing(Qs)
-        Qs = ones(length(times))
-    end
-    
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
 
-    Z_dim = traj.dim * traj.N + traj.global_dim
-    # Compute component indices once for use in closures
+    # Get component indices for all variables
     x_comps = vcat([traj.components[name] for name in names]...)
-
-    function L(Z⃗::AbstractVector{<:Real})
-        loss = 0.0
-        for (i, t) in enumerate(times)
-            x_slice = slice(t, x_comps, traj.dim)
-            x = Z⃗[x_slice]
-            loss += Qs[i] * ℓ(x, params[i])
-        end
-        return loss
+    n_vars = length(x_comps)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    
+    # Default structure: dense block for local variables
+    if isnothing(hessian_structure)
+        hessian_structure = sparse(ones(n_vars, n_vars))
     end
 
-    @views function ∇L(Z⃗::AbstractVector{<:Real})
-        ∇ = zeros(Z_dim)
-        for (i, t) in enumerate(times)
-            x_slice = slice(t, x_comps, traj.dim)
-            # Disjoint
-            ForwardDiff.gradient!(
-                ∇[x_slice], 
-                x -> Qs[i] * ℓ(x, params[i]), 
-                Z⃗[x_slice]
-            )
-        end
-        return ∇
-    end
+    ∂²ℓs = [copy(hessian_structure) for _ in times]
 
-    function ∂²L_structure()
-        structure = spzeros(Z_dim, Z_dim)
-        for t in times
-            x_slice = slice(t, x_comps, traj.dim)
-            structure[x_slice, x_slice] .= 1.0
-        end
-        structure_pairs = collect(zip(findnz(structure)[1:2]...))
-        return structure_pairs
-    end
-
-    @views function ∂²L(Z⃗::AbstractVector{<:Real})
-        ∂²L_values = zeros(length(∂²L_structure()))
-        ∂²ℓ_length = length(x_comps)^2
-        for (i, t) in enumerate(times)
-            x_slice = slice(t, x_comps, traj.dim)
-            # Disjoint
-            ForwardDiff.hessian!(
-                ∂²L_values[(i - 1) * ∂²ℓ_length + 1:i * ∂²ℓ_length],
-                x -> Qs[i] * ℓ(x, params[i]), 
-                Z⃗[x_slice]
-            )
-        end
-        return ∂²L_values
-    end
-
-    return Objective(L, ∇L, ∂²L, ∂²L_structure)
+    return KnotPointObjective(
+        ℓ,
+        Vector{Symbol}(names),
+        Vector{Int}(times),
+        Vector(params),
+        Vector{Float64}(Qs),
+        ∂²ℓs
+    )
 end
 
 function KnotPointObjective(
@@ -149,62 +107,10 @@ function KnotPointObjective(
     times::AbstractVector{Int}=1:traj.N,
     kwargs...
 )
-    # Determine if ℓ expects separate arguments or a single concatenated vector
-    num_vars = length(names)
-    
-    if num_vars == 1
-        # Single variable: ℓ(x) where x is the variable values
-        params = [nothing for _ in times]
-        ℓ_param = (x, _) -> ℓ(x)
-        return KnotPointObjective(ℓ_param, names, traj, params; times=times, kwargs...)
-    else
-        # Multiple variables: try to detect if ℓ expects separate arguments
-        
-        # Get component ranges for each variable
-        comp_ranges = Vector{UnitRange{Int}}(undef, num_vars)
-        offset = 0
-        for (i, name) in enumerate(names)
-            comp_len = length(traj.components[name])
-            comp_ranges[i] = (offset + 1):(offset + comp_len)
-            offset += comp_len
-        end
-        
-        # Test with dummy data to see if ℓ accepts separate arguments
-        Z⃗ = vec(traj)
-        x_comps = vcat([traj.components[name] for name in names]...)
-        x_slice = slice(1, x_comps, traj.dim)
-        test_vec = Z⃗[x_slice]
-        
-        # Split test vector according to component ranges
-        test_args = [test_vec[r] for r in comp_ranges]
-        
-        accepts_separate_args = false
-        try
-            # Try calling with separate arguments
-            result = ℓ(test_args...)
-            if result isa Real
-                accepts_separate_args = true
-            end
-        catch
-            # If that fails, it expects a single concatenated vector
-            accepts_separate_args = false
-        end
-        
-        params = [nothing for _ in times]
-        
-        if accepts_separate_args
-            # Wrapper that splits concatenated vector into separate arguments
-            ℓ_param = function(x_concat, _)
-                args = [x_concat[r] for r in comp_ranges]
-                return ℓ(args...)
-            end
-        else
-            # ℓ expects a single concatenated vector
-            ℓ_param = (x, _) -> ℓ(x)
-        end
-        
-        return KnotPointObjective(ℓ_param, names, traj, params; times=times, kwargs...)
-    end
+    # No params version - create dummy params
+    params = [nothing for _ in times]
+    ℓ_param = (x, _) -> ℓ(x)
+    return KnotPointObjective(ℓ_param, names, traj, params; times=times, kwargs...)
 end
 
 function KnotPointObjective(ℓ::Function, name::Symbol, traj::NamedTrajectory; kwargs...)
@@ -232,70 +138,124 @@ function TerminalObjective(
     )
 end
 
+# Implement AbstractObjective interface
+
+function objective_value(obj::KnotPointObjective, traj::NamedTrajectory)
+    J = 0.0
+    for (i, t) in enumerate(obj.times)
+        zₖ = traj[t]
+        # Extract relevant variables
+        x_vals = vcat([zₖ[name] for name in obj.var_names]...)
+        J += obj.Qs[i] * obj.ℓ(x_vals, obj.params[i])
+    end
+    return J
+end
+
+function gradient!(∇::AbstractVector, obj::KnotPointObjective, traj::NamedTrajectory)
+    fill!(∇, 0.0)
+    
+    for (i, k) in enumerate(obj.times)
+        zₖ = traj[k]
+        # Extract relevant variables and their components
+        x_vals = vcat([zₖ[name] for name in obj.var_names]...)
+        x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
+        
+        # Get indices for this knot point
+        knot_indices = slice(k, x_comps, traj.dim)
+        
+        # Compute gradient directly into view of the gradient vector
+        ∇_view = @view ∇[knot_indices]
+        ForwardDiff.gradient!(
+            ∇_view,
+            x -> obj.ℓ(x, obj.params[i]),
+            x_vals
+        )
+        
+        # Scale by weight
+        ∇_view .*= obj.Qs[i]
+    end
+    
+    return nothing
+end
+
+function hessian_structure(obj::KnotPointObjective, traj::NamedTrajectory)
+    # Dense Hessian - return upper triangle
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    structure = Tuple{Int,Int}[]
+    for i in 1:Z_dim
+        for j in i:Z_dim
+            push!(structure, (i, j))
+        end
+    end
+    return structure
+end
+
+function hessian!(obj::KnotPointObjective, traj::NamedTrajectory)
+    for (i, k) in enumerate(obj.times)
+        zₖ = traj[k]
+        # Extract relevant variables and their components
+        x_vals = vcat([zₖ[name] for name in obj.var_names]...)
+        x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
+        
+        # Get indices for this knot point
+        knot_indices = slice(k, x_comps, traj.dim)
+        n_vars = length(knot_indices)
+       
+        # Compute local Hessian in-place using ForwardDiff, with weight
+        ForwardDiff.hessian!(
+            obj.∂²ℓs[i],
+            x -> obj.Qs[i] * obj.ℓ(x, obj.params[i]),
+            x_vals
+        )
+    end
+    return nothing
+end
+
+function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    ∂²L = spzeros(Z_dim, Z_dim)
+    
+    for (i, k) in enumerate(obj.times)
+        zₖ = traj[k]
+        x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
+        knot_indices = slice(k, x_comps, traj.dim)
+
+        ∂²L[knot_indices, knot_indices] .+= obj.∂²ℓs[i]
+    end
+    
+    return ∂²L
+end
+
 
 # ============================================================================ #
 
 @testitem "testing KnotPointObjective" begin
-
-    using TrajectoryIndexingUtils
-    
     include("../../test/test_utils.jl")
+    using DirectTrajOpt.Objectives
 
     _, traj = bilinear_dynamics_and_trajectory()
 
-    L(a) = norm(a)
-
+    L(a) = norm(a)^2  # Use quadratic for non-zero Hessian
     Qs = [1.0, 2.0]
     times = [1, traj.N]
 
     OBJ = KnotPointObjective(L, :u, traj, times=times, Qs=Qs)
 
-    L̂(Z⃗) = sum(Q * L(Z⃗[slice(k, traj.components[:u], traj.dim)]) for (Q, k) ∈ zip(Qs, times))
-
-    @test OBJ.L(traj.datavec) ≈ L̂(traj.datavec)
-    
-    ∂L_autodiff = ForwardDiff.gradient(L̂, traj.datavec)
-    @test OBJ.∇L(traj.datavec) ≈ ∂L_autodiff
-
-    ∂²L_autodiff = ForwardDiff.hessian(L̂, traj.datavec)
-
-    ∂²L_full = zeros(size(∂²L_autodiff))
-    for (index, entry) in zip(OBJ.∂²L_structure(), OBJ.∂²L(traj.datavec))
-        i, j = index
-        ∂²L_full[i, j] = entry
-    end
-
-    @test ∂²L_full ≈ ∂²L_autodiff
+    test_objective(OBJ, traj)
 end
 
 @testitem "testing KnotPointObjective with parameters" begin
-
-    using TrajectoryIndexingUtils
-    
     include("../../test/test_utils.jl")
+    using DirectTrajOpt.Objectives
 
     _, traj = bilinear_dynamics_and_trajectory()
 
-    L(x, p) = norm(x) + p
-
+    L(x, p) = norm(x)^2 + p  # Use quadratic for non-zero Hessian
     Qs = [1.0, 2.0]
     times = [1, traj.N]
     params = [1.0, 2.0]
 
     OBJ = KnotPointObjective(L, :u, traj, params; times=times, Qs=Qs)
 
-    L̂(Z⃗) = sum(Q * L(Z⃗[slice(k, traj.components[:u], traj.dim)], p) for (Q, k, p) ∈ zip(Qs, times, params))
-
-    @test OBJ.L(traj.datavec) ≈ L̂(traj.datavec)
-    
-    ∂L_autodiff = ForwardDiff.gradient(L̂, traj.datavec)
-    @test OBJ.∇L(traj.datavec) ≈ ∂L_autodiff
-
-    ∂²L_autodiff = ForwardDiff.hessian(L̂, traj.datavec)
-    ∂²L_full = zeros(size(∂²L_autodiff))
-    for (index, entry) in zip(OBJ.∂²L_structure(), OBJ.∂²L(traj.datavec))
-        i, j = index
-        ∂²L_full[i, j] = entry
-    end
-    @test ∂²L_full ≈ ∂²L_autodiff
+    test_objective(OBJ, traj)
 end

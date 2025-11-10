@@ -21,7 +21,7 @@ A direct trajectory optimization problem containing all information needed for s
 
 # Fields
 - `trajectory::NamedTrajectory`: The trajectory containing optimization variables and data
-- `objective::Objective`: The objective function to minimize
+- `objective::AbstractObjective`: The objective function to minimize
 - `integrators::Vector{<:AbstractIntegrator}`: The integrators defining system dynamics
 - `constraints::Vector{<:AbstractConstraint}`: Constraints on the trajectory
 
@@ -29,7 +29,7 @@ A direct trajectory optimization problem containing all information needed for s
 ```julia
 DirectTrajOptProblem(
     traj::NamedTrajectory,
-    obj::Objective,
+    obj::AbstractObjective,
     integrators::Vector{<:AbstractIntegrator};
     constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
 )
@@ -49,14 +49,14 @@ prob = DirectTrajOptProblem(traj, obj, integrator)
 """
 mutable struct DirectTrajOptProblem
     trajectory::NamedTrajectory
-    objective::Objective
+    objective::AbstractObjective
     integrators::Vector{<:AbstractIntegrator}
     constraints::Vector{<:AbstractConstraint}
 end
 
 function DirectTrajOptProblem(
     traj::NamedTrajectory,
-    obj::Objective,
+    obj::AbstractObjective,
     integrators::Vector{<:AbstractIntegrator};
     constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
 )
@@ -67,7 +67,7 @@ end
 
 function DirectTrajOptProblem(
     traj::NamedTrajectory,
-    obj::Objective,
+    obj::AbstractObjective,
     integrator::AbstractIntegrator;
     kwargs...
 )

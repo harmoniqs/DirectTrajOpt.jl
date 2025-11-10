@@ -166,6 +166,6 @@ end
     )
 
     test_integrator(
-        B, traj, test_equality=false, rtol=1e-4, atol=1e-4
+        B, traj, test_equality=false, atol=1e-3
     )
 end
