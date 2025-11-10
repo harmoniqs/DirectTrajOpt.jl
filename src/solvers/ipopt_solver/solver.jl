@@ -152,7 +152,7 @@ function get_optimizer_and_variables(
     linear_constraints = AbstractLinearConstraint[
         filter(c -> c isa AbstractLinearConstraint, prob.constraints)...
     ]
-    constrain!(optimizer, variables, linear_constraints; verbose=verbose)
+    constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose=verbose)
 
     # set solver options
     set_options!(optimizer, options)

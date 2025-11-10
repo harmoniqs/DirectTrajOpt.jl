@@ -61,8 +61,9 @@ function DirectTrajOptProblem(
     constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
 )
     traj_constraints = get_trajectory_constraints(traj)
-    append!(constraints, traj_constraints)
-    return DirectTrajOptProblem(traj, obj, integrators, constraints)
+    # Convert to AbstractConstraint vector to allow mixed types
+    all_constraints = AbstractConstraint[constraints..., traj_constraints...]
+    return DirectTrajOptProblem(traj, obj, integrators, all_constraints)
 end
 
 function DirectTrajOptProblem(
@@ -108,16 +109,17 @@ function get_trajectory_constraints(traj::NamedTrajectory)
     # add initial equality constraints
     for (name, val) ∈ pairs(traj.initial)
         con_label = "initial value of $name"
-        eq_con = EqualityConstraint(name, [1], val, traj; label=con_label)
+        eq_con = EqualityConstraint(name, [1], val; label=con_label)
         push!(cons, eq_con)
     end
 
     # add final equality constraints
     for (name, val) ∈ pairs(traj.final)
         label = "final value of $name"
-        eq_con = EqualityConstraint(name, [traj.N], val, traj; label=label)
+        eq_con = EqualityConstraint(name, [traj.N], val; label=label)
         push!(cons, eq_con)
     end
+    
     # add bounds constraints
     for (name, bound) ∈ pairs(traj.bounds)
         if name ∈ keys(traj.initial) && name ∈ keys(traj.final) 
@@ -130,8 +132,7 @@ function get_trajectory_constraints(traj::NamedTrajectory)
             ts = 1:traj.N
         end
         con_label = "bounds on $name"
-        # bounds = collect(zip(bound[1], bound[2]))
-        bounds_con = BoundsConstraint(name, ts, bound, traj; label=con_label)
+        bounds_con = BoundsConstraint(name, ts, bound; label=con_label)
         push!(cons, bounds_con)
     end
 

@@ -3,6 +3,8 @@ module IpoptSolverExt
 export Callbacks
 
 using DirectTrajOpt
+using NamedTrajectories
+using TrajectoryIndexingUtils
 using Ipopt
 using MathOptInterface
 import MathOptInterface as MOI

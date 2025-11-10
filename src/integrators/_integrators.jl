@@ -103,7 +103,7 @@ function test_integrator(
     end
 
     # testing hessian
-    μ = abs.(randn(x_dim))
+    μ = rand(x_dim)
     μ∂²f = hessian_of_lagrangian(integrator, μ, z₁, z₂, k)
     μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁_vec; z₂_vec])
 
