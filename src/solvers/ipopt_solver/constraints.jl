@@ -26,6 +26,17 @@ function (con::EqualityConstraint)(
     end
 end
 
+function (con::VariableEqualityConstraint)(
+    opt::Ipopt.Optimizer,
+    vars::Vector{MOI.VariableIndex},
+)
+    MOI.add_constraints(
+        opt,
+        MOI.ScalarAffineFunction([MOI.ScalarAffineTerm(m, vars[idx]) for (idx, m) in zip(con.idxs, con.ms)], con.b),
+        MOI.EqualTo(0.),
+    )
+end
+
 function (con::BoundsConstraint)(
     opt::Ipopt.Optimizer,
     vars::Vector{MOI.VariableIndex}
