@@ -98,9 +98,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, :x, :u),
-        DerivativeIntegrator(:u, :du),
-        DerivativeIntegrator(:du, :ddu)
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -128,9 +128,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, :x, :u),
-        DerivativeIntegrator(:u, :du),
-        DerivativeIntegrator(:du, :ddu)
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -161,9 +161,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, :x, :u),
-        DerivativeIntegrator(:u, :du),
-        DerivativeIntegrator(:du, :ddu)
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -193,9 +193,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory(add_global=true)
 
     integrators = [
-        BilinearIntegrator(G, :x, :u),
-        DerivativeIntegrator(:u, :du),
-        DerivativeIntegrator(:du, :ddu)
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)

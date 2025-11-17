@@ -1,115 +1,140 @@
 export DerivativeIntegrator
 
-struct DerivativeIntegrator <: AbstractIntegrator
+"""
+    DerivativeIntegrator <: AbstractIntegrator
+
+Integrator for derivative constraints of the form xₖ₊₁ - xₖ - Δt * ẋₖ = 0.
+
+This enforces smoothness by relating a variable to its derivative.
+
+# Fields
+- `f::Function`: Constraint function f(xₖ₊₁, xₖ, ẋₖ, Δtₖ) = xₖ₊₁ - xₖ - Δtₖ * ẋₖ
+- `x_name::Symbol`: Variable name
+- `ẋ_name::Symbol`: Derivative variable name
+- `x_dim::Int`: Dimension of variable
+- `var_dim::Int`: Combined dimension (2*x_dim + 1 for xₖ, ẋₖ, Δtₖ, xₖ₊₁)
+- `dim::Int`: Total constraint dimension (x_dim * (N-1))
+- `∂fs::Vector{SparseMatrixCSC{Float64, Int}}`: Compact Jacobian storage
+- `μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}}`: Compact Hessian storage
+
+# Example
+```julia
+# Enforce velocity smoothness: vₖ₊₁ - vₖ - Δt * aₖ = 0
+integrator = DerivativeIntegrator(:v, :a, traj)
+```
+"""
+struct DerivativeIntegrator{F} <: AbstractIntegrator
+    f::F
     x_name::Symbol
     ẋ_name::Symbol
+    x_dim::Int
+    var_dim::Int
+    dim::Int
 
     function DerivativeIntegrator(
         x::Symbol,
-        ẋ::Symbol
+        ẋ::Symbol,
+        traj::NamedTrajectory
     )
-        return new(
+        x_dim = traj.dims[x]
+        N = traj.N
+        
+        # Variables: [xₖ, ẋₖ, Δtₖ, xₖ₊₁]
+        var_dim = 2*x_dim + 1 + x_dim  # = 3*x_dim + 1
+        
+        # Total constraint dimension
+        dim = x_dim * (N - 1)
+        
+        # Define f function: constraint is f(xₖ₊₁, xₖ, ẋₖ, Δtₖ) = 0
+        f = (xₖ₊₁, xₖ, ẋₖ, Δtₖ) -> xₖ₊₁ - xₖ - Δtₖ * ẋₖ
+        
+        return new{typeof(f)}(
+            f,
             x,
-            ẋ
+            ẋ,
+            x_dim,
+            var_dim,
+            dim
         )
     end
 end
 
-function (D::DerivativeIntegrator)(
-    δₖ::AbstractVector,
-    zₖ::KnotPoint,
-    zₖ₊₁::KnotPoint,
-    k::Int
+function evaluate!(
+    δ::AbstractVector,
+    D::DerivativeIntegrator,
+    traj::NamedTrajectory,
 )
-    aₖ = zₖ[D.x_name]
-    ȧₖ = zₖ[D.ẋ_name]
-    Δtₖ = zₖ.timestep
-    aₖ₊₁ = zₖ₊₁[D.x_name]
-    δₖ .= aₖ₊₁ - aₖ - Δtₖ * ȧₖ
+    for k = 1:traj.N-1
+        xₖ = traj[k][D.x_name]
+        xₖ₊₁ = traj[k+1][D.x_name]
+        ẋₖ = traj[k][D.ẋ_name]
+        Δtₖ = traj[k].timestep
+        δ[slice(k, D.x_dim)] = D.f(xₖ₊₁, xₖ, ẋₖ, Δtₖ)
+    end
     return nothing
 end
 
-function jacobian!(
-    ∂D::AbstractMatrix,
+# Jacobian methods
+
+@views function eval_jacobian(
     D::DerivativeIntegrator,
-    zₖ::KnotPoint,
-    zₖ₊₁::KnotPoint,
-    k::Int
+    traj::NamedTrajectory
 )
-    # ∂ẋₖD 
-    Δtₖ = zₖ.timestep
-    ẋ_comps = zₖ.components[D.ẋ_name]
-    x_dim = length(zₖ[D.x_name])
-    ∂D[:, ẋ_comps] = -Δtₖ * I(x_dim)
-
-    # ∂ΔtₖD
-    ẋₖ = zₖ[D.ẋ_name]
-    Δt_comp = zₖ.components[zₖ.names[findfirst(==(:Δt), zₖ.names)]][1]
-    ∂D[:, Δt_comp] = -ẋₖ
-    return nothing
+    ∂D = spzeros(D.dim, traj.dim * traj.N + traj.global_dim)
+    for k = 1:traj.N-1
+        ForwardDiff.jacobian!(
+            ∂D[slice(k, D.x_dim), slice(k, 1:2traj.dim, traj.dim)],
+            zz -> begin 
+                zₖ = zz[1:traj.dim]
+                zₖ₊₁ = zz[traj.dim+1:end]
+                xₖ = zₖ[traj.components[D.x_name]]
+                ẋₖ = zₖ[traj.components[D.ẋ_name]]
+                Δtₖ = zₖ[traj.components[traj.timestep]][1]
+                xₖ₊₁ = zₖ₊₁[traj.components[D.x_name]]
+                return D.f(xₖ₊₁, xₖ, ẋₖ, Δtₖ)
+            end,
+            [traj[k].data; traj[k+1].data],
+        )
+    end
+    return ∂D 
 end
 
-function jacobian_structure(D::DerivativeIntegrator, traj::NamedTrajectory)
-    x_dim = traj.dims[D.x_name]
-    z_dim = traj.dim
-    x_comps = traj.components[D.x_name]
-    ẋ_comps = traj.components[D.ẋ_name]
-    Δt_comp = traj.components[traj.timestep][1]
+# Hessian methods
 
-    ∂D = spzeros(x_dim, 2 * z_dim)
-
-    # static components (not updated)
-
-    # ∂xₖ₊₁D
-    ∂D[:, z_dim .+ x_comps] = I(x_dim)
-    # ∂xₖD
-    ∂D[:, x_comps] = -I(x_dim)
-
-
-    # dynamic (updated)
-
-    # ∂ẋₖD
-    ∂D[:, ẋ_comps] = I(x_dim)
-    # ∂ΔtₖD
-    ∂D[:, Δt_comp] = ones(x_dim) 
-
-    return ∂D
-end
-
-function hessian_of_lagrangian(
+function eval_hessian_of_lagrangian(
     D::DerivativeIntegrator,
-    μₖ::AbstractVector,
-    zₖ::KnotPoint,
-    zₖ₊₁::KnotPoint,
-    k::Int
+    traj::NamedTrajectory,
+    μ::AbstractVector
 )
-    z_dim = length(zₖ.data)
-    ẋ_comps = zₖ.components[D.ẋ_name]
-    Δt_comp = zₖ.components[zₖ.names[findfirst(==(:Δt), zₖ.names)]][1]
-    
-    μ∂²D = spzeros(2z_dim, 2z_dim)
+    μ∂²D = spzeros(
+        traj.dim * traj.N + traj.global_dim,
+        traj.dim * traj.N + traj.global_dim,
+    )
 
-    # μ∂Δtₖ∂ẋₖD
-    μ∂²D[ẋ_comps, Δt_comp] += -μₖ 
-    # μ∂²D[Δt_comp, ẋ_comps] += -μₖ
+    for k = 1:traj.N-1
+        μₖ = μ[slice(k, D.x_dim)]
+       
+        μ∂²Dₖ = ForwardDiff.hessian(
+            zz -> begin
+                zₖ = zz[1:traj.dim]
+                zₖ₊₁ = zz[traj.dim+1:end]
+                xₖ = zₖ[traj.components[D.x_name]]
+                ẋₖ = zₖ[traj.components[D.ẋ_name]]
+                Δtₖ = zₖ[traj.components[traj.timestep]][1]
+                xₖ₊₁ = zₖ₊₁[traj.components[D.x_name]]
+                return μₖ'D.f(xₖ₊₁, xₖ, ẋₖ, Δtₖ)
+            end,
+            [traj[k].data; traj[k+1].data],
+        )
 
-    return μ∂²D
-end
-
-function hessian_structure(D::DerivativeIntegrator, traj::NamedTrajectory) 
-    z_dim = traj.dim
-    ẋ_comps = traj.components[D.ẋ_name]
-    Δt_comp = traj.components[traj.timestep][1]
-    
-    μ∂²D = spzeros(2z_dim, 2z_dim) 
-    μ∂²D[ẋ_comps, Δt_comp] .= 1
-    # μ∂²D[Δt_comp, ẋ_comps] .= 1
-    return μ∂²D
+        μ∂²D[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= μ∂²Dₖ
+    end
+    return μ∂²D 
 end
 
 @testitem "testing DerivativeIntegrator" begin
     include("../../test/test_utils.jl")
     traj = named_trajectory_type_1()
-    D = DerivativeIntegrator(:a, :da)
+    D = DerivativeIntegrator(:a, :da, traj)
     test_integrator(D, traj)
 end

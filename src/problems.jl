@@ -6,7 +6,6 @@ export get_trajectory_constraints
 
 using ..Objectives
 using ..Integrators
-using ..Dynamics
 using ..Constraints
 
 using TrajectoryIndexingUtils

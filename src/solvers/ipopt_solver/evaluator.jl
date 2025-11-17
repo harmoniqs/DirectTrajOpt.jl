@@ -8,10 +8,10 @@ const MOI = MathOptInterface
 
 
 using ..Objectives
-using ..Integrators
-using ..Dynamics
+using ..Integrators: AbstractIntegrator
 using ..Constraints
 using ..Problems
+using ..CommonInterface: evaluate!, eval_jacobian, eval_hessian_of_lagrangian
 
 
 function sparse_to_moi(A::SparseMatrixCSC)
@@ -23,7 +23,7 @@ end
 mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     trajectory::NamedTrajectory
     objective::AbstractObjective
-    dynamics::TrajectoryDynamics
+    integrators::Vector{<:AbstractIntegrator}
     constraints::Vector{<:AbstractNonlinearConstraint}
     jacobian_structure::Vector{Tuple{Int, Int}}
     hessian_structure::Vector{Tuple{Int, Int}}
@@ -38,42 +38,49 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
         eval_hessian=true,
         verbose=false
     )
-        # Create dynamics from integrators
-        if verbose
-            println("Creating TrajectoryDynamics from $(length(prob.integrators)) integrators...")
-        end
-        dynamics = TrajectoryDynamics(prob.integrators, prob.trajectory; verbose=verbose)
+        # Calculate total dynamics constraint dimension
+        n_dynamics_constraints = sum(integrator.dim for integrator in prob.integrators; init=0)
         
-        n_dynamics_constraints = dynamics.dim * (prob.trajectory.N - 1)
         nonlinear_constraints = filter(c -> c isa AbstractNonlinearConstraint, prob.constraints)
         n_nonlinear_constraints = sum(c -> c.dim, nonlinear_constraints; init=0)
 
-        ∂g = Dynamics.get_full_jacobian(dynamics, prob.trajectory)
+        # Build Jacobian structure from integrators
+        ∂g = spzeros(0, prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim)
+        
+        for integrator in prob.integrators
+            ∂g = vcat(∂g, get_jacobian_structure(integrator, prob.trajectory))
+        end
 
         for c ∈ nonlinear_constraints 
-            ∂g = vcat(∂g, Constraints.get_full_jacobian(c, prob.trajectory))
+            ∂g = vcat(∂g, eval_jacobian(c, prob.trajectory))
         end
 
         jacobian_structure = collect(zip(findnz(∂g)[1:2]...))
 
-
-        # dynamics hessian structure 
-        hessian = dynamics.μ∂²F_structure
+        # Build Hessian structure from integrators
+        hessian = spzeros(
+            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
+            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim
+        )
+        
+        for integrator in prob.integrators
+            hessian .+= get_hessian_of_lagrangian_structure(integrator, prob.trajectory)
+        end
 
         # nonlinear constraints hessian structure
         for con ∈ nonlinear_constraints 
-            hessian .+= Constraints.get_full_hessian(con, prob.trajectory)
+            hessian .+= eval_hessian_of_lagrangian(con, prob.trajectory, ones(con.dim))
         end
 
         # objective hessian structure
-        hessian .+= Objectives.get_full_hessian(prob.objective, prob.trajectory)
+        hessian .+= Objectives.hessian_structure(prob.objective, prob.trajectory)
 
         hessian_structure = filter(((i, j),) -> i ≤ j, collect(zip(findnz(hessian)[1:2]...)))
         n_constraint_hessian_elements = length(hessian_structure)
         return new(
             prob.trajectory,
             prob.objective,
-            dynamics,
+            prob.integrators,
             AbstractNonlinearConstraint[nonlinear_constraints...],
             jacobian_structure,
             hessian_structure,
@@ -140,10 +147,7 @@ end
     g::AbstractVector,
     Z⃗::AbstractVector
 )
-    evaluator.dynamics.F!(g[1:evaluator.n_dynamics_constraints], Z⃗)
-
     # Wrap Z⃗ as NamedTrajectory for constraint evaluation
-    # Extract trajectory data and global data separately
     traj_data = Z⃗[1:evaluator.trajectory.dim * evaluator.trajectory.N]
     global_data = Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
     
@@ -153,10 +157,17 @@ end
         global_data=global_data
     )
     
-    # loop over nonlinear constraints, incrementing offset
-    offset = evaluator.n_dynamics_constraints
+    # Loop over integrators and evaluate constraints
+    offset = 0
+    for integrator in evaluator.integrators
+        δ = view(g, offset+1:offset+integrator.dim)
+        evaluate!(δ, integrator, traj)
+        offset += integrator.dim
+    end
+    
+    # Loop over nonlinear constraints
     for con ∈ evaluator.constraints
-        g[offset .+ (1:con.dim)] .= Constraints.constraint_value(con, traj)
+        CommonInterface.evaluate!(view(g, offset .+ (1:con.dim)), con, traj)
         offset += con.dim
     end
 
@@ -179,13 +190,16 @@ end
         global_data=Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
     )
 
-    evaluator.dynamics.∂F!(evaluator.dynamics.∂fs, Z⃗)
+    # Build Jacobian from integrators
+    ∂g = spzeros(0, length(Z⃗))
+    
+    for integrator in evaluator.integrators
+        ∂g = vcat(∂g, eval_jacobian(integrator, Z))
+    end
 
-    ∂g = Dynamics.get_full_jacobian(evaluator.dynamics, evaluator.trajectory)
-
+    # Add nonlinear constraints
     for c ∈ evaluator.constraints
-        Constraints.jacobian!(c, Z)
-        ∂g = vcat(∂g, Constraints.get_full_jacobian(c, evaluator.trajectory))
+        ∂g = vcat(∂g, eval_jacobian(c, Z))
     end 
 
     ∂[:] = [∂g[i, j] for (i, j) ∈ MOI.jacobian_structure(evaluator)] 
@@ -215,25 +229,27 @@ end
         global_data=Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
     )
 
-    # evaluate dynamics hessian lagrangian
-    evaluator.dynamics.μ∂²F!(evaluator.dynamics.μ∂²fs, Z⃗, μ[1:evaluator.n_dynamics_constraints])
-    ∂²ℒ = Dynamics.get_full_hessian(evaluator.dynamics, evaluator.trajectory)
+    # Initialize Hessian
+    ∂²ℒ = spzeros(length(Z⃗), length(Z⃗))
+    
+    # Evaluate integrator hessians
+    offset = 0
+    for integrator in evaluator.integrators
+        ∂²ℒ .+= eval_hessian_of_lagrangian(integrator, Z, μ[offset .+ (1:integrator.dim)])
+        offset += integrator.dim
+    end
 
-    # evaluate other nonlinear_constraints
-    offset = evaluator.n_dynamics_constraints
+    # Evaluate other nonlinear_constraints
     for con ∈ evaluator.constraints
-        Constraints.hessian_of_lagrangian!(con, Z, μ[offset .+ (1:con.dim)])
-        ∂²ℒ .+= Constraints.get_full_hessian(con, evaluator.trajectory)
+        ∂²ℒ .+= eval_hessian_of_lagrangian(con, Z, μ[offset .+ (1:con.dim)])
         offset += con.dim
     end  
 
     # evaluate objective hessian
-    Objectives.hessian!(evaluator.objective, Z)
     ∂²ℒ .+= σ * Objectives.get_full_hessian(evaluator.objective, Z)
 
     # fill in H
     H[:] = [∂²ℒ[i, j] for (i, j) ∈ evaluator.hessian_structure]
-
 
     return nothing
 end
@@ -247,9 +263,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = AbstractIntegrator[
-        # BilinearIntegrator(G, :x, :u),
-        # DerivativeIntegrator(:u, :du),
-        DerivativeIntegrator(:du, :ddu)
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -257,8 +273,6 @@ end
     J += QuadraticRegularizer(:du, traj, 3.0e-1)
     J += QuadraticRegularizer(:ddu, traj, 4.0e-1)
     J += MinimumTimeObjective(traj)
-
-    display(traj.components)
 
     g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.N-1, equality=false)
 
@@ -280,13 +294,30 @@ end
     @test ∇ ≈ ∇L_finitediff
 
     ĝ = Z⃗ -> begin 
-        δ_dynamics = zeros(eltype(Z⃗), evaluator.n_dynamics_constraints) 
-        evaluator.dynamics.F!(δ_dynamics, Z⃗)
-        δ_nonlinear = zeros(eltype(Z⃗), 0)
-        for con ∈ filter(c -> c isa AbstractNonlinearConstraint, evaluator.constraints)
-            traj_wrap = NamedTrajectory(Z⃗, evaluator.trajectory.components, evaluator.trajectory.N)
-            δ_con = Constraints.constraint_value(con, traj_wrap)
-            δ_nonlinear = vcat(δ_nonlinear, δ_con)
+        traj_wrap = NamedTrajectory(
+            evaluator.trajectory; 
+            datavec=Z⃗[1:evaluator.trajectory.dim * evaluator.trajectory.N],
+            global_data=Z⃗[evaluator.trajectory.dim * evaluator.trajectory.N + 1:end]
+        )
+        
+        # Evaluate integrators
+        δ_dynamics = zeros(eltype(Z⃗), evaluator.n_dynamics_constraints)
+        offset = 0
+        for integrator in evaluator.integrators
+            δ = view(δ_dynamics, offset+1:offset+integrator.dim)
+            evaluate!(δ, integrator, traj_wrap)
+            offset += integrator.dim
+        end
+        
+        # Evaluate nonlinear constraints
+        δ_nonlinear = zeros(eltype(Z⃗), evaluator.n_nonlinear_constraints)
+        offset_nl = 0
+        for con ∈ evaluator.constraints
+            # Use the constraint's evaluate! method
+            δ_con = zeros(eltype(Z⃗), con.dim)
+            evaluate!(δ_con, con, traj_wrap)
+            δ_nonlinear[offset_nl .+ (1:con.dim)] .= δ_con
+            offset_nl += con.dim
         end
         return vcat(δ_dynamics, δ_nonlinear)
     end
@@ -340,5 +371,6 @@ end
         return σ * Objectives.objective_value(J, traj_wrap) + μ'ĝ(Z⃗)
     end
     
+    show_diffs(triu(∂²ℒ), triu(sparse(∂²ℒ_finitediff)), atol=1e-2)
     @test all(isapprox.(triu(∂²ℒ), triu(sparse(∂²ℒ_finitediff)), atol=1e-2))
 end

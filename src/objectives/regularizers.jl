@@ -23,7 +23,6 @@ Gradients and Hessians are computed analytically.
 - `R::Vector{Float64}`: Diagonal weight matrix
 - `baseline::Matrix{Float64}`: Baseline values (column per timestep)
 - `times::Vector{Int}`: Time indices where regularization is applied
-- `∂²L::Matrix{Float64}`: Preallocated Hessian storage
 
 # Constructor
 ```julia
@@ -41,7 +40,6 @@ struct QuadraticRegularizer <: AbstractObjective
     R::Vector{Float64}
     baseline::Matrix{Float64}
     times::Vector{Int}
-    ∂²J::SparseMatrixCSC{Float64, Int}
 end
 
 function QuadraticRegularizer(
@@ -52,15 +50,12 @@ function QuadraticRegularizer(
     times::AbstractVector{Int}=1:traj.N,
 )
     @assert length(R) == traj.dims[name]
-    
-    ∂²J = quadratic_regularizer_hessian_structure(traj, name, collect(times))
    
     return QuadraticRegularizer(
         name,
         Vector{Float64}(R),
         Matrix{Float64}(baseline),
-        Vector{Int}(times),
-        ∂²J
+        Vector{Int}(times)
     )
 end
 
@@ -113,9 +108,37 @@ function gradient!(∇::AbstractVector, reg::QuadraticRegularizer, traj::NamedTr
     return nothing
 end
 
-function hessian!(reg::QuadraticRegularizer, traj::NamedTrajectory)
+function hessian_structure(reg::QuadraticRegularizer, traj::NamedTrajectory)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    structure = spzeros(Z_dim, Z_dim)
+    
     v_comps = traj.components[reg.name]
     Δt_comp = traj.components[traj.timestep][1]
+    
+    for k ∈ reg.times 
+        v_indices = slice(k, v_comps, traj.dim)
+        Δt_index = index(k, Δt_comp, traj.dim)
+
+        # ∂²J/∂v²
+        structure[v_indices, v_indices] .= 1.0
+
+        # ∂²J/∂Δt∂v
+        structure[v_indices, Δt_index] .= 1.0
+
+        # ∂²J/∂Δt²
+        structure[Δt_index, Δt_index] = 1.0
+    end
+    
+    return structure
+end
+
+function get_full_hessian(reg::QuadraticRegularizer, traj::NamedTrajectory)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    ∂²J = spzeros(Z_dim, Z_dim)
+    
+    v_comps = traj.components[reg.name]
+    Δt_comp = traj.components[traj.timestep][1]
+    
     for t ∈ reg.times
         zₖ = traj[t]
         Δt = zₖ.timestep
@@ -125,49 +148,16 @@ function hessian!(reg::QuadraticRegularizer, traj::NamedTrajectory)
         rₖ = zₖ[reg.name] - reg.baseline[:, t]
 
         # ∂²J/∂v² = Δt² * R
-        reg.∂²J[v_indices, v_indices] = Δt^2 * spdiagm(reg.R)
+        ∂²J[v_indices, v_indices] = Δt^2 * spdiagm(reg.R)
 
         # ∂²J/∂Δt∂v = Δt * R * (v - baseline)
-        reg.∂²J[v_indices, Δt_index] = 2 * Δt * reg.R .* rₖ
+        ∂²J[v_indices, Δt_index] = 2 * Δt * reg.R .* rₖ
 
         # ∂²J/∂Δt² = (v - baseline)' * R * (v - baseline)
-        reg.∂²J[Δt_index, Δt_index] = dot(rₖ, reg.R .* rₖ)
+        ∂²J[Δt_index, Δt_index] = dot(rₖ, reg.R .* rₖ)
     end
     
-    return nothing
-end
-
-function quadratic_regularizer_hessian_structure(traj::NamedTrajectory, name::Symbol, ks::Vector{Int})
-    n_vars = traj.dim * traj.N + traj.global_dim
-    ∂²J_structure = spzeros(n_vars, n_vars)
-    v_comps = traj.components[name]
-    Δt_comp = traj.components[traj.timestep][1]
-    for k ∈ ks 
-        v_indices = slice(k, v_comps, traj.dim)
-        Δt_index = index(k, Δt_comp, traj.dim)
-
-        # ∂²J/∂v²
-        for i ∈ v_indices
-            ∂²J_structure[i, i] = 1.0
-        end
-
-        # ∂²J/∂Δt∂v
-        for i in v_indices
-            ∂²J_structure[i, Δt_index] = 1.0
-        end
-
-        # ∂²J/∂Δt²
-        ∂²J_structure[Δt_index, Δt_index] = 1.0
-    end
-    return ∂²J_structure 
-end
-
-function get_full_hessian(reg::QuadraticRegularizer, ::NamedTrajectory)
-    return reg.∂²J
-end
-
-function hessian_structure(reg::QuadraticRegularizer, traj::NamedTrajectory)
-    return quadratic_regularizer_hessian_structure(traj, reg.name, reg.times)
+    return ∂²J
 end
 
 # ============================================================================ #

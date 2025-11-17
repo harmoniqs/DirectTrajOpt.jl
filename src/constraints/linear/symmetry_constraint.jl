@@ -59,9 +59,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, :x, :u),
-        DerivativeIntegrator(:u, :du),
-        DerivativeIntegrator(:du, :ddu)
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -100,9 +100,9 @@ end
     G, traj = bilinear_dynamics_and_trajectory()
 
     integrators = [
-        BilinearIntegrator(G, :x, :u),
-        DerivativeIntegrator(:u, :du),
-        DerivativeIntegrator(:du, :ddu)
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj)
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -147,7 +147,7 @@ end
     G_drift = rand(2, 2)
     G_drives = [rand(2, 2), rand(2, 2)]
     G(u) = G_drift + sum(u .* G_drives)
-    integrators = [BilinearIntegrator(G, :x, :u)]
+    integrators = [BilinearIntegrator(G, :x, :u, traj)]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
     J += QuadraticRegularizer(:u, traj, 1.0)

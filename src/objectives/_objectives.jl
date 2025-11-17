@@ -4,7 +4,6 @@ export AbstractObjective
 export objective_value
 export gradient!
 export hessian_structure
-export hessian!
 export get_full_hessian
 export test_objective
 export NullObjective
@@ -36,9 +35,10 @@ using Test
 Abstract type for all objective functions in trajectory optimization.
 
 Concrete objective types must implement:
-- `objective_value(obj, Z⃗)`: Evaluate the objective at trajectory vector Z⃗
-- `gradient!(∇, obj, Z⃗)`: Compute gradient in-place (gradient is always dense)
-- `hessian_structure(obj)`: Return sparsity structure as Vector{Tuple{Int,Int}}
+- `objective_value(obj, traj)`: Evaluate the objective at trajectory
+- `gradient!(∇, obj, traj)`: Compute gradient in-place (gradient is always dense)
+- `hessian_structure(obj, traj)`: Return sparsity structure as sparse matrix
+- `get_full_hessian(obj, traj)`: Return the full Hessian matrix
 
 Objectives support addition and scalar multiplication through `CompositeObjective`.
 
@@ -68,23 +68,15 @@ function gradient! end
 """
     hessian_structure(obj::AbstractObjective, traj::NamedTrajectory)
 
-Return the sparsity structure of the Hessian as a vector of (row, col) tuples.
+Return the sparsity structure of the Hessian as a sparse matrix with non-zero
+entries where the Hessian has non-zero values.
 """
 function hessian_structure end
 
 """
-    hessian!(obj::AbstractObjective, traj::NamedTrajectory, σ::Real=1.0)
-
-Compute the scaled Hessian of the objective in-place, mutating the objective's internal storage.
-The σ parameter is the scaling factor from the Lagrangian.
-"""
-function hessian! end
-
-"""
     get_full_hessian(obj::AbstractObjective, traj::NamedTrajectory)
 
-Retrieve the full Hessian matrix from the objective's internal storage.
-Must be called after `hessian!` has been called.
+Compute and return the full Hessian matrix of the objective.
 """
 function get_full_hessian end
 
@@ -129,18 +121,12 @@ function gradient!(∇::AbstractVector, obj::CompositeObjective, traj::NamedTraj
 end
 
 function hessian_structure(obj::CompositeObjective, traj::NamedTrajectory)
-    structure = Tuple{Int,Int}[]
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    structure = spzeros(Z_dim, Z_dim)
     for sub_obj in obj.objectives
-        append!(structure, hessian_structure(sub_obj, traj))
+        structure .+= hessian_structure(sub_obj, traj)
     end
     return structure
-end
-
-function hessian!(obj::CompositeObjective, traj::NamedTrajectory)
-    for sub_obj in obj.objectives
-        hessian!(sub_obj, traj)
-    end
-    return nothing
 end
 
 function get_full_hessian(obj::CompositeObjective, traj::NamedTrajectory)
@@ -212,10 +198,9 @@ function gradient!(∇::AbstractVector, ::NullObjective, ::NamedTrajectory)
     return nothing
 end
 
-hessian_structure(::NullObjective, ::NamedTrajectory) = Tuple{Int,Int}[]
-
-function hessian!(::NullObjective, ::NamedTrajectory)
-    return nothing
+function hessian_structure(::NullObjective, traj::NamedTrajectory)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    return spzeros(Z_dim, Z_dim)
 end
 
 function get_full_hessian(::NullObjective, traj::NamedTrajectory)
@@ -299,7 +284,6 @@ function test_objective(
     end
 
     # Test Hessian
-    hessian!(obj, traj)
     ∂²J = get_full_hessian(obj, traj)
     
     ∂²J_fd = FiniteDiff.finite_difference_hessian(Z⃗_vec) do Z⃗
@@ -318,7 +302,7 @@ function test_objective(
         end
         println()
     else
-        @test ∂²J ≈ triu(∂²J_fd) atol=atol rtol=rtol
+        @test triu(∂²J) ≈ triu(∂²J_fd) atol=atol rtol=rtol
     end
 
     return nothing

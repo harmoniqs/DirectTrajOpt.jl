@@ -63,7 +63,6 @@ struct KnotPointObjective <: AbstractObjective
     times::Vector{Int}
     params::Vector
     Qs::Vector{Float64}
-    ∂²ℓs::Vector{SparseMatrixCSC{Float64, Int}}
 end
 
 function KnotPointObjective(
@@ -72,31 +71,17 @@ function KnotPointObjective(
     traj::NamedTrajectory,
     params::AbstractVector;
     times::AbstractVector{Int}=1:traj.N,
-    Qs::AbstractVector{Float64}=ones(length(times)),
-    hessian_structure::Union{Nothing, SparseMatrixCSC{Float64, Int}}=nothing
+    Qs::AbstractVector{Float64}=ones(length(times))
 )
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
-
-    # Get component indices for all variables
-    x_comps = vcat([traj.components[name] for name in names]...)
-    n_vars = length(x_comps)
-    Z_dim = traj.dim * traj.N + traj.global_dim
-    
-    # Default structure: dense block for local variables
-    if isnothing(hessian_structure)
-        hessian_structure = sparse(ones(n_vars, n_vars))
-    end
-
-    ∂²ℓs = [copy(hessian_structure) for _ in times]
 
     return KnotPointObjective(
         ℓ,
         Vector{Symbol}(names),
         Vector{Int}(times),
         Vector(params),
-        Vector{Float64}(Qs),
-        ∂²ℓs
+        Vector{Float64}(Qs)
     )
 end
 
@@ -179,51 +164,41 @@ function gradient!(∇::AbstractVector, obj::KnotPointObjective, traj::NamedTraj
 end
 
 function hessian_structure(obj::KnotPointObjective, traj::NamedTrajectory)
-    # Dense Hessian - return upper triangle
+
     Z_dim = traj.dim * traj.N + traj.global_dim
-    structure = Tuple{Int,Int}[]
-    for i in 1:Z_dim
-        for j in i:Z_dim
-            push!(structure, (i, j))
-        end
+
+    structure = spzeros(Z_dim, Z_dim)
+
+    x_comps = vcat([traj.components[name] for name in obj.var_names]...)
+
+    for k ∈ obj.times
+        knot_indices = slice(k, x_comps, traj.dim)
+        structure[knot_indices, knot_indices] .= 1.0
     end
+
     return structure
 end
 
-function hessian!(obj::KnotPointObjective, traj::NamedTrajectory)
+function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
+
+    Z_dim = traj.dim * traj.N + traj.global_dim
+
+    ∂²L = spzeros(Z_dim, Z_dim)
+
+    x_comps = vcat([traj.components[name] for name in obj.var_names]...)
+    
     for (i, k) in enumerate(obj.times)
         zₖ = traj[k]
-        # Extract relevant variables and their components
-        x_vals = vcat([zₖ[name] for name in obj.var_names]...)
-        x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
-        
-        # Get indices for this knot point
         knot_indices = slice(k, x_comps, traj.dim)
-        n_vars = length(knot_indices)
-       
-        # Compute local Hessian in-place using ForwardDiff, with weight
+
         ForwardDiff.hessian!(
-            obj.∂²ℓs[i],
+            view(∂²L, knot_indices, knot_indices),
             x -> obj.Qs[i] * obj.ℓ(x, obj.params[i]),
-            x_vals
+            vcat([zₖ[name] for name in obj.var_names]...)
         )
     end
-    return nothing
-end
-
-function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
-    ∂²L = spzeros(Z_dim, Z_dim)
     
-    for (i, k) in enumerate(obj.times)
-        zₖ = traj[k]
-        x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
-        knot_indices = slice(k, x_comps, traj.dim)
-
-        ∂²L[knot_indices, knot_indices] .+= obj.∂²ℓs[i]
-    end
-    
-    return ∂²L
+    return triu(∂²L)
 end
 
 
@@ -241,7 +216,7 @@ end
 
     OBJ = KnotPointObjective(L, :u, traj, times=times, Qs=Qs)
 
-    test_objective(OBJ, traj)
+    test_objective(OBJ, traj; show_hessian_diff=false)
 end
 
 @testitem "testing KnotPointObjective with parameters" begin

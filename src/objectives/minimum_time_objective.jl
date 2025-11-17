@@ -65,12 +65,8 @@ end
 
 function hessian_structure(obj::MinimumTimeObjective, traj::NamedTrajectory)
     # Linear objective has no Hessian
-    return Tuple{Int,Int}[]
-end
-
-function hessian!(obj::MinimumTimeObjective, traj::NamedTrajectory)
-    # Linear objective - Hessian is zero (nothing to compute)
-    return nothing
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    return spzeros(Z_dim, Z_dim)
 end
 
 function get_full_hessian(obj::MinimumTimeObjective, traj::NamedTrajectory)
