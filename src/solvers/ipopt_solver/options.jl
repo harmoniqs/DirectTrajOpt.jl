@@ -5,21 +5,21 @@ export IpoptOptions
 
     https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_print_options_documentation
 """
-Base.@kwdef mutable struct IpoptOptions{T} <: AbstractSolverOptions
-    tol::T = 1e-8
-    s_max::T = 100.0
+Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
+    tol::Float64 = 1e-8
+    s_max::Float64 = 100.0
     max_iter::Int = 1_000
     max_cpu_time = 1_000_000.0
-    dual_inf_tol::T = 1.0
-    constr_viol_tol::T = 1.0e-6
-    compl_inf_tol::T = 1.0e-3
-    acceptable_tol::T = 1.0e-6
+    dual_inf_tol::Float64 = 1.0
+    constr_viol_tol::Float64 = 1.0e-6
+    compl_inf_tol::Float64 = 1.0e-3
+    acceptable_tol::Float64 = 1.0e-6
     acceptable_iter::Int = 15
-    acceptable_dual_inf_tol::T = 1.0e10
-    acceptable_constr_viol_tol::T = 1.0e-2
-    acceptable_compl_inf_tol::T = 1.0e-2
-    acceptable_obj_change_tol::T = 1.0e-5
-    diverging_iterates_tol::T = 1.0e8
+    acceptable_dual_inf_tol::Float64 = 1.0e10
+    acceptable_constr_viol_tol::Float64 = 1.0e-2
+    acceptable_compl_inf_tol::Float64 = 1.0e-2
+    acceptable_obj_change_tol::Float64 = 1.0e-5
+    diverging_iterates_tol::Float64 = 1.0e8
     eval_hessian = true
     hessian_approximation = eval_hessian ? "exact" : "limited-memory"
     hsllib = nothing
@@ -28,7 +28,7 @@ Base.@kwdef mutable struct IpoptOptions{T} <: AbstractSolverOptions
     mu_strategy = "adaptive"
     refine = true
     adaptive_mu_globalization = refine ? "obj-constr-filter" : "never-monotone-mode" 
-    mu_target::T = 1.0e-4
+    mu_target::Float64 = 1.0e-4
     nlp_scaling_method = "gradient-based"
     output_file = nothing
     print_level::Int = 5
@@ -45,5 +45,3 @@ Base.@kwdef mutable struct IpoptOptions{T} <: AbstractSolverOptions
     watchdog_shortened_iter_trigger = 0
     watchdog_trial_iter_max = 3
 end
-
-# 

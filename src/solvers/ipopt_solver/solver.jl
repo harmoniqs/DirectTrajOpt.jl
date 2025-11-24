@@ -5,6 +5,8 @@ const MOI = MathOptInterface
 using Ipopt
 using TestItemRunner
 
+export solve!
+
 """
     solve!(
         prob::DirectTrajOptProblem;
@@ -36,7 +38,7 @@ prob = DirectTrajOptProblem(trajectory, objective, dynamics)
 solve!(prob; max_iter=100, verbose=true)
 ```
 """
-function DC.solve!(
+function DTO.Solvers.solve!(
     prob::DirectTrajOptProblem;
     options::IpoptOptions=IpoptOptions(),
     max_iter::Int=options.max_iter,
