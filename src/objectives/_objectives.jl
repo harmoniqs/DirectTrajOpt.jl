@@ -58,6 +58,8 @@ Evaluate the objective function at the given trajectory.
 """
 function objective_value end
 
+(obj::AbstractObjective)(traj::NamedTrajectory) = objective_value(obj, traj)
+
 """
     gradient!(∇::AbstractVector, obj::AbstractObjective, traj::NamedTrajectory)
 
