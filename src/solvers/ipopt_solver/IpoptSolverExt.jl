@@ -2,12 +2,19 @@ module IpoptSolverExt
 
 export Callbacks
 
-using DirectTrajOpt
+# using DirectTrajOpt
+using NamedTrajectories
+using TrajectoryIndexingUtils
 using Ipopt
 using MathOptInterface
 import MathOptInterface as MOI
-import DirectTrajOpt as DC
+import DirectTrajOpt as DTO
 using TestItemRunner
+
+using ..Constraints
+using ..Integrators
+using ..Objectives
+using ..Solvers
 
 include("options.jl")
 include("constraints.jl")

@@ -6,7 +6,6 @@ export get_trajectory_constraints
 
 using ..Objectives
 using ..Integrators
-using ..Dynamics
 using ..Constraints
 
 using TrajectoryIndexingUtils
@@ -21,15 +20,15 @@ A direct trajectory optimization problem containing all information needed for s
 
 # Fields
 - `trajectory::NamedTrajectory`: The trajectory containing optimization variables and data
-- `objective::Objective`: The objective function to minimize
-- `dynamics::TrajectoryDynamics`: The system dynamics (integrators)
+- `objective::AbstractObjective`: The objective function to minimize
+- `integrators::Vector{<:AbstractIntegrator}`: The integrators defining system dynamics
 - `constraints::Vector{<:AbstractConstraint}`: Constraints on the trajectory
 
 # Constructors
 ```julia
 DirectTrajOptProblem(
     traj::NamedTrajectory,
-    obj::Objective,
+    obj::AbstractObjective,
     integrators::Vector{<:AbstractIntegrator};
     constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
 )
@@ -37,37 +36,38 @@ DirectTrajOptProblem(
 
 Create a problem from a trajectory, objective, and integrators. Trajectory constraints
 (initial, final, bounds) are automatically extracted and added to the constraint list.
+The dynamics object is created by the evaluator at solve time.
 
 # Example
 ```julia
 traj = NamedTrajectory((x = rand(2, 10), u = rand(1, 10)), timestep=:Δt)
 obj = QuadraticRegularizer(:u, traj, 1.0)
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u)
 prob = DirectTrajOptProblem(traj, obj, integrator)
 ```
 """
 mutable struct DirectTrajOptProblem
     trajectory::NamedTrajectory
-    objective::Objective
-    dynamics::TrajectoryDynamics
+    objective::AbstractObjective
+    integrators::Vector{<:AbstractIntegrator}
     constraints::Vector{<:AbstractConstraint}
 end
 
 function DirectTrajOptProblem(
     traj::NamedTrajectory,
-    obj::Objective,
+    obj::AbstractObjective,
     integrators::Vector{<:AbstractIntegrator};
     constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
 )
-    dynamics = TrajectoryDynamics(integrators, traj)
     traj_constraints = get_trajectory_constraints(traj)
-    append!(constraints, traj_constraints)
-    return DirectTrajOptProblem(traj, obj, dynamics, constraints)
+    # Convert to AbstractConstraint vector to allow mixed types
+    all_constraints = AbstractConstraint[constraints..., traj_constraints...]
+    return DirectTrajOptProblem(traj, obj, integrators, all_constraints)
 end
 
 function DirectTrajOptProblem(
     traj::NamedTrajectory,
-    obj::Objective,
+    obj::AbstractObjective,
     integrator::AbstractIntegrator;
     kwargs...
 )
@@ -108,16 +108,17 @@ function get_trajectory_constraints(traj::NamedTrajectory)
     # add initial equality constraints
     for (name, val) ∈ pairs(traj.initial)
         con_label = "initial value of $name"
-        eq_con = EqualityConstraint(name, [1], val, traj; label=con_label)
+        eq_con = EqualityConstraint(name, [1], val; label=con_label)
         push!(cons, eq_con)
     end
 
     # add final equality constraints
     for (name, val) ∈ pairs(traj.final)
         label = "final value of $name"
-        eq_con = EqualityConstraint(name, [traj.N], val, traj; label=label)
+        eq_con = EqualityConstraint(name, [traj.N], val; label=label)
         push!(cons, eq_con)
     end
+    
     # add bounds constraints
     for (name, bound) ∈ pairs(traj.bounds)
         if name ∈ keys(traj.initial) && name ∈ keys(traj.final) 
@@ -130,14 +131,12 @@ function get_trajectory_constraints(traj::NamedTrajectory)
             ts = 1:traj.N
         end
         con_label = "bounds on $name"
-        # bounds = collect(zip(bound[1], bound[2]))
-        bounds_con = BoundsConstraint(name, ts, bound, traj; label=con_label)
+        bounds_con = BoundsConstraint(name, ts, bound; label=con_label)
         push!(cons, bounds_con)
     end
 
     return cons
 end
-
 
 function Base.show(io::IO, prob::DirectTrajOptProblem)
     println(io, "DirectTrajOptProblem")
