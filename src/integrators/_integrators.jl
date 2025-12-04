@@ -71,8 +71,8 @@ function test_integrator(
     # Use the provided trajectory for testing
     test_traj = traj
     
-    # Constraint dimension for this trajectory
-    constraint_dim = integrator.x_dim * (test_traj.N - 1)
+    # Constraint dimension - use integrator.dim directly
+    constraint_dim = integrator.dim
 
     # Function to evaluate constraints via evaluate!
     f̂ = Z⃗ -> begin

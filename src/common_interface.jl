@@ -12,6 +12,7 @@ export jacobian_structure
 export jacobian!
 export hessian_structure
 export hessian_of_lagrangian
+export hessian_of_lagrangian!
 export eval_jacobian
 export eval_hessian_of_lagrangian
 
@@ -92,6 +93,19 @@ Compute the Hessian of the Lagrangian (weighted by multipliers μ) for the compo
 - A sparse matrix representing μ'∇²f
 """
 function hessian_of_lagrangian end
+
+"""
+    hessian_of_lagrangian!(μ∂²f, component, μ, args...)
+
+Compute the Hessian of the Lagrangian in-place, storing the result in μ∂²f.
+
+# Arguments
+- `μ∂²f`: Pre-allocated sparse matrix for the Hessian
+- `component`: An integrator, constraint, or other component
+- `μ`: Lagrange multipliers
+- `args...`: Component-specific arguments (e.g., knot points, trajectory values)
+"""
+function hessian_of_lagrangian! end
 
 """
     eval_jacobian(component, traj::NamedTrajectory)
