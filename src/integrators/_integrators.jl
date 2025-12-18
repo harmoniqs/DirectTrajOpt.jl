@@ -82,6 +82,8 @@ function test_integrator(
         return δ
     end
 
+    @test !all(iszero.(f̂(test_traj.datavec)))
+
     # testing jacobian
     ∂f = eval_jacobian(integrator, test_traj)
     
