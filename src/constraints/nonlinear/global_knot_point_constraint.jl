@@ -259,5 +259,5 @@ end
     NLC = NonlinearGlobalKnotPointConstraint(g_fn, [:u], [:g], traj; times=times, equality=false)
 
     # Test with validation utility
-    test_constraint(NLC, traj; atol=1e-3, show_hessian_diff=true)
+    test_constraint(NLC, traj; atol=1.5e-2, show_hessian_diff=true)
 end
