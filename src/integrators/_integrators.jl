@@ -1,11 +1,9 @@
 module Integrators
 
 export AbstractIntegrator
-export jacobian_structure
-export jacobian!
-export hessian_structure
-export hessian_of_lagrangian
 export test_integrator
+export get_jacobian_structure
+export get_hessian_of_lagrangian_structure
 
 using LinearAlgebra
 using SparseArrays
@@ -14,6 +12,11 @@ using FiniteDiff
 using NamedTrajectories
 using TestItemRunner
 using Test
+
+# Import and extend the common interface
+using ..CommonInterface
+import ..CommonInterface: evaluate!, jacobian_structure, jacobian!, hessian_structure, hessian_of_lagrangian
+import ..CommonInterface: eval_jacobian, eval_hessian_of_lagrangian
 
 abstract type AbstractIntegrator end
 
@@ -25,73 +28,107 @@ include("time_integrator.jl")
 
 include("../../test/test_utils.jl")
 
+function get_jacobian_structure(
+    integrator::AbstractIntegrator,
+    traj::NamedTrajectory
+)
+    N = traj.N
+    x_dim = integrator.x_dim
+    z_dim = traj.dim
+    F_dim = integrator.dim 
+    Z_dim = z_dim * N + traj.global_dim
+    ∂F = spzeros(F_dim, Z_dim)
+    for k = 1:N-1
+        ∂F[slice(k, x_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
+    end 
+    return ∂F
+end
+
+function get_hessian_of_lagrangian_structure(
+    ::AbstractIntegrator,
+    traj::NamedTrajectory
+)
+    N = traj.N
+    z_dim = traj.dim
+    Z_dim = z_dim * N + traj.global_dim
+    μ∂²F = spzeros(Z_dim, Z_dim)
+    for k = 1:N-1
+        μ∂²F[slice(k, 1:2z_dim, z_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
+    end 
+    return μ∂²F
+end
+
 function test_integrator(
-    integrator::AbstractIntegrator; 
+    integrator::AbstractIntegrator,
+    traj::NamedTrajectory;
     show_jacobian_diff=false,
     show_hessian_diff=false,
     test_equality=true,
     atol=1e-5,
-    rtol=1e-5,
-    kwargs...
+    rtol=1e-5
 )
 
-    z_dim = integrator.z_dim
-    x_dim = integrator.x_dim
-    u_dim = integrator.u_dim
+    # Use the provided trajectory for testing
+    test_traj = traj
+    
+    # Constraint dimension - use integrator.dim directly
+    constraint_dim = integrator.dim
 
-    @test length(integrator.x_comps) == x_dim
-    @test length(integrator.u_comps) == u_dim
-    @test integrator.Δt_comp isa Int
-
-    z₁ = randn(z_dim)
-    z₂ = randn(z_dim)
-    k = 1
-
-    f̂ = zz -> begin
-        δ = zeros(eltype(zz), x_dim)
-        integrator(δ, zz[1:z_dim], zz[z_dim+1:end], k; kwargs...)
+    # Function to evaluate constraints via evaluate!
+    f̂ = Z⃗ -> begin
+        Z_traj = NamedTrajectory(traj; datavec=Z⃗)
+        δ = zeros(eltype(Z⃗), constraint_dim)
+        evaluate!(δ, integrator, Z_traj)
         return δ
     end
 
+    @test !all(iszero.(f̂(test_traj.datavec)))
+
     # testing jacobian
-    ∂f = jacobian_structure(integrator)
-    jacobian!(∂f, integrator, z₁, z₂, k)
-    ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, [z₁; z₂])
+    ∂f = eval_jacobian(integrator, test_traj)
+    
+    # Compute finite difference Jacobian
+    ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, test_traj.datavec)
 
     if show_jacobian_diff 
         println("\tDifference in jacobian")
         show_diffs(∂f, ∂f_autodiff, atol=atol, rtol=rtol)
         println()
+    end
+    
+    # Always run the tests
+    if test_equality
+        @test all(isapprox.(∂f, ∂f_autodiff, atol=atol, rtol=rtol))
     else
-        if test_equality
-            @test all(isapprox.(∂f, ∂f_autodiff, atol=atol, rtol=rtol))
+        if atol > 0.0
+            @test norm(∂f - ∂f_autodiff) < atol
         else
-            if atol > 0.0
-                @test norm(∂f - ∂f_autodiff) < atol
-            else
-                @test norm(∂f - ∂f_autodiff) / norm(∂f_autodiff) < rtol
-            end
+            @test norm(∂f - ∂f_autodiff) / norm(∂f_autodiff) < rtol
         end
     end
 
     # testing hessian
-    μ = randn(x_dim)
-    μ∂²f = hessian_of_lagrangian(integrator, μ, z₁, z₂, k)
-    μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(zz -> μ'f̂(zz), [z₁; z₂])
+    μ = rand(constraint_dim)
+    
+    μ∂²f = eval_hessian_of_lagrangian(integrator, test_traj, μ)
+    
+    # Compute finite difference Hessian
+    μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(Z⃗ -> μ'f̂(Z⃗), test_traj.datavec)
 
     if show_hessian_diff 
         println("\tDifference in hessian")
         show_diffs(μ∂²f, μ∂²f_autodiff, atol=atol, rtol=rtol)
         println()
+    end
+    
+    # Always run the tests
+    if test_equality
+        @test all(isapprox.(triu(μ∂²f), triu(μ∂²f_autodiff), atol=atol))
     else
-        if test_equality
-            @test all(isapprox.(Symmetric(μ∂²f), μ∂²f_autodiff, atol=atol))
+        if atol > 0.0
+            @test norm(μ∂²f - μ∂²f_autodiff) < atol
         else
-            if atol > 0.0
-                @test norm(μ∂²f - μ∂²f_autodiff) < atol
-            else
-                @test norm(μ∂²f - μ∂²f_autodiff) / norm(μ∂²f_autodiff) < rtol
-            end
+            @test norm(μ∂²f - μ∂²f_autodiff) / norm(μ∂²f_autodiff) < rtol
         end
     end
 

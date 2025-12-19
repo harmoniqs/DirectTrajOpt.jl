@@ -171,6 +171,7 @@ function bilinear_dynamics_and_trajectory(;
         timestep = :Δt,
         bounds = (
             u = u_bound,
+            Δt = (0.01, 0.5)
         ),
         initial = (
             x = x_init,
