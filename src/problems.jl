@@ -134,6 +134,19 @@ function get_trajectory_constraints(traj::NamedTrajectory)
         bounds_con = BoundsConstraint(name, ts, bound; label=con_label)
         push!(cons, bounds_con)
     end
+    
+    # add time consistency constraint if trajectory has both :t and timestep variable
+    timestep_var = traj.timestep
+    if timestep_var isa Symbol && :t ∈ traj.names && timestep_var ∈ traj.names
+        time_con = TimeConsistencyConstraint(; time_name=:t, timestep_name=timestep_var)
+        push!(cons, time_con)
+        
+        # add t_1 = 0 constraint if not already specified in initial
+        if :t ∉ keys(traj.initial)
+            t_init_con = EqualityConstraint(:t, [1], [0.0]; label="initial time t₁ = 0")
+            push!(cons, t_init_con)
+        end
+    end
 
     return cons
 end

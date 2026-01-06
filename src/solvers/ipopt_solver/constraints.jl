@@ -257,3 +257,35 @@ function (con::SymmetryConstraint)(
         )
     end
 end
+
+function (con::TimeConsistencyConstraint)(
+    opt::Ipopt.Optimizer,
+    vars::Vector{MOI.VariableIndex},
+    traj::NamedTrajectory
+)
+    # Get variable names, using trajectory's timestep if :Δt is specified
+    time_name = con.time_name
+    timestep_name = con.timestep_name == :Δt ? traj.timestep : con.timestep_name
+    
+    @assert time_name ∈ traj.names "Time variable $time_name not found in trajectory"
+    @assert timestep_name isa Symbol "Trajectory must have a timestep variable"
+    @assert timestep_name ∈ traj.names "Timestep variable $timestep_name not found in trajectory"
+    
+    # For each k = 1:N-1, add constraint: t_{k+1} - t_k - Δt_k = 0
+    for k in 1:traj.N-1
+        t_k = index(k, traj.components[time_name][1], traj.dim)
+        t_k1 = index(k+1, traj.components[time_name][1], traj.dim)
+        Δt_k = index(k, traj.components[timestep_name][1], traj.dim)
+        
+        # t_{k+1} - t_k - Δt_k = 0
+        MOI.add_constraints(
+            opt,
+            MOI.ScalarAffineFunction([
+                MOI.ScalarAffineTerm(1.0, vars[t_k1]),   # + t_{k+1}
+                MOI.ScalarAffineTerm(-1.0, vars[t_k]),   # - t_k
+                MOI.ScalarAffineTerm(-1.0, vars[Δt_k])   # - Δt_k
+            ], 0.0),
+            MOI.EqualTo(0.0)
+        )
+    end
+end

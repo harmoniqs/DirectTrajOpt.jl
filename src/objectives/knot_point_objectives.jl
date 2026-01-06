@@ -123,6 +123,39 @@ function TerminalObjective(
     )
 end
 
+"""
+    TerminalObjective(ℓ, names::Vector{Symbol}, traj; Q=1.0)
+
+Create a terminal objective that operates on multiple variables concatenated together.
+
+This is useful for objectives that need to access multiple state variables at the final
+timestep, such as coherent fidelity objectives.
+
+# Arguments
+- `ℓ::Function`: Loss function taking concatenated values from all named variables
+- `names::Vector{Symbol}`: Names of variables to concatenate
+- `traj::NamedTrajectory`: The trajectory
+
+# Keyword Arguments  
+- `Q::Float64=1.0`: Weight on the objective
+"""
+function TerminalObjective(
+    ℓ::Function,
+    names::AbstractVector{Symbol},
+    traj::NamedTrajectory;
+    Q::Float64=1.0,
+    kwargs...
+)
+    return KnotPointObjective(
+        ℓ,
+        names,
+        traj;
+        Qs=[Q],
+        times=[traj.N],
+        kwargs...
+    )
+end
+
 # Implement AbstractObjective interface
 
 function objective_value(obj::KnotPointObjective, traj::NamedTrajectory)
