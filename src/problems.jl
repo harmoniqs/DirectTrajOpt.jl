@@ -59,6 +59,22 @@ function DirectTrajOptProblem(
     integrators::Vector{<:AbstractIntegrator};
     constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
 )
+    # Validate timestep bounds if trajectory has a timestep variable
+    timestep_var = traj.timestep
+    if timestep_var isa Symbol && !haskey(traj.bounds, timestep_var)
+        @warn """
+            Trajectory has timestep variable :$timestep_var but no bounds on it.
+            This can lead to negative timesteps during optimization!
+            
+            Recommended: Add bounds when creating the trajectory:
+              NamedTrajectory(...; Δt_bounds=(min, max))
+            Example:
+              NamedTrajectory(qtraj, N; Δt_bounds=(1e-3, 0.5))
+            
+            Or use timesteps_all_equal=true in problem options to fix timesteps.
+            """ maxlog=1
+    end
+    
     traj_constraints = get_trajectory_constraints(traj)
     # Convert to AbstractConstraint vector to allow mixed types
     all_constraints = AbstractConstraint[constraints..., traj_constraints...]
