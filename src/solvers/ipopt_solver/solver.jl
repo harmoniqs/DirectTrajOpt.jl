@@ -4,6 +4,9 @@ using MathOptInterface
 const MOI = MathOptInterface
 using Ipopt
 using TestItemRunner
+using Libdl  # Added for Pardiso library loading
+
+export solve!
 
 export solve!
 
@@ -52,6 +55,7 @@ function DTO.Solvers.solve!(
     options.print_level = print_level
 
     optimizer, variables = get_optimizer_and_variables(prob, options, callback, verbose=verbose)
+
     MOI.optimize!(optimizer)
 
     update_trajectory!(prob, optimizer, variables)

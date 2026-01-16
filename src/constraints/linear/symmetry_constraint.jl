@@ -114,7 +114,7 @@ end
     sym_constraint = SymmetricControlConstraint(:u, [1]; even=false, include_timestep=false)
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints=[sym_constraint])
-    solve!(prob; max_iter=100)
+    solve!(prob; max_iter=200)
 
     # Verify odd symmetry: u[t] = -u[N-t+1]
     N = prob.trajectory.N
