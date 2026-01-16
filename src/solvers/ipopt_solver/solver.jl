@@ -8,6 +8,8 @@ using Libdl  # Added for Pardiso library loading
 
 export solve!
 
+export solve!
+
 """
     solve!(
         prob::DirectTrajOptProblem;
