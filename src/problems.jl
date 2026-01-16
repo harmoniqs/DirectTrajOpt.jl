@@ -64,15 +64,30 @@ function DirectTrajOptProblem(
     if timestep_var isa Symbol && !haskey(traj.bounds, timestep_var)
         @warn """
             Trajectory has timestep variable :$timestep_var but no bounds on it.
-            This can lead to negative timesteps during optimization!
+            Adding default lower bound of 0 to prevent negative timesteps.
             
-            Recommended: Add bounds when creating the trajectory:
+            Recommended: Add explicit bounds when creating the trajectory:
               NamedTrajectory(...; Δt_bounds=(min, max))
             Example:
               NamedTrajectory(qtraj, N; Δt_bounds=(1e-3, 0.5))
             
             Or use timesteps_all_equal=true in problem options to fix timesteps.
             """ maxlog=1
+        
+        # Add lower bound of 0 to prevent negative timesteps
+        # Create new trajectory with updated bounds
+        timestep_dim = traj.dims[timestep_var]
+        new_bounds = merge(traj.bounds, (; timestep_var => (zeros(timestep_dim), fill(Inf, timestep_dim))))
+        
+        traj = NamedTrajectory(
+            NamedTuple(name => traj[name] for name in traj.names);
+            timestep=traj.timestep,
+            controls=traj.control_names,
+            bounds=new_bounds,
+            initial=traj.initial,
+            final=traj.final,
+            goal=traj.goal
+        )
     end
     
     traj_constraints = get_trajectory_constraints(traj)

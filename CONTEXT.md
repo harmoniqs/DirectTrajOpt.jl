@@ -283,3 +283,4 @@ end
 - Thread safety: dynamics functions use `Threads.@threads` over timesteps
 - Sparsity patterns must be exact - wrong structure causes silent failures
 - The trajectory in `prob.trajectory` is mutated during solve
+- **Timestep bounds:** If trajectory has free timesteps (`:Δt` as control) but no bounds, `DirectTrajOptProblem` automatically adds lower bound of 0 to prevent negative timesteps during optimization. User will see a warning recommending explicit bounds like `Δt_bounds=(1e-3, 0.5)`
