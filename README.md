@@ -111,7 +111,21 @@ solve!(prob; max_iter=100)
 - **Modular objectives**: Combine multiple cost terms (regularization, minimum time, etc.)
 - **Constraint support**: Bounds, equality, and general nonlinear constraints  
 - **Automatic differentiation**: Efficient gradients and Hessians
-- **Sparse formulations**: Exploits problem structure for efficiency 
+- **Sparse formulations**: Exploits problem structure for efficiency
+
+## Testing
+
+To run all stable tests:
+```bash
+julia --project=. test/runtests.jl
+```
+
+To include experimental tests (tests marked as potentially flaky):
+```bash
+INCLUDE_EXPERIMENTAL=1 julia --project=. test/runtests.jl
+```
+
+Some tests are tagged as `experimental` because they may be unstable or flaky in certain environments. By default, these tests are excluded from CI runs to maintain build stability. 
 
 
 ### Building Documentation
