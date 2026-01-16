@@ -1,6 +1,6 @@
 name = "DirectTrajOpt"
 uuid = "c823fa1f-8872-4af5-b810-2b9b72bbbf56"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 
 [deps]
@@ -28,7 +28,7 @@ Ipopt = "1.12"
 Libdl = "1.10, 1.11, 1.12"
 LinearAlgebra = "1.10, 1.11, 1.12"
 MathOptInterface = "1.46"
-NamedTrajectories = "0.7"
+NamedTrajectories = "0.8"
 OrdinaryDiffEqTsit5 = "1.5"
 Reexport = "1.2"
 SparseArrays = "1.10, 1.11, 1.12"
