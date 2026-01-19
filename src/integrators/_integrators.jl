@@ -66,28 +66,61 @@ function test_integrator(
     atol=1e-5,
     rtol=1e-5
 )
+    println("  [test_integrator] Starting...")
 
     # Use the provided trajectory for testing
     test_traj = traj
     
     # Constraint dimension - use integrator.dim directly
     constraint_dim = integrator.dim
+    
+    # Get dimensions for splitting full vector into datavec and global_data
+    datavec_len = length(traj.datavec)
+    global_len = traj.global_dim
+    
+    println("  [test_integrator] constraint_dim=$constraint_dim, datavec_len=$datavec_len, global_len=$global_len")
+    
+    # Full optimization vector includes both datavec and global_data
+    Z⃗_full = collect(vec(traj))
+    
+    # Store original values for restoration
+    original_datavec = copy(traj.datavec)
+    original_global = global_len > 0 ? copy(traj.global_data) : nothing
 
-    # Function to evaluate constraints via evaluate!
+    # Function to evaluate constraints via evaluate! - mutates traj in-place for efficiency
     f̂ = Z⃗ -> begin
-        Z_traj = NamedTrajectory(traj; datavec=Z⃗)
+        # Mutate trajectory data in-place
+        traj.datavec .= @view Z⃗[1:datavec_len]
+        if global_len > 0
+            traj.global_data .= @view Z⃗[datavec_len+1:end]
+        end
         δ = zeros(eltype(Z⃗), constraint_dim)
-        evaluate!(δ, integrator, Z_traj)
+        evaluate!(δ, integrator, traj)
         return δ
     end
 
-    @test !all(iszero.(f̂(test_traj.datavec)))
+    println("  [test_integrator] Testing evaluate!...")
+    @test !all(iszero.(f̂(Z⃗_full)))
+    
+    # Restore original values
+    traj.datavec .= original_datavec
+    if global_len > 0
+        traj.global_data .= original_global
+    end
 
     # testing jacobian
+    println("  [test_integrator] Computing analytic Jacobian...")
     ∂f = eval_jacobian(integrator, test_traj)
     
     # Compute finite difference Jacobian
-    ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, test_traj.datavec)
+    println("  [test_integrator] Computing finite diff Jacobian...")
+    ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, Z⃗_full)
+    
+    # Restore original values after finite diff
+    traj.datavec .= original_datavec
+    if global_len > 0
+        traj.global_data .= original_global
+    end
 
     if show_jacobian_diff 
         println("\tDifference in jacobian")
@@ -96,6 +129,7 @@ function test_integrator(
     end
     
     # Always run the tests
+    println("  [test_integrator] Testing Jacobian...")
     if test_equality
         @test all(isapprox.(∂f, ∂f_autodiff, atol=atol, rtol=rtol))
     else
@@ -109,10 +143,18 @@ function test_integrator(
     # testing hessian
     μ = rand(constraint_dim)
     
+    println("  [test_integrator] Computing analytic Hessian...")
     μ∂²f = eval_hessian_of_lagrangian(integrator, test_traj, μ)
     
     # Compute finite difference Hessian
-    μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(Z⃗ -> μ'f̂(Z⃗), test_traj.datavec)
+    println("  [test_integrator] Computing finite diff Hessian...")
+    μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(Z⃗ -> μ'f̂(Z⃗), Z⃗_full)
+    
+    # Restore original values after finite diff
+    traj.datavec .= original_datavec
+    if global_len > 0
+        traj.global_data .= original_global
+    end
 
     if show_hessian_diff 
         println("\tDifference in hessian")
@@ -121,6 +163,7 @@ function test_integrator(
     end
     
     # Always run the tests
+    println("  [test_integrator] Testing Hessian...")
     if test_equality
         @test all(isapprox.(triu(μ∂²f), triu(μ∂²f_autodiff), atol=atol))
     else
@@ -131,6 +174,7 @@ function test_integrator(
         end
     end
 
+    println("  [test_integrator] Done!")
     return ∂f, ∂f_autodiff, μ∂²f, μ∂²f_autodiff
 end
 

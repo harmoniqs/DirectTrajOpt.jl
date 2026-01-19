@@ -87,14 +87,14 @@ end
 
     # Create trajectory with inconsistent t and Δt initially
     N = 10
-    Δt_val = 0.1
+    Δt_val = 0.5 
     
     traj = NamedTrajectory(
         (
             x = rand(2, N),
             u = rand(1, N),
             Δt = fill(Δt_val, N),
-            t = rand(N)  # Random times - inconsistent!
+            t = cumsum(rand(N))  # Random times - inconsistent!
         );
         controls=(:u, :Δt, :t),  # t is also a control to be optimized
         timestep=:Δt,
@@ -104,6 +104,7 @@ end
 
     # Simple objective - no dynamics needed for this test
     J = QuadraticRegularizer(:u, traj, 1.0)
+    J += QuadraticRegularizer(:t, traj, 0.1)  # Regularize time to encourage consistency
     
     time_con = TimeConsistencyConstraint()
     
