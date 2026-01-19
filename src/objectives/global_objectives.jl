@@ -146,7 +146,7 @@ end
 function GlobalKnotPointObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
-    global_names::AbstractVector{Symbol},
+    global_names::Union{AbstractVector{Symbol}, Nothing},
     traj::NamedTrajectory,
     params::AbstractVector;
     times::AbstractVector{Int}=1:traj.N,
@@ -154,6 +154,11 @@ function GlobalKnotPointObjective(
 )
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
+    
+    # Auto-detect globals if not specified
+    if isnothing(global_names)
+        global_names = collect(keys(traj.global_components))
+    end
 
     return GlobalKnotPointObjective(
         ℓ,
@@ -168,7 +173,7 @@ end
 function GlobalKnotPointObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
-    global_names::AbstractVector{Symbol},
+    global_names::Union{AbstractVector{Symbol}, Nothing},
     traj::NamedTrajectory;
     times::AbstractVector{Int}=1:traj.N,
     kwargs...
@@ -356,6 +361,47 @@ end
     OBJ = GlobalObjective(ℓ, :g, traj, Q=Q)
 
     test_objective(OBJ, traj)
+end
+
+@testitem "GlobalKnotPointObjective auto-detects globals" begin
+    include("../../test/test_utils.jl")
+    using DirectTrajOpt.Objectives
+
+    _, traj = bilinear_dynamics_and_trajectory(add_global=true)
+
+    function ℓ(ug)
+        u, g = ug[1:traj.dims[:u]], ug[traj.dims[:u] .+ 1:end]
+        return norm(u)^2 + norm(g)^2
+    end
+
+    # Auto-detect: should find :g from traj.global_components
+    OBJ_auto = GlobalKnotPointObjective(
+        ℓ,
+        [:u],
+        nothing,  # Auto-detect globals
+        traj;
+        times=[1, traj.N],
+        Qs=[1.0, 2.0]
+    )
+    
+    @test OBJ_auto.global_names == [:g]
+    test_objective(OBJ_auto, traj)
+    
+    # Manual specification: same result
+    OBJ_manual = GlobalKnotPointObjective(
+        ℓ,
+        [:u],
+        [:g],  # Explicitly specify
+        traj;
+        times=[1, traj.N],
+        Qs=[1.0, 2.0]
+    )
+    
+    @test OBJ_manual.global_names == [:g]
+    test_objective(OBJ_manual, traj)
+    
+    # Both should give same value
+    @test objective_value(OBJ_auto, traj) == objective_value(OBJ_manual, traj)
 end
 
 @testitem "testing GlobalKnotPointObjective" begin
