@@ -122,11 +122,15 @@ function gradient!(∇::AbstractVector, obj::CompositeObjective, traj::NamedTraj
     return nothing
 end
 
-function hessian_structure(obj::CompositeObjective, traj::NamedTrajectory)
+function hessian_structure(obj::CompositeObjective, traj::NamedTrajectory; verbose::Bool=false)
     Z_dim = traj.dim * traj.N + traj.global_dim
     structure = spzeros(Z_dim, Z_dim)
-    for sub_obj in obj.objectives
+    for (i, sub_obj) in enumerate(obj.objectives)
+        t_sub = time()
         structure .+= hessian_structure(sub_obj, traj)
+        if verbose
+            println("          sub-objective $i ($(typeof(sub_obj).name.name)): $(round(time() - t_sub, digits=3))s")
+        end
     end
     return structure
 end

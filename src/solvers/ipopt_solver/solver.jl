@@ -128,20 +128,34 @@ function get_optimizer_and_variables(
     callback::Union{Nothing, Function};
     verbose::Bool=true
 )
+    t_init_start = time()
     if verbose
         println("    initializing optimizer...")
     end
 
     # get evaluator
+    t_eval = time()
     evaluator = IpoptEvaluator(prob; eval_hessian=options.eval_hessian, verbose=verbose)
+    if verbose
+        println("    evaluator created ($(round(time() - t_eval, digits=3))s)")
+    end
 
     # get the MOI specific nonlinear constraints
+    t_nlcons = time()
     nl_cons = get_nonlinear_constraints(prob)
+    if verbose
+        println("    NL constraint bounds extracted ($(round(time() - t_nlcons, digits=3))s)")
+    end
 
     # build NLP block data
+    t_block = time()
     block_data = MOI.NLPBlockData(nl_cons, evaluator, true)
+    if verbose
+        println("    NLP block data built ($(round(time() - t_block, digits=3))s)")
+    end
 
     # initialize optimizer 
+    t_opt = time()
     optimizer = Ipopt.Optimizer()
 
     # set NLP block data
@@ -149,9 +163,16 @@ function get_optimizer_and_variables(
 
     # set objective sense: minimize
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    if verbose
+        println("    Ipopt optimizer configured ($(round(time() - t_opt, digits=3))s)")
+    end
 
     # initialize problem variables 
+    t_vars = time()
     variables = set_variables!(optimizer, prob.trajectory)
+    if verbose
+        println("    variables set ($(round(time() - t_vars, digits=3))s)")
+    end
 
     # set callback function
     if !isnothing(callback)
@@ -159,13 +180,21 @@ function get_optimizer_and_variables(
     end
 
     # add linear constraints
+    t_lincons = time()
     linear_constraints = AbstractLinearConstraint[
         filter(c -> c isa AbstractLinearConstraint, prob.constraints)...
     ]
     constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose=verbose)
+    if verbose
+        println("    linear constraints added: $(length(linear_constraints)) ($(round(time() - t_lincons, digits=3))s)")
+    end
 
     # set solver options
     set_options!(optimizer, options)
+
+    if verbose
+        println("    optimizer initialization complete (total: $(round(time() - t_init_start, digits=3))s)")
+    end
 
     return optimizer, variables
 end
