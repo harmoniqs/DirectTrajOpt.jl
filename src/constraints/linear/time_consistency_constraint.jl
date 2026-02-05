@@ -81,7 +81,7 @@ end
     end
 end
 
-@testitem "TimeConsistencyConstraint with free time optimization" begin
+@testitem "TimeConsistencyConstraint with free time optimization" tags=[:experimental] begin
     include("../../../test/test_utils.jl")
     using NamedTrajectories
 
