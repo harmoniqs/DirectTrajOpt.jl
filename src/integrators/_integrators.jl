@@ -63,6 +63,7 @@ function test_integrator(
     show_jacobian_diff=false,
     show_hessian_diff=false,
     test_equality=true,
+    gauss_newton=false,
     atol=1e-5,
     rtol=1e-5
 )
@@ -156,21 +157,44 @@ function test_integrator(
         traj.global_data .= original_global
     end
 
-    if show_hessian_diff 
-        println("\tDifference in hessian")
-        show_diffs(μ∂²f, μ∂²f_autodiff, atol=atol, rtol=rtol)
-        println()
-    end
-    
-    # Always run the tests
-    println("  [test_integrator] Testing Hessian...")
-    if test_equality
-        @test all(isapprox.(triu(μ∂²f), triu(μ∂²f_autodiff), atol=atol))
+    if gauss_newton
+        # Mask comparison to only GN components (state-parameter cross-terms)
+        H_structure = get_hessian_of_lagrangian_structure(integrator, test_traj)
+        mask = triu(H_structure) .!= 0
+
+        if show_hessian_diff
+            println("\tDifference in hessian (GN components only)")
+            # Show diffs only at masked positions
+            H_analytic = triu(μ∂²f)
+            H_findiff = triu(μ∂²f_autodiff)
+            for idx in findall(mask)
+                a, b = H_analytic[idx], H_findiff[idx]
+                if !isapprox(a, b; atol=atol)
+                    println((a, b), " @ ", Tuple(idx))
+                end
+            end
+            println()
+        end
+
+        println("  [test_integrator] Testing Hessian (GN components)...")
+        @test all(isapprox.(triu(μ∂²f)[mask], triu(μ∂²f_autodiff)[mask], atol=atol))
     else
-        if atol > 0.0
-            @test norm(μ∂²f - μ∂²f_autodiff) < atol
+        if show_hessian_diff
+            println("\tDifference in hessian")
+            show_diffs(μ∂²f, μ∂²f_autodiff, atol=atol, rtol=rtol)
+            println()
+        end
+
+        # Always run the tests
+        println("  [test_integrator] Testing Hessian...")
+        if test_equality
+            @test all(isapprox.(triu(μ∂²f), triu(μ∂²f_autodiff), atol=atol))
         else
-            @test norm(μ∂²f - μ∂²f_autodiff) / norm(μ∂²f_autodiff) < rtol
+            if atol > 0.0
+                @test norm(μ∂²f - μ∂²f_autodiff) < atol
+            else
+                @test norm(μ∂²f - μ∂²f_autodiff) / norm(μ∂²f_autodiff) < rtol
+            end
         end
     end
 
