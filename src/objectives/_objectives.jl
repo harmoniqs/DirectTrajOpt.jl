@@ -9,6 +9,7 @@ export test_objective
 export NullObjective
 export CompositeObjective
 export QuadraticRegularizer
+export LinearRegularizer
 export MinimumTimeObjective
 export KnotPointObjective
 export GlobalObjective

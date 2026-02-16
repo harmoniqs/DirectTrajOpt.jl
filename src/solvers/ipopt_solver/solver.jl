@@ -70,7 +70,7 @@ function remove_slack_variables!(prob::DirectTrajOptProblem)
 
     for con ∈ prob.constraints
         if con isa L1SlackConstraint
-            append!(slack_var_names, con.slack_names)
+            push!(slack_var_names, con.slack_name)
         end
     end
 
