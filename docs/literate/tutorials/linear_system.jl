@@ -76,7 +76,7 @@ println("  Time steps: ", traj.N)
 # ## Step 3: Define the Dynamics Constraint
 
 # Use BilinearIntegrator for our control-linear system:
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 println("Integrator created for bilinear dynamics")
 

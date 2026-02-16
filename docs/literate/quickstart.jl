@@ -54,7 +54,7 @@ G_drift = [-0.1 1.0; -1.0 -0.1]   # drift term
 G_drives = [[0.0 1.0; 1.0 0.0]]   # control term
 G = u -> G_drift + sum(u .* G_drives)
 
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 # ### Step 3: Define the Objective
 

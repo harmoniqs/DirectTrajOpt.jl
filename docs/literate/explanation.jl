@@ -64,7 +64,7 @@ G_drives = [
 ]
 G = u -> G_drift + sum(u .* G_drives)
 
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 # ### 3. Define Objectives
 
@@ -92,7 +92,7 @@ solve!(prob; max_iter=100, verbose=true)
 # - `BilinearIntegrator`: For control-linear dynamics
 # - `TimeDependentBilinearIntegrator`: For time-varying dynamics  
 # - `DerivativeIntegrator`: For enforcing smoothness
-# - `TimeIntegrator`: For time evolution
+# - `TimeConsistencyConstraint`: For time evolution (t_{k+1} = t_k + Δt_k)
 
 # ### Objectives
 
@@ -139,8 +139,8 @@ G_advanced = u -> G_drift_advanced + sum(u .* G_drives_advanced)
 
 # Multiple integrators for different dynamics
 integrators = [
-    BilinearIntegrator(G_advanced, traj_advanced, :x, :u),
-    DerivativeIntegrator(traj_advanced, :u, :du)  # enforce smooth controls
+    BilinearIntegrator(G_advanced, :x, :u, traj_advanced),
+    DerivativeIntegrator(:u, :du, traj_advanced)  # enforce smooth controls
 ]
 
 # Combined objective

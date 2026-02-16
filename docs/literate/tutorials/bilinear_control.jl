@@ -111,7 +111,7 @@ println("  Control bounds: ", traj.bounds.u)
 # ## Step 4: Define Dynamics and Objective
 
 # Dynamics integrator
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 # Objective: minimize control effort
 R_u = 1.0  # control weight
@@ -230,7 +230,7 @@ traj_high = NamedTrajectory(
 )
 
 obj_high = QuadraticRegularizer(:u, traj_high, 10.0)  # 10x larger weight
-integrator_high = BilinearIntegrator(G, traj_high, :x, :u)
+integrator_high = BilinearIntegrator(G, :x, :u, traj_high)
 prob_high = DirectTrajOptProblem(traj_high, obj_high, integrator_high)
 
 println("\nSolving with high control weight (R=10.0)...")

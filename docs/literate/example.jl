@@ -65,7 +65,7 @@ traj = NamedTrajectory(
 
 # ## Build and Solve Problem
 
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 obj = (
     QuadraticRegularizer(:u, traj, 1.0) +

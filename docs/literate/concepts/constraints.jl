@@ -106,7 +106,7 @@ constraint_range = NonlinearKnotPointConstraint(
 G_drift = [-0.1 1.0; -1.0 -0.1]
 G_drives = [[0.0 1.0; 1.0 0.0]]
 G = u -> G_drift + sum(u .* G_drives)
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 obj = QuadraticRegularizer(:u, traj, 1.0)
 
 constraints = [constraint_obstacle, constraint_ineq]
