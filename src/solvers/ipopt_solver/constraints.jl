@@ -154,31 +154,40 @@ function (con::AllEqualConstraint)(
     end
 end
 
-# function (con::L1SlackConstraint)(
-#     opt::Ipopt.Optimizer,
-#     vars::Vector{MOI.VariableIndex}
-# )
-#     for (x, s1, s2) in zip(con.x_indices, con.s1_indices, con.s2_indices)
-#         MOI.add_constraints(
-#             opt,
-#             vars[s1],
-#             MOI.GreaterThan(0.0)
-#         )
-#         MOI.add_constraints(
-#             opt,
-#             vars[s2],
-#             MOI.GreaterThan(0.0)
-#         )
-#         t1 = MOI.ScalarAffineTerm(1.0, vars[s1])
-#         t2 = MOI.ScalarAffineTerm(-1.0, vars[s2])
-#         t3 = MOI.ScalarAffineTerm(-1.0, vars[x])
-#         MOI.add_constraints(
-#             opt,
-#             MOI.ScalarAffineFunction([t1, t2, t3], 0.0),
-#             MOI.EqualTo(0.0)
-#         )
-#     end
-# end
+function (con::L1SlackConstraint)(
+    opt::Ipopt.Optimizer,
+    vars::Vector{MOI.VariableIndex},
+    traj::NamedTrajectory
+)
+    v_comps = traj.components[con.var_name]
+    s_comps = traj.components[con.slack_name]
+
+    for t ∈ con.times
+        v_indices = slice(t, v_comps, traj.dim)
+        s_indices = slice(t, s_comps, traj.dim)
+
+        for (vi, si) ∈ zip(v_indices, s_indices)
+            # v_{k,i} - s_{k,i} ≤ 0
+            MOI.add_constraints(
+                opt,
+                MOI.ScalarAffineFunction([
+                    MOI.ScalarAffineTerm(1.0, vars[vi]),
+                    MOI.ScalarAffineTerm(-1.0, vars[si])
+                ], 0.0),
+                MOI.LessThan(0.0)
+            )
+            # -v_{k,i} - s_{k,i} ≤ 0
+            MOI.add_constraints(
+                opt,
+                MOI.ScalarAffineFunction([
+                    MOI.ScalarAffineTerm(-1.0, vars[vi]),
+                    MOI.ScalarAffineTerm(-1.0, vars[si])
+                ], 0.0),
+                MOI.LessThan(0.0)
+            )
+        end
+    end
+end
 
 function (con::TotalConstraint)(
     opt::Ipopt.Optimizer,

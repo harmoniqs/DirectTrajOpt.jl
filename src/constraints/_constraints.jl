@@ -12,6 +12,7 @@ export NonlinearKnotPointConstraint
 export NonlinearGlobalConstraint
 export NonlinearGlobalKnotPointConstraint
 export TimeConsistencyConstraint
+export L1SlackConstraint
 
 export evaluate!
 export test_constraint
@@ -220,6 +221,7 @@ include("linear/bounds_constraint.jl")
 include("linear/total_constraint.jl")
 include("linear/symmetry_constraint.jl")
 include("linear/time_consistency_constraint.jl")
+include("linear/l1_slack_constraint.jl")
 
 # Nonlinear constraints
 include("nonlinear/knot_point_constraint.jl")
