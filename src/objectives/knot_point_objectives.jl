@@ -70,8 +70,8 @@ function KnotPointObjective(
     names::AbstractVector{Symbol},
     traj::NamedTrajectory,
     params::AbstractVector;
-    times::AbstractVector{Int}=1:traj.N,
-    Qs::AbstractVector{Float64}=ones(length(times))
+    times::AbstractVector{Int} = 1:traj.N,
+    Qs::AbstractVector{Float64} = ones(length(times)),
 )
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
@@ -81,7 +81,7 @@ function KnotPointObjective(
         Vector{Symbol}(names),
         Vector{Int}(times),
         Vector(params),
-        Vector{Float64}(Qs)
+        Vector{Float64}(Qs),
     )
 end
 
@@ -89,20 +89,26 @@ function KnotPointObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
     traj::NamedTrajectory;
-    times::AbstractVector{Int}=1:traj.N,
-    kwargs...
+    times::AbstractVector{Int} = 1:traj.N,
+    kwargs...,
 )
     # No params version - create dummy params
     params = [nothing for _ in times]
     ℓ_param = (x, _) -> ℓ(x)
-    return KnotPointObjective(ℓ_param, names, traj, params; times=times, kwargs...)
+    return KnotPointObjective(ℓ_param, names, traj, params; times = times, kwargs...)
 end
 
 function KnotPointObjective(ℓ::Function, name::Symbol, traj::NamedTrajectory; kwargs...)
     return KnotPointObjective(ℓ, [name], traj; kwargs...)
 end
 
-function KnotPointObjective(ℓ::Function, name::Symbol, traj::NamedTrajectory, params::AbstractVector; kwargs...)
+function KnotPointObjective(
+    ℓ::Function,
+    name::Symbol,
+    traj::NamedTrajectory,
+    params::AbstractVector;
+    kwargs...,
+)
     return KnotPointObjective(ℓ, [name], traj, params; kwargs...)
 end
 
@@ -110,17 +116,10 @@ function TerminalObjective(
     ℓ::Function,
     name::Symbol,
     traj::NamedTrajectory;
-    Q::Float64=1.0,
-    kwargs...
+    Q::Float64 = 1.0,
+    kwargs...,
 )
-    return KnotPointObjective(
-        ℓ,
-        name,
-        traj;
-        Qs=[Q],
-        times=[traj.N],
-        kwargs...
-    )
+    return KnotPointObjective(ℓ, name, traj; Qs = [Q], times = [traj.N], kwargs...)
 end
 
 """
@@ -143,17 +142,10 @@ function TerminalObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
     traj::NamedTrajectory;
-    Q::Float64=1.0,
-    kwargs...
+    Q::Float64 = 1.0,
+    kwargs...,
 )
-    return KnotPointObjective(
-        ℓ,
-        names,
-        traj;
-        Qs=[Q],
-        times=[traj.N],
-        kwargs...
-    )
+    return KnotPointObjective(ℓ, names, traj; Qs = [Q], times = [traj.N], kwargs...)
 end
 
 # Implement AbstractObjective interface
@@ -171,28 +163,24 @@ end
 
 function gradient!(∇::AbstractVector, obj::KnotPointObjective, traj::NamedTrajectory)
     fill!(∇, 0.0)
-    
+
     for (i, k) in enumerate(obj.times)
         zₖ = traj[k]
         # Extract relevant variables and their components
         x_vals = vcat([zₖ[name] for name in obj.var_names]...)
         x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
-        
+
         # Get indices for this knot point
         knot_indices = slice(k, x_comps, traj.dim)
-        
+
         # Compute gradient directly into view of the gradient vector
         ∇_view = @view ∇[knot_indices]
-        ForwardDiff.gradient!(
-            ∇_view,
-            x -> obj.ℓ(x, obj.params[i]),
-            x_vals
-        )
-        
+        ForwardDiff.gradient!(∇_view, x -> obj.ℓ(x, obj.params[i]), x_vals)
+
         # Scale by weight
         ∇_view .*= obj.Qs[i]
     end
-    
+
     return nothing
 end
 
@@ -219,7 +207,7 @@ function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
     ∂²L = spzeros(Z_dim, Z_dim)
 
     x_comps = vcat([traj.components[name] for name in obj.var_names]...)
-    
+
     for (i, k) in enumerate(obj.times)
         zₖ = traj[k]
         knot_indices = slice(k, x_comps, traj.dim)
@@ -227,10 +215,10 @@ function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
         ForwardDiff.hessian!(
             view(∂²L, knot_indices, knot_indices),
             x -> obj.Qs[i] * obj.ℓ(x, obj.params[i]),
-            vcat([zₖ[name] for name in obj.var_names]...)
+            vcat([zₖ[name] for name in obj.var_names]...),
         )
     end
-    
+
     return triu(∂²L)
 end
 
@@ -247,9 +235,9 @@ end
     Qs = [1.0, 2.0]
     times = [1, traj.N]
 
-    OBJ = KnotPointObjective(L, :u, traj, times=times, Qs=Qs)
+    OBJ = KnotPointObjective(L, :u, traj, times = times, Qs = Qs)
 
-    test_objective(OBJ, traj; show_hessian_diff=false)
+    test_objective(OBJ, traj; show_hessian_diff = false)
 end
 
 @testitem "testing KnotPointObjective with parameters" begin
@@ -263,7 +251,7 @@ end
     times = [1, traj.N]
     params = [1.0, 2.0]
 
-    OBJ = KnotPointObjective(L, :u, traj, params; times=times, Qs=Qs)
+    OBJ = KnotPointObjective(L, :u, traj, params; times = times, Qs = Qs)
 
     test_objective(OBJ, traj)
 end

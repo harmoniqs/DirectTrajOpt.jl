@@ -42,15 +42,11 @@ n_states = 2
 n_controls = 1
 
 traj = NamedTrajectory(
-    (
-        x = randn(n_states, N),
-        u = randn(n_controls, N),
-        Δt = fill(0.1, N)
-    );
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [0.0, 0.0],),
-    final=(x = [1.0, 0.0],)
+    (x = randn(n_states, N), u = randn(n_controls, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),
+    final = (x = [1.0, 0.0],),
 )
 
 # ### 2. Define Dynamics
@@ -59,9 +55,7 @@ traj = NamedTrajectory(
 
 # Example: Linear dynamics ẋ = (G₀ + Σ uᵢ Gᵢ) x 
 G_drift = [-0.1 1.0; -1.0 -0.1]
-G_drives = [
-    [0.0 1.0; 1.0 0.0]
-]
+G_drives = [[0.0 1.0; 1.0 0.0]]
 G = u -> G_drift + sum(u .* G_drives)
 
 integrator = BilinearIntegrator(G, :x, :u, traj)
@@ -74,13 +68,13 @@ integrator = BilinearIntegrator(G, :x, :u, traj)
 obj = QuadraticRegularizer(:u, traj, 1.0)
 
 # Add minimum time objective
-obj += MinimumTimeObjective(traj; D=0.1)
+obj += MinimumTimeObjective(traj; D = 0.1)
 
 # ### 4. Create and Solve the Problem
 
 prob = DirectTrajOptProblem(traj, obj, integrator)
 
-solve!(prob; max_iter=100, verbose=true)
+solve!(prob; max_iter = 100, verbose = true)
 
 # The solution is now stored in `prob.trajectory`.
 
@@ -117,44 +111,36 @@ solve!(prob; max_iter=100, verbose=true)
 
 # Define trajectory with bounds (including derivative variable)
 traj_advanced = NamedTrajectory(
-    (
-        x = randn(2, N),
-        u = randn(1, N),
-        du = zeros(1, N),
-        Δt = fill(0.1, N)
-    );
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [0.0, 0.0],),
-    final=(x = [1.0, 0.0],),
-    bounds=(u = (-1.0, 1.0),)
+    (x = randn(2, N), u = randn(1, N), du = zeros(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),
+    final = (x = [1.0, 0.0],),
+    bounds = (u = (-1.0, 1.0),),
 )
 
 # Redefine dynamics for the advanced trajectory
 G_drift_advanced = [-0.1 1.0; -1.0 -0.1]
-G_drives_advanced = [
-    [0.0 1.0; 1.0 0.0]
-]
+G_drives_advanced = [[0.0 1.0; 1.0 0.0]]
 G_advanced = u -> G_drift_advanced + sum(u .* G_drives_advanced)
 
 # Multiple integrators for different dynamics
 integrators = [
     BilinearIntegrator(G_advanced, :x, :u, traj_advanced),
-    DerivativeIntegrator(:u, :du, traj_advanced)  # enforce smooth controls
+    DerivativeIntegrator(:u, :du, traj_advanced),  # enforce smooth controls
 ]
 
 # Combined objective
 obj_advanced = QuadraticRegularizer(:u, traj_advanced, 1e-2)
 obj_advanced += QuadraticRegularizer(:du, traj_advanced, 1e-1)
-obj_advanced += MinimumTimeObjective(traj_advanced; D=0.1)
+obj_advanced += MinimumTimeObjective(traj_advanced; D = 0.1)
 
 # Create and solve
 prob_advanced = DirectTrajOptProblem(traj_advanced, obj_advanced, integrators)
-solve!(prob_advanced; max_iter=200)
+solve!(prob_advanced; max_iter = 200)
 
 # ## Next Steps
 
 # - Explore the Library documentation for detailed API reference
 # - Check out the test files for more examples
 # - Customize integrators and objectives for your specific problem
-

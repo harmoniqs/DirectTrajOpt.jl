@@ -59,7 +59,8 @@ using LinearAlgebra
 N = 10
 traj = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt, controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 obj_effort = QuadraticRegularizer(:u, traj, 1.0)
@@ -134,9 +135,9 @@ integrator = BilinearIntegrator(G, :x, :u, traj)
 
 traj_bounded = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    bounds=(u = (-1.0, 1.0),)  # -1 ≤ u ≤ 1
+    timestep = :Δt,
+    controls = :u,
+    bounds = (u = (-1.0, 1.0),),  # -1 ≤ u ≤ 1
 )
 
 # ### Nonlinear Constraints
@@ -147,7 +148,7 @@ constraint = NonlinearKnotPointConstraint(
     u -> [1.0 - norm(u)],  # 1 - ||u|| ≥ 0  →  ||u|| ≤ 1
     :u,
     traj;
-    equality=false
+    equality = false,
 )
 
 # ## Boundary Conditions
@@ -160,10 +161,10 @@ constraint = NonlinearKnotPointConstraint(
 
 traj_bc = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [0.0, 0.0],),  # Fixed initial state
-    final=(x = [1.0, 0.0],)     # Fixed final state
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),  # Fixed initial state
+    final = (x = [1.0, 0.0],),     # Fixed final state
 )
 
 # ## Direct Transcription

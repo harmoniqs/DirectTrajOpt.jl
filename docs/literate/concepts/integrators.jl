@@ -40,10 +40,10 @@ using LinearAlgebra
 N = 50
 traj = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [1.0, 0.0],),
-    final=(x = [0.0, 1.0],)
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [1.0, 0.0],),
+    final = (x = [0.0, 1.0],),
 )
 
 # Define drift (natural dynamics) and drives (control terms)
@@ -60,19 +60,19 @@ integrator = BilinearIntegrator(G, :x, :u, traj)
 
 traj_multi = NamedTrajectory(
     (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 G_drift_3d = [
-    0.0  1.0  0.0;
-   -1.0  0.0  0.0;
-    0.0  0.0 -0.1
+    0.0 1.0 0.0;
+    -1.0 0.0 0.0;
+    0.0 0.0 -0.1
 ]
 
 G_drives_3d = [
     [1.0 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0],  # Drive 1
-    [0.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 0.0]   # Drive 2
+    [0.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 0.0],   # Drive 2
 ]
 
 G_multi = u -> G_drift_3d + sum(u .* G_drives_3d)
@@ -102,14 +102,14 @@ traj_td = NamedTrajectory(
         x = randn(2, N),
         u = randn(1, N),
         t = collect(range(0, 5, N)),  # time variable
-        Δt = fill(0.1, N)
+        Δt = fill(0.1, N),
     );
-    timestep=:Δt,
-    controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 # Time-dependent generator
-G_td = (u, t) -> [-0.1 + 0.5*sin(t)  1.0; -1.0  -0.1] + u[1] * [0.0 1.0; 1.0 0.0]
+G_td = (u, t) -> [-0.1 + 0.5*sin(t) 1.0; -1.0 -0.1] + u[1] * [0.0 1.0; 1.0 0.0]
 
 integrator_td = TimeDependentBilinearIntegrator(G_td, :x, :u, :t, traj_td)
 
@@ -135,12 +135,12 @@ traj_smooth = NamedTrajectory(
         x = randn(2, N),
         u = randn(2, N),
         du = zeros(2, N),   # control derivative
-        Δt = fill(0.1, N)
+        Δt = fill(0.1, N),
     );
-    timestep=:Δt,
-    controls=:u,
-    initial=(u = [0.0, 0.0],),
-    final=(u = [0.0, 0.0],)
+    timestep = :Δt,
+    controls = :u,
+    initial = (u = [0.0, 0.0],),
+    final = (u = [0.0, 0.0],),
 )
 
 # Enforce du/dt = du
@@ -158,10 +158,10 @@ traj_smooth2 = NamedTrajectory(
         u = randn(1, N),
         du = zeros(1, N),
         ddu = zeros(1, N),
-        Δt = fill(0.1, N)
+        Δt = fill(0.1, N),
     );
-    timestep=:Δt,
-    controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 # Chain derivatives: d(u)/dt = du, d(du)/dt = ddu
@@ -178,16 +178,11 @@ deriv_du = DerivativeIntegrator(:du, :ddu, traj_smooth2)
 # You can use multiple integrators simultaneously:
 
 traj_combined = NamedTrajectory(
-    (
-        x = randn(2, N),
-        u = randn(2, N),
-        du = zeros(2, N),
-        Δt = fill(0.1, N)
-    );
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [0.0, 0.0], u = [0.0, 0.0]),
-    final=(u = [0.0, 0.0],)
+    (x = randn(2, N), u = randn(2, N), du = zeros(2, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0], u = [0.0, 0.0]),
+    final = (u = [0.0, 0.0],),
 )
 
 # Create problem with multiple integrators
@@ -200,7 +195,7 @@ obj += QuadraticRegularizer(:du, traj_combined, 1e-1)
 
 integrators_combined = [
     BilinearIntegrator(G_simple, :x, :u, traj_combined),
-    DerivativeIntegrator(:u, :du, traj_combined)
+    DerivativeIntegrator(:u, :du, traj_combined),
 ]
 
 prob = DirectTrajOptProblem(traj_combined, obj, integrators_combined)
