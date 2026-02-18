@@ -57,7 +57,7 @@ function DirectTrajOptProblem(
     traj::NamedTrajectory,
     obj::AbstractObjective,
     integrators::Vector{<:AbstractIntegrator};
-    constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
+    constraints::Vector{<:AbstractConstraint} = AbstractConstraint[],
 )
     # Validate timestep bounds if trajectory has a timestep variable
     timestep_var = traj.timestep
@@ -65,52 +65,55 @@ function DirectTrajOptProblem(
         @warn """
             Trajectory has timestep variable :$timestep_var but no bounds on it.
             Adding default lower bound of 0 to prevent negative timesteps.
-            
+
             Recommended: Add explicit bounds when creating the trajectory:
               NamedTrajectory(...; Δt_bounds=(min, max))
             Example:
               NamedTrajectory(qtraj, N; Δt_bounds=(1e-3, 0.5))
-            
+
             Or use timesteps_all_equal=true in problem options to fix timesteps.
             """ maxlog=1
-        
+
         # Add lower bound of 0 to prevent negative timesteps
         # Create new trajectory with updated bounds
         timestep_dim = traj.dims[timestep_var]
-        new_bounds = merge(traj.bounds, (; timestep_var => (zeros(timestep_dim), fill(Inf, timestep_dim))))
-        
+        new_bounds = merge(
+            traj.bounds,
+            (; timestep_var => (zeros(timestep_dim), fill(Inf, timestep_dim))),
+        )
+
         # Extract component data
         comps_data = NamedTuple(name => traj[name] for name in traj.names)
-        
+
         # Extract global component data if present
         if traj.global_dim > 0
             gcomps_data = NamedTuple(
-                name => Vector(traj.global_data[traj.global_components[name]]) 
-                for name in keys(traj.global_components)
+                name => Vector(traj.global_data[traj.global_components[name]]) for
+                name in keys(traj.global_components)
             )
             traj = NamedTrajectory(
                 comps_data,
                 gcomps_data;
-                timestep=traj.timestep,
-                controls=traj.control_names,
-                bounds=new_bounds,
-                initial=traj.initial,
-                final=traj.final,
-                goal=traj.goal
+                timestep = traj.timestep,
+                controls = traj.control_names,
+                bounds = new_bounds,
+                initial = traj.initial,
+                final = traj.final,
+                goal = traj.goal,
             )
         else
             traj = NamedTrajectory(
                 comps_data;
-                timestep=traj.timestep,
-                controls=traj.control_names,
-                bounds=new_bounds,
-                initial=traj.initial,
-                final=traj.final,
-                goal=traj.goal
+                timestep = traj.timestep,
+                controls = traj.control_names,
+                bounds = new_bounds,
+                initial = traj.initial,
+                final = traj.final,
+                goal = traj.goal,
             )
         end
     end
-    
+
     traj_constraints = get_trajectory_constraints(traj)
     # Convert to AbstractConstraint vector to allow mixed types
     all_constraints = AbstractConstraint[constraints..., traj_constraints...]
@@ -121,14 +124,9 @@ function DirectTrajOptProblem(
     traj::NamedTrajectory,
     obj::AbstractObjective,
     integrator::AbstractIntegrator;
-    kwargs...
+    kwargs...,
 )
-    return DirectTrajOptProblem(
-        traj, 
-        obj, 
-        AbstractIntegrator[integrator];
-        kwargs...
-    )
+    return DirectTrajOptProblem(traj, obj, AbstractIntegrator[integrator]; kwargs...)
 end
 
 
@@ -160,42 +158,42 @@ function get_trajectory_constraints(traj::NamedTrajectory)
     # add initial equality constraints
     for (name, val) ∈ pairs(traj.initial)
         con_label = "initial value of $name"
-        eq_con = EqualityConstraint(name, [1], val; label=con_label)
+        eq_con = EqualityConstraint(name, [1], val; label = con_label)
         push!(cons, eq_con)
     end
 
     # add final equality constraints
     for (name, val) ∈ pairs(traj.final)
         label = "final value of $name"
-        eq_con = EqualityConstraint(name, [traj.N], val; label=label)
+        eq_con = EqualityConstraint(name, [traj.N], val; label = label)
         push!(cons, eq_con)
     end
-    
+
     # add bounds constraints
     for (name, bound) ∈ pairs(traj.bounds)
-        if name ∈ keys(traj.initial) && name ∈ keys(traj.final) 
-            ts = 2:traj.N-1
+        if name ∈ keys(traj.initial) && name ∈ keys(traj.final)
+            ts = 2:(traj.N-1)
         elseif name ∈ keys(traj.initial) && !(name ∈ keys(traj.final))
             ts = 2:traj.N
         elseif name ∈ keys(traj.final) && !(name ∈ keys(traj.initial))
-            ts = 1:traj.N-1
+            ts = 1:(traj.N-1)
         else
             ts = 1:traj.N
         end
         con_label = "bounds on $name"
-        bounds_con = BoundsConstraint(name, ts, bound; label=con_label)
+        bounds_con = BoundsConstraint(name, ts, bound; label = con_label)
         push!(cons, bounds_con)
     end
-    
+
     # add time consistency constraint if trajectory has both :t and timestep variable
     timestep_var = traj.timestep
     if timestep_var isa Symbol && :t ∈ traj.names && timestep_var ∈ traj.names
-        time_con = TimeConsistencyConstraint(; time_name=:t, timestep_name=timestep_var)
+        time_con = TimeConsistencyConstraint(; time_name = :t, timestep_name = timestep_var)
         push!(cons, time_con)
-        
+
         # add t_1 = 0 constraint if not already specified in initial
         if :t ∉ keys(traj.initial)
-            t_init_con = EqualityConstraint(:t, [1], [0.0]; label="initial time t₁ = 0")
+            t_init_con = EqualityConstraint(:t, [1], [0.0]; label = "initial time t₁ = 0")
             push!(cons, t_init_con)
         end
     end

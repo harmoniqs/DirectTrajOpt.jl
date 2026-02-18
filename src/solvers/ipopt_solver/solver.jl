@@ -43,18 +43,19 @@ solve!(prob; max_iter=100, verbose=true)
 """
 function DTO.Solvers.solve!(
     prob::DirectTrajOptProblem;
-    options::IpoptOptions=IpoptOptions(),
-    max_iter::Int=options.max_iter,
-    verbose::Bool=true,
-    linear_solver::String=options.linear_solver,
-    print_level::Int=options.print_level,
-    callback=nothing
+    options::IpoptOptions = IpoptOptions(),
+    max_iter::Int = options.max_iter,
+    verbose::Bool = true,
+    linear_solver::String = options.linear_solver,
+    print_level::Int = options.print_level,
+    callback = nothing,
 )
     options.max_iter = max_iter
     options.linear_solver = linear_solver
     options.print_level = print_level
 
-    optimizer, variables = get_optimizer_and_variables(prob, options, callback, verbose=verbose)
+    optimizer, variables =
+        get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
     MOI.optimize!(optimizer)
 
@@ -104,7 +105,9 @@ function get_nonlinear_constraints(prob)
         elseif hasfield(typeof(integrator), :t_name)
             dynamics_dim += prob.trajectory.dims[integrator.t_name]
         else
-            error("Integrator type $(typeof(integrator)) must have either x_name, x_names, or t_name field")
+            error(
+                "Integrator type $(typeof(integrator)) must have either x_name, x_names, or t_name field",
+            )
         end
     end
     n_dynamics_constraints = dynamics_dim * (prob.trajectory.N - 1)
@@ -123,17 +126,17 @@ function get_nonlinear_constraints(prob)
 end
 
 function get_optimizer_and_variables(
-    prob::DirectTrajOptProblem, 
+    prob::DirectTrajOptProblem,
     options::IpoptOptions,
-    callback::Union{Nothing, Function};
-    verbose::Bool=true
+    callback::Union{Nothing,Function};
+    verbose::Bool = true,
 )
     if verbose
         println("    initializing optimizer...")
     end
 
     # get evaluator
-    evaluator = IpoptEvaluator(prob; eval_hessian=options.eval_hessian, verbose=verbose)
+    evaluator = IpoptEvaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
 
     # get the MOI specific nonlinear constraints
     nl_cons = get_nonlinear_constraints(prob)
@@ -159,10 +162,11 @@ function get_optimizer_and_variables(
     end
 
     # add linear constraints
-    linear_constraints = AbstractLinearConstraint[
-        filter(c -> c isa AbstractLinearConstraint, prob.constraints)...
-    ]
-    constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose=verbose)
+    linear_constraints = AbstractLinearConstraint[filter(
+        c->c isa AbstractLinearConstraint,
+        prob.constraints,
+    )...]
+    constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose = verbose)
 
     # set solver options
     set_options!(optimizer, options)
@@ -175,10 +179,7 @@ end
 #                         Optimizer Initialization
 # ----------------------------------------------------------------------------
 
-function set_variables!(
-    optimizer::Ipopt.Optimizer,
-    traj::NamedTrajectory
-)
+function set_variables!(optimizer::Ipopt.Optimizer, traj::NamedTrajectory)
     data_dim = traj.dim * traj.N
 
     # add variables
@@ -189,7 +190,7 @@ function set_variables!(
         optimizer,
         MOI.VariablePrimalStart(),
         variables[1:data_dim],
-        collect(traj.datavec)
+        collect(traj.datavec),
     )
 
     # set global data
@@ -197,7 +198,7 @@ function set_variables!(
         optimizer,
         MOI.VariablePrimalStart(),
         variables[data_dim .+ (1:traj.global_dim)],
-        collect(traj.global_data)
+        collect(traj.global_data),
     )
 
     return variables
@@ -205,13 +206,13 @@ end
 
 function update_trajectory!(
     prob::DirectTrajOptProblem,
-    optimizer::Ipopt.Optimizer, 
-    variables::Vector{MOI.VariableIndex}
+    optimizer::Ipopt.Optimizer,
+    variables::Vector{MOI.VariableIndex},
 )
     update!(
-        prob.trajectory, 
+        prob.trajectory,
         MOI.get(optimizer, MOI.VariablePrimal(), variables),
-        type=:both
+        type = :both,
     )
     return nothing
 end
@@ -232,7 +233,7 @@ function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
             end
         end
         if !isnothing(value)
-           optimizer.options[String(name)] = value
+            optimizer.options[String(name)] = value
         end
     end
     return nothing
@@ -247,63 +248,74 @@ end
     integrators = [
         BilinearIntegrator(G, :x, :u, traj),
         DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj)
+        DerivativeIntegrator(:du, :ddu, traj),
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
-    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:u, traj, 1.0)
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
 
-    g_u_norm = NonlinearKnotPointConstraint(u -> [norm(u) - 1.0], :u, traj; times=2:traj.N-1, equality=false)
+    g_u_norm = NonlinearKnotPointConstraint(
+        u -> [norm(u) - 1.0],
+        :u,
+        traj;
+        times = 2:(traj.N-1),
+        equality = false,
+    )
 
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_u_norm])
+    prob = DirectTrajOptProblem(
+        traj,
+        J,
+        integrators;
+        constraints = AbstractConstraint[g_u_norm],
+    )
 
-    solve!(prob; max_iter=100)
+    solve!(prob; max_iter = 100)
 end
 
 @testitem "testing solver with NonlinearGlobalKnotPointConstraint" begin
 
     include("../../../test/test_utils.jl")
 
-    G, traj = bilinear_dynamics_and_trajectory(add_global=true)
+    G, traj = bilinear_dynamics_and_trajectory(add_global = true)
 
     integrators = [
         BilinearIntegrator(G, :x, :u, traj),
         DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj)
+        DerivativeIntegrator(:du, :ddu, traj),
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
-    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:u, traj, 1.0)
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
-    
+
     # Add global objective - minimize global parameter
-    J += GlobalObjective(g -> norm(g)^2, :g, traj; Q=1.0)
+    J += GlobalObjective(g -> norm(g)^2, :g, traj; Q = 1.0)
 
     # Knot point constraint with global dependency
     # Couples control magnitude with global parameter
     g_ug = NonlinearGlobalKnotPointConstraint(
         ug -> begin
             u = ug[1:traj.dims[:u]]
-            g = ug[traj.dims[:u] + 1:end]
+            g = ug[(traj.dims[:u]+1):end]
             return [norm(u) * (1.0 + norm(g)) - 2.0]
         end,
-        [:u], [:g], traj;
-        times=2:traj.N-1,
-        equality=false
+        [:u],
+        [:g],
+        traj;
+        times = 2:(traj.N-1),
+        equality = false,
     )
 
-    prob = DirectTrajOptProblem(
-        traj, J, integrators; 
-        constraints=AbstractConstraint[g_ug]
-    )
+    prob =
+        DirectTrajOptProblem(traj, J, integrators; constraints = AbstractConstraint[g_ug])
 
-    solve!(prob; max_iter=100)
-    
+    solve!(prob; max_iter = 100)
+
     # Verify constraint is satisfied at each timestep
-    for k in 2:traj.N-1
+    for k = 2:(traj.N-1)
         u = traj[k][:u]
         g = traj.global_data[traj.global_components[:g]]
         @test norm(u) * (1.0 + norm(g)) <= 2.0 + 1e-6
@@ -314,37 +326,34 @@ end
 
     include("../../../test/test_utils.jl")
 
-    G, traj = bilinear_dynamics_and_trajectory(add_global=true)
+    G, traj = bilinear_dynamics_and_trajectory(add_global = true)
 
     integrators = [
         BilinearIntegrator(G, :x, :u, traj),
         DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj)
+        DerivativeIntegrator(:du, :ddu, traj),
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
-    J += QuadraticRegularizer(:u, traj, 1.0) 
+    J += QuadraticRegularizer(:u, traj, 1.0)
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
-    
+
     # Add global objective - minimize global parameter
-    J += GlobalObjective(g -> norm(g)^2, :g, traj; Q=10.0)
+    J += GlobalObjective(g -> norm(g)^2, :g, traj; Q = 10.0)
 
     # Pure global constraint - bounds the global parameter
-    g_global = NonlinearGlobalConstraint(
-        g -> [norm(g) - 0.5],
-        :g, traj;
-        equality=false
-    )
+    g_global = NonlinearGlobalConstraint(g -> [norm(g) - 0.5], :g, traj; equality = false)
 
     prob = DirectTrajOptProblem(
-        traj, J, integrators; 
-        constraints=AbstractConstraint[g_global]
+        traj,
+        J,
+        integrators;
+        constraints = AbstractConstraint[g_global],
     )
 
-    solve!(prob; max_iter=100)
-    
+    solve!(prob; max_iter = 100)
+
     # Verify global variable is within constraint
     @test norm(traj.global_data[traj.global_components[:g]]) <= 0.5 + 1e-6
 end
-

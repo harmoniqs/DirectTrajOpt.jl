@@ -152,14 +152,11 @@ function Base.:+(obj1::AbstractObjective, obj2::AbstractObjective)
     # Flatten composite objectives
     objs1 = obj1 isa CompositeObjective ? obj1.objectives : [obj1]
     weights1 = obj1 isa CompositeObjective ? obj1.weights : [1.0]
-    
+
     objs2 = obj2 isa CompositeObjective ? obj2.objectives : [obj2]
     weights2 = obj2 isa CompositeObjective ? obj2.weights : [1.0]
-    
-    return CompositeObjective(
-        vcat(objs1, objs2),
-        vcat(weights1, weights2)
-    )
+
+    return CompositeObjective(vcat(objs1, objs2), vcat(weights1, weights2))
 end
 
 """
@@ -167,10 +164,7 @@ Scale an objective by a constant.
 """
 function Base.:*(num::Real, obj::AbstractObjective)
     if obj isa CompositeObjective
-        return CompositeObjective(
-            obj.objectives,
-            num .* obj.weights
-        )
+        return CompositeObjective(obj.objectives, num .* obj.weights)
     else
         return CompositeObjective([obj], [Float64(num)])
     end
@@ -243,11 +237,11 @@ finite differences.
 function test_objective(
     obj::AbstractObjective,
     traj::NamedTrajectory;
-    show_gradient_diff=false,
-    show_hessian_diff=false,
-    test_equality=true,
-    atol=1e-5,
-    rtol=1e-5
+    show_gradient_diff = false,
+    show_hessian_diff = false,
+    test_equality = true,
+    atol = 1e-5,
+    rtol = 1e-5,
 )
     # Collect to avoid LazyArrays issues
     Z⃗_vec = collect(vec(traj))
@@ -260,23 +254,25 @@ function test_objective(
     ∇ = zeros(Z_dim)
     gradient!(∇, obj, traj)
     ∇_fd = FiniteDiff.finite_difference_gradient(Z⃗_vec) do Z⃗
-        traj_data = Z⃗[1:traj.dim * traj.N]
-        global_data = Z⃗[traj.dim * traj.N + 1:end]
-        traj_wrapped = NamedTrajectory(traj; datavec=traj_data, global_data=global_data)
+        traj_data = Z⃗[1:(traj.dim*traj.N)]
+        global_data = Z⃗[(traj.dim*traj.N+1):end]
+        traj_wrapped =
+            NamedTrajectory(traj; datavec = traj_data, global_data = global_data)
         return objective_value(obj, traj_wrapped)
     end
 
     if show_gradient_diff
         println("\tDifference in gradient")
-        for i in 1:Z_dim
-            if abs(∇[i] - ∇_fd[i]) > atol || abs((∇[i] - ∇_fd[i]) / (∇_fd[i] + 1e-10)) > rtol
+        for i = 1:Z_dim
+            if abs(∇[i] - ∇_fd[i]) > atol ||
+               abs((∇[i] - ∇_fd[i]) / (∇_fd[i] + 1e-10)) > rtol
                 println("\t  [$i]: $(∇[i]) vs $(∇_fd[i]) (diff: $(∇[i] - ∇_fd[i]))")
             end
         end
         println()
     else
         if test_equality
-            @test all(isapprox.(∇, ∇_fd, atol=atol, rtol=rtol))
+            @test all(isapprox.(∇, ∇_fd, atol = atol, rtol = rtol))
         else
             if atol > 0.0
                 @test norm(∇ - ∇_fd) < atol
@@ -288,19 +284,23 @@ function test_objective(
 
     # Test Hessian
     ∂²J = get_full_hessian(obj, traj)
-    
+
     ∂²J_fd = FiniteDiff.finite_difference_hessian(Z⃗_vec) do Z⃗
-        traj_data = Z⃗[1:traj.dim * traj.N]
-        global_data = Z⃗[traj.dim * traj.N + 1:end]
-        traj_wrapped = NamedTrajectory(traj; datavec=traj_data, global_data=global_data)
+        traj_data = Z⃗[1:(traj.dim*traj.N)]
+        global_data = Z⃗[(traj.dim*traj.N+1):end]
+        traj_wrapped =
+            NamedTrajectory(traj; datavec = traj_data, global_data = global_data)
         return objective_value(obj, traj_wrapped)
     end
 
     if show_hessian_diff
         println("\tDifference in Hessian")
-        for i in 1:Z_dim, j in 1:Z_dim
-            if abs(∂²J[i, j] - ∂²J_fd[i, j]) > atol || abs((∂²J[i, j] - ∂²J_fd[i, j]) / (∂²J_fd[i, j] + 1e-10)) > rtol
-                println("\t  [$i, $j]: $(∂²J[i, j]) vs $(∂²J_fd[i, j]) (diff: $(∂²J[i, j] - ∂²J_fd[i, j]))")
+        for i = 1:Z_dim, j = 1:Z_dim
+            if abs(∂²J[i, j] - ∂²J_fd[i, j]) > atol ||
+               abs((∂²J[i, j] - ∂²J_fd[i, j]) / (∂²J_fd[i, j] + 1e-10)) > rtol
+                println(
+                    "\t  [$i, $j]: $(∂²J[i, j]) vs $(∂²J_fd[i, j]) (diff: $(∂²J[i, j] - ∂²J_fd[i, j]))",
+                )
             end
         end
         println()
@@ -333,38 +333,38 @@ include("regularizers.jl")
     # Create some simple objectives
     obj1 = QuadraticRegularizer(:u, traj, 1.0)
     obj2 = QuadraticRegularizer(:du, traj, 0.5)
-    obj3 = MinimumTimeObjective(traj, D=2.0)
+    obj3 = MinimumTimeObjective(traj, D = 2.0)
 
     # Test addition
     obj_sum = obj1 + obj2
     @test obj_sum isa CompositeObjective
     @test length(obj_sum.objectives) == 2
     @test obj_sum.weights == [1.0, 1.0]
-    
+
     # Test scalar multiplication
     obj_scaled = 2.0 * obj1
     @test obj_scaled isa CompositeObjective
     @test obj_scaled.weights == [2.0]
-    
+
     # Test combination
     obj_combo = 2.0 * obj1 + 0.5 * obj2 + obj3
     @test obj_combo isa CompositeObjective
     @test length(obj_combo.objectives) == 3
-    
+
     # Test that composite objective works correctly
     test_objective(obj_sum, traj)
     test_objective(obj_scaled, traj)
     test_objective(obj_combo, traj)
-    
+
     # Test that values match
     val1 = objective_value(obj1, traj)
     val2 = objective_value(obj2, traj)
     val_sum = objective_value(obj_sum, traj)
     @test val_sum ≈ val1 + val2
-    
+
     val_scaled = objective_value(obj_scaled, traj)
     @test val_scaled ≈ 2.0 * val1
-    
+
     val3 = objective_value(obj3, traj)
     val_combo = objective_value(obj_combo, traj)
     @test val_combo ≈ 2.0 * val1 + 0.5 * val2 + val3

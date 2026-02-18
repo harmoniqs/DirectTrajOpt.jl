@@ -37,11 +37,15 @@ Free time allows the optimizer to adjust trajectory duration.
 
 # ## Step 1: System Definition
 
-G_drift = [-0.1  1.0;
-           -1.0 -0.1]
+G_drift = [
+    -0.1 1.0;
+    -1.0 -0.1
+]
 
-G_drives = [[0.0  1.0;
-             1.0  0.0]]
+G_drives = [[
+    0.0 1.0;
+    1.0 0.0
+]]
 
 G = u -> G_drift + sum(u .* G_drives)
 
@@ -56,7 +60,7 @@ x_init = [0.0, 0.0]
 x_goal = [1.0, 0.0]
 
 # Initial guess
-x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t in 0:T-1]...)
+x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t = 0:(T-1)]...)
 u_guess = 0.1 * randn(1, N)
 Δt_guess = fill(Δt_init, N)
 
@@ -70,19 +74,15 @@ println("  Initial total time: ", sum(Δt_guess))
 # Key: timestep=:Δt makes time steps decision variables
 
 traj_mintime = NamedTrajectory(
-    (
-        x = x_guess,
-        u = u_guess,
-        Δt = Δt_guess
-    );
-    timestep=:Δt,  # Time is a variable!
-    controls=:u,
-    initial=(x = x_init,),
-    final=(x = x_goal,),
-    bounds=(
+    (x = x_guess, u = u_guess, Δt = Δt_guess);
+    timestep = :Δt,  # Time is a variable!
+    controls = :u,
+    initial = (x = x_init,),
+    final = (x = x_goal,),
+    bounds = (
         u = 1.0,            # -1 ≤ u ≤ 1
-        Δt = (0.01, 0.5)    # 0.01 ≤ Δt ≤ 0.5
-    )
+        Δt = (0.01, 0.5),    # 0.01 ≤ Δt ≤ 0.5
+    ),
 )
 
 println("\nTrajectory bounds:")
@@ -117,7 +117,7 @@ println("\n" * "="^50)
 println("Solving minimum time problem...")
 println("="^50)
 
-solve!(prob_mintime; max_iter=200, verbose=false)
+solve!(prob_mintime; max_iter = 200, verbose = false)
 
 println("="^50)
 println("Minimum time solution found!")
@@ -157,11 +157,11 @@ println("="^50)
 
 traj_fixed = NamedTrajectory(
     (x = x_guess, u = u_guess, Δt = fill(Δt_fixed, N));
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = x_init,),
-    final=(x = x_goal,),
-    bounds=(u = 1.0,)
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = x_init,),
+    final = (x = x_goal,),
+    bounds = (u = 1.0,),
 )
 
 obj_fixed = QuadraticRegularizer(:u, traj_fixed, 1.0)
@@ -169,7 +169,7 @@ integrator_fixed = BilinearIntegrator(G, :x, :u, traj_fixed)
 prob_fixed = DirectTrajOptProblem(traj_fixed, obj_fixed, integrator_fixed)
 
 println("\nSolving fixed-time problem with T = $total_time_mintime seconds...")
-solve!(prob_fixed; max_iter=150, verbose=false)
+solve!(prob_fixed; max_iter = 150, verbose = false)
 
 u_sol_fixed = prob_fixed.trajectory.u
 
@@ -196,35 +196,47 @@ results = []
 for w_t in time_weights
     traj_test = NamedTrajectory(
         (x = x_guess, u = u_guess, Δt = Δt_guess);
-        timestep=:Δt, controls=:u,
-        initial=(x = x_init,), final=(x = x_goal,),
-        bounds=(u = 1.0, Δt = (0.01, 0.5))
+        timestep = :Δt,
+        controls = :u,
+        initial = (x = x_init,),
+        final = (x = x_goal,),
+        bounds = (u = 1.0, Δt = (0.01, 0.5)),
     )
-    
+
     obj_test = (
         1e-2 * QuadraticRegularizer(:u, traj_test, 1.0) +
         w_t * MinimumTimeObjective(traj_test, 1.0)
     )
-    
+
     integrator_test = BilinearIntegrator(G, :x, :u, traj_test)
     prob_test = DirectTrajOptProblem(traj_test, obj_test, integrator_test)
-    
-    solve!(prob_test; max_iter=200, verbose=false)
-    
-    push!(results, (
-        weight=w_t,
-        time=sum(prob_test.trajectory.Δt),
-        control_norm=norm(prob_test.trajectory.u),
-        max_control=maximum(abs.(prob_test.trajectory.u))
-    ))
+
+    solve!(prob_test; max_iter = 200, verbose = false)
+
+    push!(
+        results,
+        (
+            weight = w_t,
+            time = sum(prob_test.trajectory.Δt),
+            control_norm = norm(prob_test.trajectory.u),
+            max_control = maximum(abs.(prob_test.trajectory.u)),
+        ),
+    )
 end
 
 println("\nTime weight effects:")
 println("Weight | Total Time | ||u||   | Max |u|")
 println("-"^45)
 for r in results
-    println(@sprintf("%.1f   | %.4f s   | %.4f | %.4f", 
-        r.weight, r.time, r.control_norm, r.max_control))
+    println(
+        @sprintf(
+            "%.1f   | %.4f s   | %.4f | %.4f",
+            r.weight,
+            r.time,
+            r.control_norm,
+            r.max_control
+        )
+    )
 end
 
 println("\nObservations:")
@@ -253,7 +265,7 @@ for k in [1, T÷4, T÷2, 3*T÷4, T]
     if k <= T
         dt = Δt_sol_mintime[k]
         u_mag = abs(u_sol_mintime[1, k])
-        
+
         comment = if u_mag > 0.9
             "High control"
         elseif u_mag < 0.1
@@ -261,7 +273,7 @@ for k in [1, T÷4, T÷2, 3*T÷4, T]
         else
             "Moderate"
         end
-        
+
         println(@sprintf("%2d   | %.5f | %.4f | %s", k, dt, u_mag, comment))
     end
 end
@@ -280,8 +292,15 @@ println("-"^40)
 for k in [1, 5, 10, 15, 20, 25, 30, 35, T]
     t = times_mintime[k]
     u_mag = abs(u_sol_mintime[1, k])
-    println(@sprintf("%.3f | %7.4f | %7.4f | %.4f", 
-        t, x_sol_mintime[1,k], x_sol_mintime[2,k], u_mag))
+    println(
+        @sprintf(
+            "%.3f | %7.4f | %7.4f | %.4f",
+            t,
+            x_sol_mintime[1, k],
+            x_sol_mintime[2, k],
+            u_mag
+        )
+    )
 end
 
 # ## Key Insights

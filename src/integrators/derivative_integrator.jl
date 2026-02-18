@@ -31,40 +31,25 @@ struct DerivativeIntegrator{F} <: AbstractIntegrator
     var_dim::Int
     dim::Int
 
-    function DerivativeIntegrator(
-        x::Symbol,
-        ẋ::Symbol,
-        traj::NamedTrajectory
-    )
+    function DerivativeIntegrator(x::Symbol, ẋ::Symbol, traj::NamedTrajectory)
         x_dim = traj.dims[x]
         N = traj.N
-        
+
         # Variables: [xₖ, ẋₖ, Δtₖ, xₖ₊₁]
         var_dim = 2*x_dim + 1 + x_dim  # = 3*x_dim + 1
-        
+
         # Total constraint dimension
         dim = x_dim * (N - 1)
-        
+
         # Define f function: constraint is f(xₖ₊₁, xₖ, ẋₖ, Δtₖ) = 0
         f = (xₖ₊₁, xₖ, ẋₖ, Δtₖ) -> xₖ₊₁ - xₖ - Δtₖ * ẋₖ
-        
-        return new{typeof(f)}(
-            f,
-            x,
-            ẋ,
-            x_dim,
-            var_dim,
-            dim
-        )
+
+        return new{typeof(f)}(f, x, ẋ, x_dim, var_dim, dim)
     end
 end
 
-function evaluate!(
-    δ::AbstractVector,
-    D::DerivativeIntegrator,
-    traj::NamedTrajectory,
-)
-    for k = 1:traj.N-1
+function evaluate!(δ::AbstractVector, D::DerivativeIntegrator, traj::NamedTrajectory)
+    for k = 1:(traj.N-1)
         xₖ = traj[k][D.x_name]
         xₖ₊₁ = traj[k+1][D.x_name]
         ẋₖ = traj[k][D.ẋ_name]
@@ -76,17 +61,14 @@ end
 
 # Jacobian methods
 
-@views function eval_jacobian(
-    D::DerivativeIntegrator,
-    traj::NamedTrajectory
-)
+@views function eval_jacobian(D::DerivativeIntegrator, traj::NamedTrajectory)
     ∂D = spzeros(D.dim, traj.dim * traj.N + traj.global_dim)
-    for k = 1:traj.N-1
+    for k = 1:(traj.N-1)
         ForwardDiff.jacobian!(
             ∂D[slice(k, D.x_dim), slice(k, 1:2traj.dim, traj.dim)],
-            zz -> begin 
+            zz -> begin
                 zₖ = zz[1:traj.dim]
-                zₖ₊₁ = zz[traj.dim+1:end]
+                zₖ₊₁ = zz[(traj.dim+1):end]
                 xₖ = zₖ[traj.components[D.x_name]]
                 ẋₖ = zₖ[traj.components[D.ẋ_name]]
                 Δtₖ = zₖ[traj.components[traj.timestep]][1]
@@ -96,7 +78,7 @@ end
             [traj[k].data; traj[k+1].data],
         )
     end
-    return ∂D 
+    return ∂D
 end
 
 # Hessian methods
@@ -104,20 +86,17 @@ end
 function eval_hessian_of_lagrangian(
     D::DerivativeIntegrator,
     traj::NamedTrajectory,
-    μ::AbstractVector
+    μ::AbstractVector,
 )
-    μ∂²D = spzeros(
-        traj.dim * traj.N + traj.global_dim,
-        traj.dim * traj.N + traj.global_dim,
-    )
+    μ∂²D = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
 
-    for k = 1:traj.N-1
+    for k = 1:(traj.N-1)
         μₖ = μ[slice(k, D.x_dim)]
-       
+
         μ∂²Dₖ = ForwardDiff.hessian(
             zz -> begin
                 zₖ = zz[1:traj.dim]
-                zₖ₊₁ = zz[traj.dim+1:end]
+                zₖ₊₁ = zz[(traj.dim+1):end]
                 xₖ = zₖ[traj.components[D.x_name]]
                 ẋₖ = zₖ[traj.components[D.ẋ_name]]
                 Δtₖ = zₖ[traj.components[traj.timestep]][1]
@@ -129,7 +108,7 @@ function eval_hessian_of_lagrangian(
 
         μ∂²D[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= μ∂²Dₖ
     end
-    return μ∂²D 
+    return μ∂²D
 end
 
 @testitem "testing DerivativeIntegrator" begin

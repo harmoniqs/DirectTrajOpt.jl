@@ -47,8 +47,8 @@ function L1SlackConstraint(
     var_name::Symbol,
     slack_name::Symbol,
     traj::NamedTrajectory;
-    times::AbstractVector{Int}=1:traj.N,
-    label="L1 slack constraint: |$var_name| ≤ $slack_name"
+    times::AbstractVector{Int} = 1:traj.N,
+    label = "L1 slack constraint: |$var_name| ≤ $slack_name",
 )
     @assert var_name ∈ traj.names "Variable $var_name not found in trajectory"
     @assert slack_name ∈ traj.names "Slack variable $slack_name not found in trajectory"
@@ -66,15 +66,18 @@ end
     # Add a slack variable for du
     n_du = traj.dims[:du]
     s_du_data = abs.(traj[:du])
-    traj = add_component(traj, :s_du, s_du_data;
-        type=:control,
-        bounds=(s_du=(zeros(n_du), fill(Inf, n_du)),)
+    traj = add_component(
+        traj,
+        :s_du,
+        s_du_data;
+        type = :control,
+        bounds = (s_du = (zeros(n_du), fill(Inf, n_du)),),
     )
 
     integrators = [
         BilinearIntegrator(G, :x, :u, traj),
         DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj)
+        DerivativeIntegrator(:du, :ddu, traj),
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -84,11 +87,11 @@ end
 
     l1_con = L1SlackConstraint(:du, :s_du, traj)
 
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=[l1_con])
-    solve!(prob; max_iter=100)
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints = [l1_con])
+    solve!(prob; max_iter = 100)
 
     # Verify slack constraint: s_du ≥ |du| at solution
-    for t in 1:traj.N
+    for t = 1:traj.N
         du = prob.trajectory[t][:du]
         s_du = prob.trajectory[t][:s_du]
         @test all(s_du .>= abs.(du) .- 1e-6)

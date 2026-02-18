@@ -37,13 +37,13 @@ traj = NamedTrajectory(
     (
         x = randn(2, N),    # 2D state
         u = randn(1, N),    # 1D control
-        Δt = fill(0.1, N)   # time step
+        Δt = fill(0.1, N),   # time step
     );
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [0.0, 0.0],),
-    final=(x = [1.0, 0.0],),
-    bounds=(Δt = (0.05, 0.2), u = 1.0)
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),
+    final = (x = [1.0, 0.0],),
+    bounds = (Δt = (0.05, 0.2), u = 1.0),
 )
 
 # ### Step 2: Define the Dynamics
@@ -67,7 +67,7 @@ obj = QuadraticRegularizer(:u, traj, 1.0)
 # Combine everything into a problem and solve:
 
 prob = DirectTrajOptProblem(traj, obj, integrator)
-solve!(prob; max_iter=100, verbose=false)
+solve!(prob; max_iter = 100, verbose = false)
 
 # ### Step 5: Access the Solution
 
@@ -87,4 +87,3 @@ println("Control norm: ", norm(prob.trajectory.u))
 # - **Add constraints**: Bounds, path constraints, custom nonlinear constraints
 # - **Smooth controls**: Penalize derivatives for smooth, implementable controls
 # - **Free time**: Optimize trajectory duration
-

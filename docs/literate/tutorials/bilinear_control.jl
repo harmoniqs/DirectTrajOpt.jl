@@ -28,22 +28,22 @@ using Printf
 
 # Drift term - natural evolution
 G_drift = [
-     0.0   1.0   0.0;
-    -1.0   0.0   0.0;
-     0.0   0.0  -0.1
+    0.0 1.0 0.0;
+    -1.0 0.0 0.0;
+    0.0 0.0 -0.1
 ]
 
 # Drive terms - control influences
 G_drive_1 = [
-    1.0  0.0  0.0;
-    0.0  0.0  0.0;
-    0.0  0.0  0.0
+    1.0 0.0 0.0;
+    0.0 0.0 0.0;
+    0.0 0.0 0.0
 ]  # Controls first state
 
 G_drive_2 = [
-    0.0  0.0  0.0;
-    0.0  0.0  1.0;
-    0.0  1.0  0.0
+    0.0 0.0 0.0;
+    0.0 0.0 1.0;
+    0.0 1.0 0.0
 ]  # Controls coupling between states 2 and 3
 
 G_drives = [G_drive_1, G_drive_2]
@@ -83,7 +83,7 @@ println("  Goal state: $x_goal")
 # ### Initial Guess
 
 # Linear interpolation for states
-x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t in 0:N-1]...)
+x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t = 0:(N-1)]...)
 
 # Small random controls
 u_guess = 0.1 * randn(2, N)
@@ -93,16 +93,12 @@ u_guess = 0.1 * randn(2, N)
 # Control bounds: -1 ≤ u ≤ 1 for both controls
 
 traj = NamedTrajectory(
-    (
-        x = x_guess,
-        u = u_guess,
-        Δt = fill(Δt, N)
-    );
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = x_init,),
-    final=(x = x_goal,),
-    bounds=(u = 1.0,)  # -1 ≤ u ≤ 1
+    (x = x_guess, u = u_guess, Δt = fill(Δt, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = x_init,),
+    final = (x = x_goal,),
+    bounds = (u = 1.0,),  # -1 ≤ u ≤ 1
 )
 
 println("\nTrajectory created:")
@@ -128,7 +124,7 @@ println("\n" * "="^50)
 println("Solving optimization problem...")
 println("="^50)
 
-solve!(prob; max_iter=150, verbose=false)
+solve!(prob; max_iter = 150, verbose = false)
 
 println("="^50)
 println("Optimization complete!")
@@ -151,13 +147,13 @@ println("  Final error:   ", norm(x_sol[:, end] - x_goal))
 # ### Control Statistics
 
 println("\nControl statistics:")
-for i in 1:2
+for i = 1:2
     u_i = u_sol[i, :]
     println("  u$i:")
     println("    Max magnitude: ", maximum(abs.(u_i)))
     println("    Mean magnitude: ", mean(abs.(u_i)))
     println("    Total norm: ", norm(u_i))
-    
+
     # Check bound satisfaction
     if all(-1.0 .<= u_i .<= 1.0)
         println("    ✓ Bounds satisfied")
@@ -184,8 +180,9 @@ println("Time  |   x₁    |   x₂    |   x₃")
 println("-"^40)
 for k in [1, 10, 20, 30, 40, 50, N]
     t = times[k]
-    println(@sprintf("%.2f | %7.4f | %7.4f | %7.4f", 
-        t, x_sol[1,k], x_sol[2,k], x_sol[3,k]))
+    println(
+        @sprintf("%.2f | %7.4f | %7.4f | %7.4f", t, x_sol[1, k], x_sol[2, k], x_sol[3, k])
+    )
 end
 
 println("\nControl trajectory (selected time points):")
@@ -193,23 +190,22 @@ println("Time  |   u₁    |   u₂")
 println("-"^30)
 for k in [1, 10, 20, 30, 40, 50, N]
     t = times[k]
-    println(@sprintf("%.2f | %7.4f | %7.4f", 
-        t, u_sol[1,k], u_sol[2,k]))
+    println(@sprintf("%.2f | %7.4f | %7.4f", t, u_sol[1, k], u_sol[2, k]))
 end
 
 # ## Step 8: Verify Dynamics Satisfaction
 
 println("\nDynamics verification:")
 max_error = 0.0
-for k in 1:N-1
+for k = 1:(N-1)
     x_k = x_sol[:, k]
     u_k = u_sol[:, k]
     Δt_k = prob.trajectory.Δt[k]
-    
+
     # Predicted next state
     x_k1_pred = exp(Δt_k * G(u_k)) * x_k
     x_k1_actual = x_sol[:, k+1]
-    
+
     error = norm(x_k1_pred - x_k1_actual)
     max_error = max(max_error, error)
 end
@@ -223,10 +219,12 @@ println("="^50)
 
 # Try with higher control penalty
 traj_high = NamedTrajectory(
-    (x = x_guess, u = 0.1*randn(2,N), Δt = fill(Δt, N));
-    timestep=:Δt, controls=:u,
-    initial=(x = x_init,), final=(x = x_goal,),
-    bounds=(u = 1.0,)
+    (x = x_guess, u = 0.1*randn(2, N), Δt = fill(Δt, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = x_init,),
+    final = (x = x_goal,),
+    bounds = (u = 1.0,),
 )
 
 obj_high = QuadraticRegularizer(:u, traj_high, 10.0)  # 10x larger weight
@@ -234,7 +232,7 @@ integrator_high = BilinearIntegrator(G, :x, :u, traj_high)
 prob_high = DirectTrajOptProblem(traj_high, obj_high, integrator_high)
 
 println("\nSolving with high control weight (R=10.0)...")
-solve!(prob_high; max_iter=150, verbose=false)
+solve!(prob_high; max_iter = 150, verbose = false)
 
 u_sol_high = prob_high.trajectory.u
 
