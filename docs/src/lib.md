@@ -4,6 +4,11 @@
 CollapsedDocStrings = true
 ```
 
+## Common Interface
+```@autodocs
+Modules = [DirectTrajOpt.CommonInterface]
+```
+
 ## Constraints
 ```@autodocs
 Modules = [DirectTrajOpt.Constraints]
@@ -17,11 +22,6 @@ Modules = [DirectTrajOpt.Integrators]
 ## Objectives
 ```@autodocs
 Modules = [DirectTrajOpt.Objectives]
-```
-
-## Dynamics
-```@autodocs
-Modules = [DirectTrajOpt.Dynamics]
 ```
 
 ## Problems

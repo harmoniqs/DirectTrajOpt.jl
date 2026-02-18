@@ -110,7 +110,7 @@ println("  → Emphasizes minimizing time")
 
 # ## Step 5: Solve Minimum Time Problem
 
-integrator_mintime = BilinearIntegrator(G, traj_mintime, :x, :u)
+integrator_mintime = BilinearIntegrator(G, :x, :u, traj_mintime)
 prob_mintime = DirectTrajOptProblem(traj_mintime, obj_mintime, integrator_mintime)
 
 println("\n" * "="^50)
@@ -165,7 +165,7 @@ traj_fixed = NamedTrajectory(
 )
 
 obj_fixed = QuadraticRegularizer(:u, traj_fixed, 1.0)
-integrator_fixed = BilinearIntegrator(G, traj_fixed, :x, :u)
+integrator_fixed = BilinearIntegrator(G, :x, :u, traj_fixed)
 prob_fixed = DirectTrajOptProblem(traj_fixed, obj_fixed, integrator_fixed)
 
 println("\nSolving fixed-time problem with T = $total_time_mintime seconds...")
@@ -206,7 +206,7 @@ for w_t in time_weights
         w_t * MinimumTimeObjective(traj_test, 1.0)
     )
     
-    integrator_test = BilinearIntegrator(G, traj_test, :x, :u)
+    integrator_test = BilinearIntegrator(G, :x, :u, traj_test)
     prob_test = DirectTrajOptProblem(traj_test, obj_test, integrator_test)
     
     solve!(prob_test; max_iter=200, verbose=false)

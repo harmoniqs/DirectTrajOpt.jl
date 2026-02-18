@@ -168,8 +168,8 @@ obj_soft = TerminalObjective(x -> 100.0 * norm(x - x_goal)^2, :x, traj_soft)
 # ### Single Time Point
 
 obj_knot_single = KnotPointObjective(
-    (x, u) -> norm(x - [0.5, 0.5])^2,
-    [:x, :u],
+    x -> norm(x - [0.5, 0.5])^2,
+    :x,
     traj;
     times=[25]  # Only at k=25
 )
@@ -177,8 +177,8 @@ obj_knot_single = KnotPointObjective(
 # ### Multiple Time Points
 
 obj_knot_multi = KnotPointObjective(
-    (x, u) -> norm(u)^2,
-    [:x, :u],
+    u -> norm(u)^2,
+    :u,
     traj;
     times=[10, 20, 30, 40]  # At k=10, 20, 30, 40
 )
@@ -186,7 +186,7 @@ obj_knot_multi = KnotPointObjective(
 # ### All Time Points (Path Cost)
 
 obj_knot_all = KnotPointObjective(
-    (x, u) -> x[1]^2 + u[1]^2,
+    xu -> xu[1]^2 + xu[3]^2,  # xu is concatenated [x; u]
     [:x, :u],
     traj;
     times=1:N  # All time steps
@@ -203,8 +203,8 @@ waypoint_times = [13, 38]
 
 obj_waypoints = sum(
     KnotPointObjective(
-        (x, u) -> 10.0 * norm(x - wp)^2,
-        [:x, :u],
+        x -> 10.0 * norm(x - wp)^2,
+        :x,
         traj;
         times=[t]
     )
