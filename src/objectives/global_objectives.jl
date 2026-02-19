@@ -51,6 +51,11 @@ function GlobalObjective(ℓ::Function, global_name::Symbol, traj::NamedTrajecto
     return GlobalObjective(ℓ, [global_name], traj; kwargs...)
 end
 
+function Base.show(io::IO, obj::GlobalObjective)
+    globals = join([":$n" for n in obj.global_names], ", ")
+    print(io, "GlobalObjective on [$globals] (Q = $(round(obj.Q, sigdigits=4)))")
+end
+
 # Implement AbstractObjective interface
 
 function objective_value(obj::GlobalObjective, traj::NamedTrajectory)
@@ -198,6 +203,14 @@ function GlobalKnotPointObjective(
         times = times,
         kwargs...,
     )
+end
+
+function Base.show(io::IO, obj::GlobalKnotPointObjective)
+    vars = join([":$n" for n in obj.var_names], ", ")
+    globals = join([":$n" for n in obj.global_names], ", ")
+    n = length(obj.times)
+    times_str = n <= 3 ? "t = $(obj.times)" : "$n knot points"
+    print(io, "GlobalKnotPointObjective on [$vars] + globals [$globals], $times_str")
 end
 
 # Implement AbstractObjective interface

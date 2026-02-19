@@ -35,6 +35,10 @@ function MinimumTimeObjective(traj::NamedTrajectory, D::Real)
     return MinimumTimeObjective(traj; D = Float64(D))
 end
 
+function Base.show(io::IO, obj::MinimumTimeObjective)
+    print(io, "MinimumTimeObjective (D = $(round(obj.D, sigdigits=4)))")
+end
+
 # Implement AbstractObjective interface
 
 function objective_value(obj::MinimumTimeObjective, traj::NamedTrajectory)

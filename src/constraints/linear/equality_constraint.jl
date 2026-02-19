@@ -82,6 +82,10 @@ function GlobalEqualityConstraint(
     )
 end
 
+function Base.show(io::IO, c::EqualityConstraint)
+    print(io, "EqualityConstraint: \"$(c.label)\"")
+end
+
 # =========================================================================== #
 
 @testitem "EqualityConstraint - trajectory variable" begin

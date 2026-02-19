@@ -56,6 +56,10 @@ function L1SlackConstraint(
     return L1SlackConstraint(var_name, slack_name, Vector{Int}(times), label)
 end
 
+function Base.show(io::IO, c::L1SlackConstraint)
+    print(io, "L1SlackConstraint: |$(c.var_name)| <= $(c.slack_name)")
+end
+
 # =========================================================================== #
 
 @testitem "L1SlackConstraint" begin

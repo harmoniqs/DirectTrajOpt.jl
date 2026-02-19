@@ -48,6 +48,10 @@ struct DerivativeIntegrator{F} <: AbstractIntegrator
     end
 end
 
+function Base.show(io::IO, D::DerivativeIntegrator)
+    print(io, "DerivativeIntegrator: :$(D.x_name) += Δt * :$(D.ẋ_name)  (dim = $(D.x_dim))")
+end
+
 function evaluate!(δ::AbstractVector, D::DerivativeIntegrator, traj::NamedTrajectory)
     for k = 1:(traj.N-1)
         xₖ = traj[k][D.x_name]
