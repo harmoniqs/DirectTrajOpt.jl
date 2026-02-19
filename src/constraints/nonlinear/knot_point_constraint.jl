@@ -193,7 +193,10 @@ function Base.show(io::IO, c::NonlinearKnotPointConstraint)
     eq_str = c.equality ? "equality" : "inequality"
     n = length(c.times)
     times_str = n <= 3 ? "t = $(c.times)" : "$n times"
-    print(io, "NonlinearKnotPointConstraint on [$vars], $eq_str, $times_str (g_dim = $(c.g_dim))")
+    print(
+        io,
+        "NonlinearKnotPointConstraint on [$vars], $eq_str, $times_str (g_dim = $(c.g_dim))",
+    )
 end
 
 # ----------------------------------------------------------------------------- #

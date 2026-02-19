@@ -129,7 +129,10 @@ function Base.show(io::IO, c::NonlinearGlobalKnotPointConstraint)
     eq_str = c.equality ? "equality" : "inequality"
     n = length(c.times)
     times_str = n <= 3 ? "t = $(c.times)" : "$n times"
-    print(io, "NonlinearGlobalKnotPointConstraint on [$vars] + globals [$globals], $eq_str, $times_str")
+    print(
+        io,
+        "NonlinearGlobalKnotPointConstraint on [$vars] + globals [$globals], $eq_str, $times_str",
+    )
 end
 
 # ----------------------------------------------------------------------------- #

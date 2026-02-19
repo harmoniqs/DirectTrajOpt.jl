@@ -215,7 +215,7 @@ function show_problem_details(io::IO, prob::DirectTrajOptProblem)
     # --- Trajectory section ---
     println(io, "  Trajectory")
     println(io, "    Timesteps: ", traj.N)
-    println(io, "    Duration:  ", round(get_duration(traj), sigdigits=6))
+    println(io, "    Duration:  ", round(get_duration(traj), sigdigits = 6))
     println(io, "    Knot dim:  ", traj.dim)
     vars = join(["$n ($(traj.dims[n]))" for n in traj.names], ", ")
     println(io, "    Variables: ", vars)
@@ -223,7 +223,10 @@ function show_problem_details(io::IO, prob::DirectTrajOptProblem)
     println(io, "    Controls:  ", ctrl_str)
     if traj.global_dim > 0
         gvars = join(
-            ["$n ($(length(traj.global_components[n])))" for n in keys(traj.global_components)],
+            [
+                "$n ($(length(traj.global_components[n])))" for
+                n in keys(traj.global_components)
+            ],
             ", ",
         )
         println(io, "    Globals:   ", gvars)
@@ -235,7 +238,7 @@ function show_problem_details(io::IO, prob::DirectTrajOptProblem)
         n = length(obj.objectives)
         println(io, "  Objective ($n terms)")
         for (sub_obj, w) in zip(obj.objectives, obj.weights)
-            w_str = string(round(w, sigdigits=4))
+            w_str = string(round(w, sigdigits = 4))
             println(io, "    $(lpad(w_str, 8)) * ", sub_obj)
         end
     elseif obj isa NullObjective

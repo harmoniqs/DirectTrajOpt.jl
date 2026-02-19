@@ -85,7 +85,10 @@ struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
 end
 
 function Base.show(io::IO, B::BilinearIntegrator)
-    print(io, "BilinearIntegrator: :$(B.x_name) = exp(Δt G(:$(B.u_name))) :$(B.x_name)  (dim = $(B.x_dim))")
+    print(
+        io,
+        "BilinearIntegrator: :$(B.x_name) = exp(Δt G(:$(B.u_name))) :$(B.x_name)  (dim = $(B.x_dim))",
+    )
 end
 
 # -------------------------------------------------------------------------------- #

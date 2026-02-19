@@ -176,7 +176,7 @@ function Base.show(io::IO, obj::CompositeObjective)
     n = length(obj.objectives)
     print(io, "CompositeObjective ($n terms)")
     for (sub_obj, w) in zip(obj.objectives, obj.weights)
-        w_str = string(round(w, sigdigits=4))
+        w_str = string(round(w, sigdigits = 4))
         print(io, "\n  $(lpad(w_str, 8)) * ")
         show(io, sub_obj)
     end
