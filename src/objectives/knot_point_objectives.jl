@@ -148,6 +148,13 @@ function TerminalObjective(
     return KnotPointObjective(ℓ, names, traj; Qs = [Q], times = [traj.N], kwargs...)
 end
 
+function Base.show(io::IO, obj::KnotPointObjective)
+    vars = join([":$n" for n in obj.var_names], ", ")
+    n = length(obj.times)
+    times_str = n <= 3 ? "t = $(obj.times)" : "$n knot points"
+    print(io, "KnotPointObjective on [$vars] at $times_str")
+end
+
 # Implement AbstractObjective interface
 
 function objective_value(obj::KnotPointObjective, traj::NamedTrajectory)

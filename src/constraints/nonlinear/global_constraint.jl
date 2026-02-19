@@ -75,6 +75,12 @@ function NonlinearGlobalConstraint(
     return NonlinearGlobalConstraint(g, [global_name], traj; kwargs...)
 end
 
+function Base.show(io::IO, c::NonlinearGlobalConstraint)
+    globals = join([":$n" for n in c.global_names], ", ")
+    eq_str = c.equality ? "equality" : "inequality"
+    print(io, "NonlinearGlobalConstraint on [$globals], $eq_str (dim = $(c.dim))")
+end
+
 # ----------------------------------------------------------------------------- #
 # Method Implementations for NonlinearGlobalConstraint
 # ----------------------------------------------------------------------------- #

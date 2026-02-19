@@ -172,7 +172,15 @@ end
 
 Base.:*(obj::AbstractObjective, num::Real) = num * obj
 
-Base.show(io::IO, ::CompositeObjective) = print(io, "CompositeObjective")
+function Base.show(io::IO, obj::CompositeObjective)
+    n = length(obj.objectives)
+    print(io, "CompositeObjective ($n terms)")
+    for (sub_obj, w) in zip(obj.objectives, obj.weights)
+        w_str = string(round(w, sigdigits=4))
+        print(io, "\n  $(lpad(w_str, 8)) * ")
+        show(io, sub_obj)
+    end
+end
 
 # ----------------------------------------------------------------------------- #
 # Null objective                                      
@@ -187,6 +195,8 @@ Useful as a placeholder or when only constraints matter.
 struct NullObjective <: AbstractObjective end
 
 NullObjective(::NamedTrajectory) = NullObjective()
+
+Base.show(io::IO, ::NullObjective) = print(io, "NullObjective")
 
 objective_value(::NullObjective, ::NamedTrajectory) = 0.0
 

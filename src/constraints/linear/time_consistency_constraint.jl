@@ -42,6 +42,10 @@ function TimeConsistencyConstraint(;
     return TimeConsistencyConstraint(time_name, timestep_name, label)
 end
 
+function Base.show(io::IO, c::TimeConsistencyConstraint)
+    print(io, "TimeConsistencyConstraint: $(c.time_name)_{k+1} = $(c.time_name)_k + $(c.timestep_name)_k")
+end
+
 # =========================================================================== #
 
 @testitem "TimeConsistencyConstraint" begin

@@ -63,6 +63,13 @@ function QuadraticRegularizer(name::Symbol, traj::NamedTrajectory, R::Real; kwar
     return QuadraticRegularizer(name, traj, R * ones(traj.dims[name]); kwargs...)
 end
 
+function Base.show(io::IO, reg::QuadraticRegularizer)
+    R_str = length(reg.R) <= 4 ? string(round.(reg.R, sigdigits=4)) : "[$(length(reg.R))-vector]"
+    n = length(reg.times)
+    times_str = (!isempty(reg.times) && first(reg.times) == 1 && last(reg.times) == n) ? "all" : "$n times"
+    print(io, "QuadraticRegularizer on :$(reg.name) (R = $R_str, $times_str)")
+end
+
 # Implement AbstractObjective interface
 
 function objective_value(reg::QuadraticRegularizer, traj::NamedTrajectory)
@@ -211,6 +218,13 @@ end
 
 function LinearRegularizer(name::Symbol, traj::NamedTrajectory, R::Real; kwargs...)
     return LinearRegularizer(name, traj, R * ones(traj.dims[name]); kwargs...)
+end
+
+function Base.show(io::IO, reg::LinearRegularizer)
+    R_str = length(reg.R) <= 4 ? string(round.(reg.R, sigdigits=4)) : "[$(length(reg.R))-vector]"
+    n = length(reg.times)
+    times_str = (!isempty(reg.times) && first(reg.times) == 1 && last(reg.times) == n) ? "all" : "$n times"
+    print(io, "LinearRegularizer on :$(reg.name) (R = $R_str, $times_str)")
 end
 
 # Implement AbstractObjective interface

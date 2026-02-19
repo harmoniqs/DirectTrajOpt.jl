@@ -45,6 +45,11 @@ function SymmetricControlConstraint(
     return SymmetryConstraint(name, idx, even, include_timestep, label)
 end
 
+function Base.show(io::IO, c::SymmetryConstraint)
+    sym_type = c.even ? "even" : "odd"
+    print(io, "SymmetryConstraint: $sym_type symmetry on :$(c.var_name) components $(c.component_indices)")
+end
+
 # =========================================================================== #
 
 @testitem "SymmetricControlConstraint - even symmetry" begin

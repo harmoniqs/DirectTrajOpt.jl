@@ -39,6 +39,10 @@ function DurationConstraint(value::Float64; label = "duration constraint of $val
     return TotalConstraint(:Δt, 1, value, label)
 end
 
+function Base.show(io::IO, c::TotalConstraint)
+    print(io, "TotalConstraint: \"$(c.label)\"")
+end
+
 # =========================================================================== #
 
 @testitem "DurationConstraint" begin

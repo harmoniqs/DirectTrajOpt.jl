@@ -81,6 +81,10 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     end
 end
 
+function Base.show(io::IO, B::TimeDependentBilinearIntegrator)
+    print(io, "TimeDependentBilinearIntegrator: :$(B.x_name) via G(:$(B.u_name), t)  (dim = $(B.x_dim), order = $(B.spline_order))")
+end
+
 # -------------------------------------------------------------------------------- #
 # Methods
 # -------------------------------------------------------------------------------- #

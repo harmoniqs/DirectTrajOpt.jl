@@ -29,6 +29,10 @@ function TimeStepsAllEqualConstraint(; label = "timesteps all equal constraint")
     return AllEqualConstraint(:Δt, 1, label)
 end
 
+function Base.show(io::IO, c::AllEqualConstraint)
+    print(io, "AllEqualConstraint: \"$(c.label)\"")
+end
+
 # =========================================================================== #
 
 @testitem "TimeStepsAllEqualConstraint" begin

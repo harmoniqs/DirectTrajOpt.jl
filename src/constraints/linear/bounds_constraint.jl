@@ -90,6 +90,10 @@ function GlobalBoundsConstraint(
     )
 end
 
+function Base.show(io::IO, c::BoundsConstraint)
+    print(io, "BoundsConstraint: \"$(c.label)\"")
+end
+
 # =========================================================================== #
 
 @testitem "BoundsConstraint - symmetric scalar bounds" begin

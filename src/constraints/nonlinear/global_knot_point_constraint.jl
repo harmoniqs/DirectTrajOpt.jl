@@ -123,6 +123,15 @@ function NonlinearGlobalKnotPointConstraint(g::Function, name::Symbol, args...; 
     return NonlinearGlobalKnotPointConstraint(g, [name], args...; kwargs...)
 end
 
+function Base.show(io::IO, c::NonlinearGlobalKnotPointConstraint)
+    vars = join([":$n" for n in c.var_names], ", ")
+    globals = join([":$n" for n in c.global_names], ", ")
+    eq_str = c.equality ? "equality" : "inequality"
+    n = length(c.times)
+    times_str = n <= 3 ? "t = $(c.times)" : "$n times"
+    print(io, "NonlinearGlobalKnotPointConstraint on [$vars] + globals [$globals], $eq_str, $times_str")
+end
+
 # ----------------------------------------------------------------------------- #
 # Method Implementations for NonlinearGlobalKnotPointConstraint
 # ----------------------------------------------------------------------------- #

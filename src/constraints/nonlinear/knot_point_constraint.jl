@@ -188,6 +188,14 @@ function NonlinearKnotPointConstraint(
     return NonlinearKnotPointConstraint(g, [name], traj; kwargs...)
 end
 
+function Base.show(io::IO, c::NonlinearKnotPointConstraint)
+    vars = join([":$n" for n in c.var_names], ", ")
+    eq_str = c.equality ? "equality" : "inequality"
+    n = length(c.times)
+    times_str = n <= 3 ? "t = $(c.times)" : "$n times"
+    print(io, "NonlinearKnotPointConstraint on [$vars], $eq_str, $times_str (g_dim = $(c.g_dim))")
+end
+
 # ----------------------------------------------------------------------------- #
 # Method Implementations for NonlinearKnotPointConstraint
 # ----------------------------------------------------------------------------- #
