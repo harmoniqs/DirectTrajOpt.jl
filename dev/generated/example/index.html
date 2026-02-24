@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Complete Example · DirectTrajOpt.jl</title><meta name="title" content="Complete Example · DirectTrajOpt.jl"/><meta property="og:title" content="Complete Example · DirectTrajOpt.jl"/><meta property="twitter:title" content="Complete Example · DirectTrajOpt.jl"/><meta name="description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:description" content="Documentation for DirectTrajOpt.jl."/><meta property="twitter:description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/example/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/example/"/><link rel="canonical" href="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/example/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="DirectTrajOpt.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DirectTrajOpt.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Getting Started</span><ul><li><a class="tocitem" href="../quickstart/">Quickstart</a></li><li class="is-active"><a class="tocitem" href>Complete Example</a><ul class="internal"><li><a class="tocitem" href="#Problem-Setup"><span>Problem Setup</span></a></li><li><a class="tocitem" href="#Define-System-Dynamics"><span>Define System Dynamics</span></a></li><li><a class="tocitem" href="#Create-Trajectory"><span>Create Trajectory</span></a></li><li><a class="tocitem" href="#Build-and-Solve-Problem"><span>Build and Solve Problem</span></a></li><li><a class="tocitem" href="#Visualize-Solution"><span>Visualize Solution</span></a></li><li><a class="tocitem" href="#Analyze-Solution"><span>Analyze Solution</span></a></li><li><a class="tocitem" href="#Key-Insights"><span>Key Insights</span></a></li><li><a class="tocitem" href="#Exercises"><span>Exercises</span></a></li></ul></li></ul></li><li><span class="tocitem">Core Concepts</span><ul><li><a class="tocitem" href="../concepts/problem_formulation/">Problem Formulation</a></li><li><a class="tocitem" href="../concepts/trajectories/">Trajectories</a></li><li><a class="tocitem" href="../concepts/integrators/">Integrators</a></li><li><a class="tocitem" href="../concepts/objectives/">Objectives</a></li><li><a class="tocitem" href="../concepts/constraints/">Constraints</a></li></ul></li><li><a class="tocitem" href="../../lib/">Library</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Getting Started</a></li><li class="is-active"><a href>Complete Example</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Complete Example</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl/blob/main/docs/literate/example.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Complete-Example:-Time-Optimal-Bilinear-Control"><a class="docs-heading-anchor" href="#Complete-Example:-Time-Optimal-Bilinear-Control">Complete Example: Time-Optimal Bilinear Control</a><a id="Complete-Example:-Time-Optimal-Bilinear-Control-1"></a><a class="docs-heading-anchor-permalink" href="#Complete-Example:-Time-Optimal-Bilinear-Control" title="Permalink"></a></h1><p>This example demonstrates solving a time-optimal trajectory optimization problem with:</p><ul><li>Multiple control inputs with bounds</li><li>Free time steps (variable Δt)</li><li>Combined objective (control effort + minimum time)</li></ul><pre><code class="language-julia hljs">using DirectTrajOpt
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Complete Example · DirectTrajOpt.jl</title><meta name="title" content="Complete Example · DirectTrajOpt.jl"/><meta property="og:title" content="Complete Example · DirectTrajOpt.jl"/><meta property="twitter:title" content="Complete Example · DirectTrajOpt.jl"/><meta name="description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:description" content="Documentation for DirectTrajOpt.jl."/><meta property="twitter:description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/example/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/example/"/><link rel="canonical" href="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/example/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="DirectTrajOpt.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DirectTrajOpt.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Getting Started</span><ul><li><a class="tocitem" href="../quickstart/">Quickstart</a></li><li class="is-active"><a class="tocitem" href>Complete Example</a><ul class="internal"><li><a class="tocitem" href="#Problem-Setup"><span>Problem Setup</span></a></li><li><a class="tocitem" href="#Define-System-Dynamics"><span>Define System Dynamics</span></a></li><li><a class="tocitem" href="#Create-Trajectory"><span>Create Trajectory</span></a></li><li><a class="tocitem" href="#Build-and-Solve-Problem"><span>Build and Solve Problem</span></a></li><li><a class="tocitem" href="#Visualize-Solution"><span>Visualize Solution</span></a></li><li><a class="tocitem" href="#Analyze-Solution"><span>Analyze Solution</span></a></li><li><a class="tocitem" href="#Key-Insights"><span>Key Insights</span></a></li><li><a class="tocitem" href="#Exercises"><span>Exercises</span></a></li></ul></li></ul></li><li><span class="tocitem">Core Concepts</span><ul><li><a class="tocitem" href="../concepts/problem_formulation/">Problem Formulation</a></li><li><a class="tocitem" href="../concepts/trajectories/">Trajectories</a></li><li><a class="tocitem" href="../concepts/integrators/">Integrators</a></li><li><a class="tocitem" href="../concepts/objectives/">Objectives</a></li><li><a class="tocitem" href="../concepts/constraints/">Constraints</a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../tutorials/linear_system/">Linear System</a></li><li><a class="tocitem" href="../tutorials/bilinear_control/">Bilinear Control</a></li><li><a class="tocitem" href="../tutorials/minimum_time/">Minimum Time</a></li></ul></li><li><a class="tocitem" href="../../lib/">Library</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Getting Started</a></li><li class="is-active"><a href>Complete Example</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Complete Example</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl/blob/main/docs/literate/example.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Complete-Example:-Time-Optimal-Bilinear-Control"><a class="docs-heading-anchor" href="#Complete-Example:-Time-Optimal-Bilinear-Control">Complete Example: Time-Optimal Bilinear Control</a><a id="Complete-Example:-Time-Optimal-Bilinear-Control-1"></a><a class="docs-heading-anchor-permalink" href="#Complete-Example:-Time-Optimal-Bilinear-Control" title="Permalink"></a></h1><p>This example demonstrates solving a time-optimal trajectory optimization problem with:</p><ul><li>Multiple control inputs with bounds</li><li>Free time steps (variable Δt)</li><li>Combined objective (control effort + minimum time)</li></ul><pre><code class="language-julia hljs">using DirectTrajOpt
 using NamedTrajectories
 using LinearAlgebra
 using CairoMakie</code></pre><h2 id="Problem-Setup"><a class="docs-heading-anchor" href="#Problem-Setup">Problem Setup</a><a id="Problem-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-Setup" title="Permalink"></a></h2><p><strong>System:</strong> 3D oscillator with 2 control inputs</p><p class="math-container">\[\dot{x} = (G_0 + u_1 G_1 + u_2 G_2) x\]</p><p><strong>Goal:</strong> Drive from <code>[1, 0, 0]</code> to <code>[0, 0, 1]</code> minimizing <code>∫ ||u||² dt + w·T</code></p><p><strong>Constraints:</strong> <code>-1 ≤ u ≤ 1</code>, <code>0.05 ≤ Δt ≤ 0.3</code></p><h2 id="Define-System-Dynamics"><a class="docs-heading-anchor" href="#Define-System-Dynamics">Define System Dynamics</a><a id="Define-System-Dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Define-System-Dynamics" title="Permalink"></a></h2><pre><code class="language-julia hljs">G_drift = [
@@ -38,7 +38,24 @@ traj = NamedTrajectory(
 obj = (QuadraticRegularizer(:u, traj, 1.0) + 0.5 * MinimumTimeObjective(traj, 1.0))
 
 prob = DirectTrajOptProblem(traj, obj, integrator)
-solve!(prob; max_iter = 50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">    initializing optimizer...
+
+prob</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DirectTrajOptProblem
+  Trajectory
+    Timesteps: 50
+    Duration:  7.35
+    Knot dim:  6
+    Variables: x (3), u (2), Δt (1)
+    Controls:  u, Δt
+  Objective (2 terms)
+         1.0 * QuadraticRegularizer on :u (R = [1.0, 1.0], all)
+         0.5 * MinimumTimeObjective (D = 1.0)
+  Dynamics (1 integrators)
+    BilinearIntegrator: :x = exp(Δt G(:u)) :x  (dim = 3)
+  Constraints (4 total: 2 equality, 2 bounds)
+    EqualityConstraint: &quot;initial value of x&quot;
+    EqualityConstraint: &quot;final value of x&quot;
+    BoundsConstraint: &quot;bounds on u&quot;
+    BoundsConstraint: &quot;bounds on Δt&quot;</code></pre><pre><code class="language-julia hljs">solve!(prob; max_iter = 50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">    initializing optimizer...
         applying constraint: initial value of x
         applying constraint: final value of x
         applying constraint: bounds on u
@@ -67,69 +84,84 @@ Total number of inequality constraints...............:        0
         inequality constraints with only upper bounds:        0
 
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-   0  3.6855541e+00 1.52e-01 1.03e-01   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
-   1  2.7394627e+00 1.33e-01 5.70e-01  -4.0 1.13e+00    -  1.52e-01 1.20e-01f  1
-   2  2.2861122e+00 1.21e-01 4.72e+00  -1.9 2.92e+00    -  2.79e-01 9.27e-02h  1
-   3  2.1966076e+00 1.16e-01 4.91e+00  -0.4 6.29e+00   0.0 1.40e-01 4.30e-02f  1
-   4  2.0399481e+00 1.05e-01 2.16e+01  -0.4 1.98e+00   0.4 6.60e-01 9.60e-02h  1
-   5  2.0227521e+00 1.02e-01 2.12e+01  -1.1 5.19e+00    -  8.66e-02 2.34e-02h  1
-   6  2.0460164e+00 9.62e-02 2.20e+01  -0.1 1.03e+01    -  1.66e-01 5.94e-02h  1
-   7  2.0445751e+00 9.41e-02 3.80e+01  -0.5 2.06e+00    -  3.49e-01 2.10e-02h  1
-   8  2.3883447e+00 6.32e-02 8.07e+01  -0.3 3.33e+00    -  1.00e+00 3.53e-01h  1
-   9  2.2857645e+00 5.99e-02 2.51e+03   0.7 1.77e+00   1.8 9.20e-01 5.41e-02h  1
+   0  3.6823874e+00 1.48e-01 9.09e-02   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  2.7106750e+00 1.31e-01 5.40e-01  -4.0 1.04e+00    -  1.47e-01 1.15e-01f  1
+   2  2.1758395e+00 1.20e-01 8.08e+00  -0.6 2.53e+00    -  3.58e-01 7.96e-02h  1
+   3  2.0768159e+00 1.11e-01 9.43e+00  -0.3 4.63e+00   0.0 2.40e-01 7.33e-02h  1
+   4  1.9729409e+00 9.45e-02 6.34e+01  -0.1 2.59e+00   0.4 1.00e+00 1.55e-01h  1
+   5  2.1816875e+00 9.13e-02 2.20e+02   0.9 8.88e+00    -  7.10e-01 5.17e-02f  1
+   6  2.9532718e+00 7.87e-02 1.08e+03   1.3 2.61e+00    -  8.02e-01 1.96e-01h  1
+   7  2.7833408e+00 7.02e-02 7.47e+03   2.1 1.61e+00   2.7 8.47e-01 1.54e-01f  1
+   8  2.7875760e+00 6.64e-02 7.41e+03   2.5 9.92e+00   2.2 1.07e-01 5.33e-02f  1
+   9  2.9342474e+00 7.49e-02 1.61e+04   2.9 1.05e+01   2.6 5.71e-01 7.60e-02f  1
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  10  2.4501975e+00 5.54e-02 2.10e+03  -0.2 2.40e+01    -  1.79e-02 5.19e-02h  1
-  11  2.5074963e+00 5.43e-02 2.73e+04   2.0 1.80e+01   2.2 9.14e-01 1.74e-02f  1
-  12  2.7703120e+00 5.08e-02 2.22e+04   2.3 5.51e+00    -  2.88e-01 8.70e-02f  1
-  13  3.1736844e+00 8.11e-02 1.17e+04   2.4 3.81e+00    -  3.97e-01 3.06e-01f  1
-  14  3.2249081e+00 3.70e-02 4.47e+03   2.0 1.26e+00    -  6.10e-01 6.35e-01f  1
-  15  3.2680410e+00 8.49e-03 1.91e+02   1.5 2.19e-01    -  9.82e-01 1.00e+00f  1
-  16  3.2858108e+00 5.35e-05 4.32e+00  -0.5 3.07e-02    -  9.91e-01 1.00e+00f  1
-  17  3.2841874e+00 9.32e-04 4.07e-01  -1.4 8.75e-02    -  9.93e-01 1.00e+00f  1
-  18  2.9176122e+00 7.28e-02 1.12e-01  -1.9 5.24e-01    -  9.91e-01 1.00e+00f  1
-  19  2.5546894e+00 2.79e-02 1.60e-01  -2.6 6.53e-01    -  7.73e-01 1.00e+00h  1
+  10  3.3480317e+00 1.05e-01 9.82e+03   2.9 5.29e+00    -  3.74e-01 2.65e-01f  1
+  11  3.6528282e+00 9.29e-02 4.23e+03   2.6 8.69e-01    -  7.94e-01 1.00e+00f  1
+  12  3.6812146e+00 1.45e-01 2.14e+03   1.6 6.53e-01   2.1 8.15e-01 7.27e-01h  1
+  13  3.8536041e+00 1.85e-02 2.65e+02   1.0 3.15e-01    -  9.93e-01 1.00e+00f  1
+  14  3.9142972e+00 2.03e-03 3.93e+00  -0.1 7.21e-02   1.7 9.91e-01 1.00e+00f  1
+  15  3.8909378e+00 1.17e-05 2.27e-01  -4.0 4.94e-03   1.2 9.78e-01 1.00e+00h  1
+  16  3.7543039e+00 7.09e-04 1.20e-01  -2.8 2.48e-02   0.7 9.99e-01 1.00e+00f  1
+  17  3.4662228e+00 3.11e-03 1.13e-01  -3.6 6.80e-02   0.2 1.00e+00 1.00e+00f  1
+  18  3.4201127e+00 3.98e-04 1.43e-01  -4.0 3.21e-02   0.6 1.00e+00 9.43e-01h  1
+  19  3.3529003e+00 5.35e-04 1.37e-01  -4.0 8.77e-02   0.2 1.00e+00 4.18e-01f  1
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  20  2.4225987e+00 8.01e-03 3.49e-02  -2.7 4.98e-01    -  9.96e-01 1.00e+00h  1
-  21  2.4171246e+00 2.86e-04 1.46e+00  -3.4 2.88e-02   1.7 9.82e-01 1.00e+00h  1
-  22  2.4161827e+00 3.12e-07 4.18e-02  -4.0 2.48e-03   1.2 1.00e+00 1.00e+00h  1
-  23  2.4126833e+00 2.94e-06 4.15e-02  -4.0 7.39e-03   0.7 1.00e+00 1.00e+00h  1
-  24  2.4026575e+00 2.36e-05 3.86e-02  -4.0 2.06e-02   0.3 1.00e+00 1.00e+00h  1
-  25  2.3924531e+00 3.84e-05 2.83e-02  -4.0 4.31e-02  -0.2 1.00e+00 3.99e-01h  1
-  26  2.3743716e+00 9.92e-05 1.98e-02  -4.0 8.98e-02  -0.7 1.00e+00 3.45e-01h  1
-  27  2.3510741e+00 1.79e-04 1.35e-02  -4.0 1.75e-01  -1.2 1.00e+00 3.04e-01h  1
-  28  2.3271800e+00 7.23e-03 1.54e-02  -3.3 2.88e-01  -1.6 1.00e+00 4.42e-01h  1
-  29  2.3008947e+00 1.59e-02 8.77e-03  -4.0 4.52e-01  -2.1 4.05e-01 4.80e-01h  1
+  20  3.3174519e+00 2.52e-04 1.30e-01  -4.0 3.21e-02   0.6 1.00e+00 6.33e-01h  1
+  21  3.1806649e+00 1.40e-03 1.12e-01  -4.0 8.59e-02   0.1 1.00e+00 1.00e+00f  1
+  22  3.1754104e+00 1.35e-03 1.48e-01  -3.7 2.76e-01  -0.4 1.00e+00 2.08e-02h  1
+  23  3.0732675e+00 7.72e-04 9.20e-02  -4.0 7.83e-02   0.1 1.00e+00 1.00e+00h  1
+  24  3.0032692e+00 8.34e-04 8.11e-02  -4.0 1.55e-01  -0.4 1.00e+00 3.54e-01h  1
+  25  2.9671700e+00 5.05e-04 7.77e-02  -4.0 7.17e-02   0.0 1.00e+00 5.22e-01h  1
+  26  2.8893948e+00 1.11e-03 6.59e-02  -4.0 1.51e-01  -0.5 1.00e+00 4.73e-01f  1
+  27  2.8638959e+00 7.06e-04 6.32e-02  -4.0 6.59e-02  -0.0 1.00e+00 4.97e-01h  1
+  28  2.8255692e+00 7.10e-04 5.61e-02  -4.0 1.38e-01  -0.5 1.00e+00 2.97e-01h  1
+  29  2.7823525e+00 4.43e-04 4.94e-02  -4.0 5.98e-02  -0.1 1.00e+00 9.47e-01h  1
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  30  2.3029145e+00 1.93e-02 2.89e-02  -3.3 7.26e-01  -2.6 1.00e+00 5.35e-01h  1
-  31  2.2981884e+00 3.76e-02 1.86e-02  -3.4 3.93e-01    -  8.77e-01 1.00e+00h  1
-  32  2.3165016e+00 2.01e-02 1.63e-02  -3.1 5.83e-01  -3.1 1.00e+00 9.70e-01h  1
-  33  2.3077911e+00 3.77e-03 4.61e-03  -3.2 3.15e-01    -  1.00e+00 1.00e+00h  1
-  34  2.2770538e+00 1.96e-03 2.04e-03  -4.0 1.70e-01    -  9.86e-01 1.00e+00h  1
-  35  2.2752277e+00 3.36e-04 2.32e-04  -4.0 8.97e-02    -  1.00e+00 1.00e+00h  1
-  36  2.2751934e+00 1.97e-05 1.22e-05  -4.0 1.92e-02    -  1.00e+00 1.00e+00h  1
-  37  2.2751890e+00 6.93e-09 3.47e-09  -4.0 3.30e-04    -  1.00e+00 1.00e+00h  1
+  30  2.7449171e+00 4.43e-04 3.61e-02  -4.0 1.15e-01  -0.6 1.00e+00 3.71e-01h  1
+  31  2.6989220e+00 4.62e-04 1.03e-01  -4.0 2.90e-01  -1.0 1.00e+00 2.07e-01f  1
+  32  2.6493356e+00 5.42e-04 3.01e-02  -4.0 1.20e-01  -0.6 1.00e+00 5.76e-01h  1
+  33  2.5683099e+00 1.37e-03 6.85e-02  -4.0 3.02e-01  -1.1 1.00e+00 4.53e-01f  1
+  34  2.5361509e+00 7.55e-04 2.63e-02  -4.0 1.19e-01  -0.7 1.00e+00 5.72e-01h  1
+  35  2.4895129e+00 9.87e-04 4.51e-02  -3.7 2.85e-01  -1.1 1.00e+00 3.96e-01h  1
+  36  2.4600602e+00 1.73e-03 8.56e-02  -3.3 5.12e-01  -1.6 1.00e+00 2.17e-01h  1
+  37  2.4129939e+00 1.61e-03 1.17e-02  -4.0 1.66e-01  -1.2 1.00e+00 7.69e-01h  1
+  38  2.3827391e+00 2.78e-03 3.12e-02  -3.6 3.86e-01  -1.7 9.52e-01 3.95e-01h  1
+  39  2.3784804e+00 5.36e-03 4.42e-02  -2.9 2.10e+00  -2.1 3.81e-01 8.74e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  40  2.3550977e+00 3.21e-03 1.06e-02  -3.2 2.65e-01  -1.7 1.00e+00 7.56e-01h  1
+  41  2.3306883e+00 9.00e-03 2.17e-02  -3.4 5.05e-01  -2.2 9.59e-01 5.81e-01h  1
+  42  2.3292501e+00 4.52e-02 4.12e-02  -4.0 3.87e+01  -2.7 1.33e-02 1.62e-02h  1
+  43  2.3047326e+00 6.68e-02 6.80e-02  -4.0 1.05e+00  -2.2 3.14e-01 5.20e-01h  1
+  44  2.3041844e+00 6.61e-02 6.73e-02  -4.0 2.96e+01    -  1.65e-02 1.11e-02h  2
+  45  2.2922842e+00 4.61e-02 4.48e-02  -3.9 8.13e-01  -2.7 1.53e-01 6.36e-01h  1
+  46  2.3080685e+00 7.03e-02 7.66e-02  -3.0 2.17e+00  -3.2 3.35e-01 2.53e-01h  1
+  47  2.3075115e+00 6.66e-02 7.74e-02  -3.4 3.09e+00    -  3.28e-02 5.46e-02h  2
+  48  2.3039745e+00 6.90e-02 8.50e-02  -3.4 1.88e+00  -2.8 2.18e-01 5.45e-01h  1
+  49  2.3050768e+00 6.87e-02 7.15e-02  -3.4 1.88e+00    -  4.28e-01 2.61e-01h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  50  2.3046459e+00 6.87e-02 6.41e-02  -3.4 9.94e+00    -  8.15e-02 2.65e-02h  2
 
-Number of Iterations....: 37
+Number of Iterations....: 50
 
                                    (scaled)                 (unscaled)
-Objective...............:   2.2751889656507767e+00    2.2751889656507767e+00
-Dual infeasibility......:   3.4673572110841162e-09    3.4673572110841162e-09
-Constraint violation....:   6.9310468475691778e-09    6.9310468475691778e-09
+Objective...............:   2.3046459172957960e+00    2.3046459172957960e+00
+Dual infeasibility......:   6.4062791277224973e-02    6.4062791277224973e-02
+Constraint violation....:   6.8733450476456293e-02    6.8733450476456293e-02
 Variable bound violation:   0.0000000000000000e+00    0.0000000000000000e+00
-Complementarity.........:   1.0000025319088483e-04    1.0000025319088483e-04
-Overall NLP error.......:   6.9310468475691778e-09    6.9310468475691778e-09
+Complementarity.........:   1.8760584610238286e-03    1.8760584610238286e-03
+Overall NLP error.......:   6.8733450476456293e-02    6.8733450476456293e-02
 
 
-Number of objective function evaluations             = 38
-Number of objective gradient evaluations             = 38
-Number of equality constraint evaluations            = 38
+Number of objective function evaluations             = 60
+Number of objective gradient evaluations             = 51
+Number of equality constraint evaluations            = 60
 Number of inequality constraint evaluations          = 0
-Number of equality constraint Jacobian evaluations   = 38
+Number of equality constraint Jacobian evaluations   = 51
 Number of inequality constraint Jacobian evaluations = 0
-Number of Lagrangian Hessian evaluations             = 37
-Total seconds in IPOPT                               = 10.505
+Number of Lagrangian Hessian evaluations             = 50
+Total seconds in IPOPT                               = 12.414
 
-EXIT: Optimal Solution Found.</code></pre><h2 id="Visualize-Solution"><a class="docs-heading-anchor" href="#Visualize-Solution">Visualize Solution</a><a id="Visualize-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize-Solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">plot(prob.trajectory) # See NamedTrajectories.jl documentation for plotting options</code></pre><img src="05f12ea1.png" alt="Example block output"/><h2 id="Analyze-Solution"><a class="docs-heading-anchor" href="#Analyze-Solution">Analyze Solution</a><a id="Analyze-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Analyze-Solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">x_sol = prob.trajectory.x
+EXIT: Maximum Number of Iterations Exceeded.</code></pre><h2 id="Visualize-Solution"><a class="docs-heading-anchor" href="#Visualize-Solution">Visualize Solution</a><a id="Visualize-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize-Solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">plot(prob.trajectory) # See NamedTrajectories.jl documentation for plotting options</code></pre><img src="349351ae.png" alt="Example block output"/><h2 id="Analyze-Solution"><a class="docs-heading-anchor" href="#Analyze-Solution">Analyze Solution</a><a id="Analyze-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Analyze-Solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">x_sol = prob.trajectory.x
 u_sol = prob.trajectory.u
 Δt_sol = prob.trajectory.Δt
 
@@ -139,12 +171,12 @@ println(&quot;  Δt range: [$(minimum(Δt_sol)), $(maximum(Δt_sol))]&quot;)
 println(&quot;  Max |u₁|: $(maximum(abs.(u_sol[1,:])))&quot;)
 println(&quot;  Max |u₂|: $(maximum(abs.(u_sol[2,:])))&quot;)
 println(&quot;  Final error: $(norm(x_sol[:,end] - x_goal))&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Solution found!
-  Total time: 4.246171930683484 seconds
-  Δt range: [0.07285796356082225, 0.1749999999999999]
-  Max |u₁|: 0.9967728853909472
-  Max |u₂|: 0.9979498454397794
+  Total time: 4.318628075359858 seconds
+  Δt range: [0.06884064628079098, 0.17499995835193613]
+  Max |u₁|: 0.9982205828461604
+  Max |u₂|: 0.9907843665086725
   Final error: 0.0</code></pre><h2 id="Key-Insights"><a class="docs-heading-anchor" href="#Key-Insights">Key Insights</a><a id="Key-Insights-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Insights" title="Permalink"></a></h2><p><strong>Free time optimization</strong>: Variable Δt allows the optimizer to adjust trajectory speed, with shorter steps where control is needed and longer steps in smooth regions.</p><p><strong>Control bounds</strong>: With time weight 0.5, controls don&#39;t fully saturate. Increase the weight to push toward bang-bang control.</p><p><strong>Combined objectives</strong>: The <code>+</code> operator makes it easy to balance multiple goals.</p><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><p><strong>1. Bang-bang control:</strong> Set time weight to 5.0 - do controls saturate the bounds?</p><p><strong>2. Fixed time:</strong> Remove <code>Δt</code> from controls and compare total time.</p><p><strong>3. Add waypoint:</strong> Require passing through <code>[0.5, 0, 0.5]</code> at the midpoint:</p><pre><code class="language-julia hljs">constraint = NonlinearKnotPointConstraint(
     x -&gt; x - [0.5, 0, 0.5], :x, traj;
     times=[div(N,2)], equality=true
 )
-prob = DirectTrajOptProblem(traj, obj, integrator; constraints=[constraint])</code></pre><p><strong>4. Different goal:</strong> Try reaching <code>[0, 1, 0]</code> or <code>[0.5, 0.5, 0.5]</code></p><p><strong>5. Tighter bounds:</strong> Use <code>bounds=(u = 0.5, Δt = (0.05, 0.3))</code> - how does time change?</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quickstart/">« Quickstart</a><a class="docs-footer-nextpage" href="../concepts/problem_formulation/">Problem Formulation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 18 February 2026 09:23">Wednesday 18 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+prob = DirectTrajOptProblem(traj, obj, integrator; constraints=[constraint])</code></pre><p><strong>4. Different goal:</strong> Try reaching <code>[0, 1, 0]</code> or <code>[0.5, 0.5, 0.5]</code></p><p><strong>5. Tighter bounds:</strong> Use <code>bounds=(u = 0.5, Δt = (0.05, 0.3))</code> - how does time change?</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quickstart/">« Quickstart</a><a class="docs-footer-nextpage" href="../concepts/problem_formulation/">Problem Formulation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 24 February 2026 22:11">Tuesday 24 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
