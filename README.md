@@ -1,20 +1,13 @@
 # DirectTrajOpt.jl
 
-
 <!--```@raw html-->
-<!-- <div align="center">
-  <a href="https://github.com/harmoniqs/Piccolo.jl">
-    <img src="assets/logo.svg" alt="Piccolo.jl" width="25%"/>
-  </a>
-</div> -->
-
 <div align="center">
   <table>
     <tr>
       <td align="center">
         <b>Documentation</b>
         <br>
-        <a href="https://docs.harmoniqs.co/DirectTrajOpt/dev/">
+        <a href="https://docs.harmoniqs.co/DirectTrajOpt/stable/">
           <img src="https://img.shields.io/badge/docs-stable-blue.svg" alt="Stable"/>
         </a>
         <a href="https://docs.harmoniqs.co/DirectTrajOpt/dev/">
@@ -37,16 +30,13 @@
         <a href="https://opensource.org/licenses/MIT">
           <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"/>
         </a>
+      </td>
     </tr>
   </table>
 </div>
-
-<div align="center">
-<br>
-</div>
 <!--```-->
 
-**DirectTrajOpt.jl** provides a framework for setting up and solving direct trajectory optimization problems using nonlinear programming.
+**DirectTrajOpt.jl** is a framework for direct trajectory optimization via nonlinear programming. It converts continuous optimal control problems into finite-dimensional NLPs using direct transcription, then solves them with [Ipopt](https://github.com/jump-dev/Ipopt.jl).
 
 ## Problem Formulation
 
@@ -63,12 +53,10 @@ DirectTrajOpt solves problems of the form:
 
 where:
 - `J(x, u)` is the objective function to minimize
-- `f(·)` represents system dynamics encoded via *integrators*
-- `c(·)` represents additional nonlinear constraints
+- `f(.)` represents system dynamics encoded via *integrators*
+- `c(.)` represents additional nonlinear constraints
 - `x` is the state trajectory
 - `u` is the control trajectory
-
-The underlying nonlinear solver is [Ipopt.jl](https://github.com/jump-dev/Ipopt.jl).
 
 ## Installation
 
@@ -92,10 +80,11 @@ traj = NamedTrajectory(
     final=(x = [1.0, 0.0],)
 )
 
-# Define dynamics
-A = [-0.1 1.0; -1.0 -0.1]
-B = reshape([0.0, 1.0], 2, 1)
-integrator = BilinearIntegrator([A B], traj, :x, :u)
+# Define dynamics: dx/dt = (A + u * B) * x
+G_drift = [-0.1 1.0; -1.0 -0.1]
+G_drives = [[0.0 1.0; 1.0 0.0]]
+G = u -> G_drift + sum(u .* G_drives)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 # Define objective
 obj = QuadraticRegularizer(:u, traj, 1.0)
@@ -107,44 +96,35 @@ solve!(prob; max_iter=100)
 
 ## Key Features
 
-- **Flexible dynamics**: Define system evolution via integrators
-- **Modular objectives**: Combine multiple cost terms (regularization, minimum time, etc.)
-- **Constraint support**: Bounds, equality, and general nonlinear constraints  
-- **Automatic differentiation**: Efficient gradients and Hessians
-- **Sparse formulations**: Exploits problem structure for efficiency 
+- **Flexible dynamics**: Define system evolution via bilinear, time-dependent, or derivative integrators
+- **Modular objectives**: Combine cost terms with `+` and `*` (regularization, minimum time, terminal cost, etc.)
+- **Constraint support**: Bounds, equality, nonlinear, symmetry, and L1 slack constraints
+- **Automatic differentiation**: Sparse Jacobians and Hessians via ForwardDiff
+- **Solver callbacks**: Monitor and control the optimization process
 
+## Contributing
 
 ### Building Documentation
-This package uses a Documenter config that is shared with many of our other repositories. To build the docs, you will need to run the docs setup script to clone and pull down the utility. 
-```
-# first time only
-./docs/get_docs_utils.sh   # or ./get_docs_utils.sh if cwd is in ./docs/
+
+This package uses a shared Documenter config. First-time setup:
+```bash
+./docs/get_docs_utils.sh
 ```
 
-To build the docs pages:
-```
+Build docs:
+```bash
 julia --project=docs docs/make.jl
 ```
 
-or editing the docs live:
-```
-julia --project=docs
-> using LiveServer, Piccolo, Revise
-> servedocs(literate_dir="docs/literate", skip_dirs=["docs/src/generated", "docs/src/assets/"], skip_files=["docs/src/index.md"])
+Live editing:
+```bash
+julia --project=docs -e '
+  using LiveServer, DirectTrajOpt, Revise
+  servedocs(
+    literate_dir="docs/literate",
+    skip_dirs=["docs/src/generated", "docs/src/assets/"],
+    skip_files=["docs/src/index.md"]
+  )'
 ```
 
-> **Note:** `servedocs` needs to watch a subset of the files in the `docs/` folder. If it watches files that are generated on a docs build/re-build, `servedocs` will continuously try to re-serve the pages.
-> 
-> To prevent this, ensure all generated files are included in the skip dirs or skip files args for `servedocs`.
-
-For example, if we forget index.md like so:
-```
-julia --project=docs
-> using LiveServer, Piccolo, Revise
-> servedocs(literate_dir="docs/literate", skip_dirs=["docs/src/generated", "docs/src/assets/"])
-```
-it will not build and serve.
-
------
-
-*"It seems that perfection is attained not when there is nothing more to add, but when there is nothing more to take away." - Antoine de Saint-Exupéry*
+> **Note:** `servedocs` will loop if it watches generated files. Ensure all generated files are in the skip dirs/files args.

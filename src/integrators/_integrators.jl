@@ -19,6 +19,18 @@ import ..CommonInterface:
     evaluate!, jacobian_structure, jacobian!, hessian_structure, hessian_of_lagrangian
 import ..CommonInterface: eval_jacobian, eval_hessian_of_lagrangian
 
+"""
+    AbstractIntegrator
+
+Abstract supertype for all dynamics integrators.
+
+Subtypes must implement the [`CommonInterface`](@ref) methods:
+- `evaluate!(δ, integrator, traj)` — compute dynamics residuals
+- `eval_jacobian(integrator, traj)` — compute sparse Jacobian
+- `eval_hessian_of_lagrangian(integrator, traj, μ)` — compute sparse Hessian of Lagrangian
+
+and must have fields `x_dim::Int` and `dim::Int`.
+"""
 abstract type AbstractIntegrator end
 
 include("derivative_integrator.jl")
@@ -28,6 +40,12 @@ include("time_dependent_bilinear_integrator.jl")
 
 include("../../test/test_utils.jl")
 
+"""
+    get_jacobian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
+
+Return the sparsity pattern of the integrator's Jacobian as a sparse matrix with
+ones at every potentially nonzero entry. Used by the solver to pre-allocate structure.
+"""
 function get_jacobian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
     N = traj.N
     x_dim = integrator.x_dim
@@ -41,6 +59,12 @@ function get_jacobian_structure(integrator::AbstractIntegrator, traj::NamedTraje
     return ∂F
 end
 
+"""
+    get_hessian_of_lagrangian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
+
+Return the sparsity pattern of the integrator's Hessian of the Lagrangian as a sparse
+matrix with ones at every potentially nonzero entry.
+"""
 function get_hessian_of_lagrangian_structure(::AbstractIntegrator, traj::NamedTrajectory)
     N = traj.N
     z_dim = traj.dim
@@ -52,6 +76,24 @@ function get_hessian_of_lagrangian_structure(::AbstractIntegrator, traj::NamedTr
     return μ∂²F
 end
 
+"""
+    test_integrator(
+        integrator::AbstractIntegrator,
+        traj::NamedTrajectory;
+        show_jacobian_diff=false,
+        show_hessian_diff=false,
+        test_equality=true,
+        gauss_newton=false,
+        atol=1e-5,
+        rtol=1e-5
+    )
+
+Validate an integrator's analytic Jacobian and Hessian against finite difference
+approximations. Intended for use in `@testitem` blocks.
+
+# Returns
+Tuple of `(∂f, ∂f_finite_diff, μ∂²f, μ∂²f_finite_diff)` for manual inspection.
+"""
 function test_integrator(
     integrator::AbstractIntegrator,
     traj::NamedTrajectory;

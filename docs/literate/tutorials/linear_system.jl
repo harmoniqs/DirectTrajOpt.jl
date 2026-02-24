@@ -19,6 +19,8 @@
 using DirectTrajOpt
 using NamedTrajectories
 using LinearAlgebra
+using Statistics
+using Printf
 
 # ## Step 1: Define the System Dynamics
 
@@ -92,7 +94,11 @@ println("Objective: minimize ∫ ||u||² dt")
 # Assemble the optimization problem:
 prob = DirectTrajOptProblem(traj, obj, integrator)
 
-println("\nSolving optimization problem...")
+prob
+
+#-
+
+println("Solving optimization problem...")
 println("="^50)
 
 # Solve with Ipopt:
@@ -129,12 +135,11 @@ println("  Mean magnitude: ", u_mean)
 # Check that the solution satisfies the dynamics at a few points:
 
 function verify_dynamics(x, u, Δt, G, k)
-    # Compute x[k+1] using the dynamics
+    ## Compute x[k+1] using the dynamics
     x_k = x[:, k]
     u_k = u[:, k]
     Δt_k = Δt[k]
-
-    # Matrix exponential integration
+    ## Matrix exponential integration
     x_k1_predicted = exp(Δt_k * G(u_k)) * x_k
     x_k1_actual = x[:, k+1]
 
@@ -222,5 +227,3 @@ end
 # - **Bilinear Control Tutorial**: Multiple drives and bounds
 # - **Minimum Time Tutorial**: Optimize trajectory duration
 # - **Smooth Controls Tutorial**: Add derivative penalties
-
-using Printf  # For @sprintf

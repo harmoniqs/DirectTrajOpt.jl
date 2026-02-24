@@ -48,6 +48,21 @@ function sparse_to_moi(A::SparseMatrixCSC)
     return (inds, vals)
 end
 
+"""
+    IpoptEvaluator <: MOI.AbstractNLPEvaluator
+
+MathOptInterface NLP evaluator that bridges a [`DirectTrajOptProblem`](@ref) to Ipopt.
+
+Handles objective, gradient, constraint, Jacobian, and Hessian evaluation with
+pre-computed sparsity structures and linear index maps for efficient sparse
+matrix filling. Supports multi-threaded evaluation of independent integrators
+and constraints.
+
+# Constructor
+```julia
+IpoptEvaluator(prob::DirectTrajOptProblem; eval_hessian=true, verbose=false)
+```
+"""
 mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     trajectory::NamedTrajectory
     objective::AbstractObjective

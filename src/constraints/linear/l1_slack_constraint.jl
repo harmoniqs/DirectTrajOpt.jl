@@ -16,7 +16,7 @@ v_{k,i} \\leq s_{k,i}, \\quad -v_{k,i} \\leq s_{k,i}
 ```
 
 The bound `s ≥ 0` is expected to come from the trajectory's bounds on the slack
-component. When combined with a [`LinearRegularizer`](@ref) on the slack variable,
+component. When combined with a [`LinearRegularizer`](@ref DirectTrajOpt.Objectives.LinearRegularizer) on the slack variable,
 this yields an exact L1 penalty on `v`.
 
 # Fields
@@ -54,6 +54,10 @@ function L1SlackConstraint(
     @assert slack_name ∈ traj.names "Slack variable $slack_name not found in trajectory"
     @assert traj.dims[var_name] == traj.dims[slack_name] "Dimension mismatch: $(var_name) ($(traj.dims[var_name])) vs $(slack_name) ($(traj.dims[slack_name]))"
     return L1SlackConstraint(var_name, slack_name, Vector{Int}(times), label)
+end
+
+function Base.show(io::IO, c::L1SlackConstraint)
+    print(io, "L1SlackConstraint: |$(c.var_name)| <= $(c.slack_name)")
 end
 
 # =========================================================================== #

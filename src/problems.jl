@@ -1,6 +1,7 @@
 module Problems
 
 export DirectTrajOptProblem
+export show_problem_details
 
 export get_trajectory_constraints
 
@@ -201,15 +202,95 @@ function get_trajectory_constraints(traj::NamedTrajectory)
     return cons
 end
 
-function Base.show(io::IO, prob::DirectTrajOptProblem)
-    println(io, "DirectTrajOptProblem")
-    println(io, "   timesteps            = ", prob.trajectory.N)
-    println(io, "   duration             = ", get_duration(prob.trajectory))
-    println(io, "   variable names       = ", prob.trajectory.names)
-    println(io, "   knot point dimension = ", prob.trajectory.dim)
+"""
+    show_problem_details(io::IO, prob::DirectTrajOptProblem)
+
+Print the trajectory, objective, dynamics, and constraints sections of a problem.
+
+This is used by both `DirectTrajOptProblem` and `QuantumControlProblem` display methods.
+"""
+function show_problem_details(io::IO, prob::DirectTrajOptProblem)
+    traj = prob.trajectory
+
+    # --- Trajectory section ---
+    println(io, "  Trajectory")
+    println(io, "    Timesteps: ", traj.N)
+    println(io, "    Duration:  ", round(get_duration(traj), sigdigits = 6))
+    println(io, "    Knot dim:  ", traj.dim)
+    vars = join(["$n ($(traj.dims[n]))" for n in traj.names], ", ")
+    println(io, "    Variables: ", vars)
+    ctrl_str = isempty(traj.control_names) ? "(none)" : join(traj.control_names, ", ")
+    println(io, "    Controls:  ", ctrl_str)
+    if traj.global_dim > 0
+        gvars = join(
+            [
+                "$n ($(length(traj.global_components[n])))" for
+                n in keys(traj.global_components)
+            ],
+            ", ",
+        )
+        println(io, "    Globals:   ", gvars)
+    end
+
+    # --- Objective section ---
+    obj = prob.objective
+    if obj isa CompositeObjective
+        n = length(obj.objectives)
+        println(io, "  Objective ($n terms)")
+        for (sub_obj, w) in zip(obj.objectives, obj.weights)
+            w_str = string(round(w, sigdigits = 4))
+            println(io, "    $(lpad(w_str, 8)) * ", sub_obj)
+        end
+    elseif obj isa NullObjective
+        println(io, "  Objective: NullObjective")
+    else
+        println(io, "  Objective: ", obj)
+    end
+
+    # --- Dynamics section ---
+    n_int = length(prob.integrators)
+    println(io, "  Dynamics ($n_int integrators)")
+    for integ in prob.integrators
+        println(io, "    ", integ)
+    end
+
+    # --- Constraints section ---
+    constraints = prob.constraints
+    n_con = length(constraints)
+    if n_con > 0
+        n_eq = count(c -> c isa EqualityConstraint, constraints)
+        n_bnd = count(c -> c isa BoundsConstraint, constraints)
+        n_tc = count(c -> c isa TimeConsistencyConstraint, constraints)
+        n_other = n_con - n_eq - n_bnd - n_tc
+
+        parts = String[]
+        n_eq > 0 && push!(parts, "$n_eq equality")
+        n_bnd > 0 && push!(parts, "$n_bnd bounds")
+        n_tc > 0 && push!(parts, "$n_tc time consistency")
+        n_other > 0 && push!(parts, "$n_other other")
+
+        println(io, "  Constraints ($n_con total: ", join(parts, ", "), ")")
+        max_show = 10
+        for (i, con) in enumerate(constraints)
+            if i <= max_show
+                if i < n_con
+                    println(io, "    ", con)
+                else
+                    print(io, "    ", con)
+                end
+            elseif i == max_show + 1
+                print(io, "    ... and $(n_con - max_show) more")
+                break
+            end
+        end
+    else
+        print(io, "  Constraints: (none)")
+    end
 end
 
-
-
+function Base.show(io::IO, prob::DirectTrajOptProblem)
+    println(io, "DirectTrajOptProblem")
+    show_problem_details(io, prob)
+end
 
 end

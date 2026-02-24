@@ -67,6 +67,13 @@ obj = QuadraticRegularizer(:u, traj, 1.0)
 # Combine everything into a problem and solve:
 
 prob = DirectTrajOptProblem(traj, obj, integrator)
+
+# The problem summary shows the trajectory, objective, dynamics, and constraints:
+
+prob
+
+#-
+
 solve!(prob; max_iter = 100, verbose = false)
 
 # ### Step 5: Access the Solution

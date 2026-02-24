@@ -7,6 +7,56 @@ using TrajectoryIndexingUtils
 # Time-Dependent Bilinear Integrator
 # -------------------------------------------------------------------------------- #
 
+"""
+    TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
+
+Integrator for time-dependent bilinear dynamics of the form:
+
+```math
+\\dot{x} = G(u(t), t) \\, x
+```
+
+where `G` is a matrix-valued function of both the control `u` and time `t`. The control
+is interpolated between knot points using a spline of the specified order (0 = zero-order
+hold, 1 = linear interpolation). Integration over each time step is performed with an
+ODE solver (Tsit5) on the normalized interval `[0, 1]`.
+
+# Fields
+- `f::Function`: Compiled residual function `(x_{k+1}, x_k, p_k, t_k, Δt_k) -> residual`
+- `x_name::Symbol`: Name of the state variable in the trajectory
+- `u_name::Symbol`: Name of the control variable in the trajectory
+- `t_name::Symbol`: Name of the time variable in the trajectory
+- `spline_order::Int`: Control interpolation order (0 or 1)
+- `x_dim::Int`: Dimension of the state vector
+- `u_dim::Int`: Dimension of the control vector
+- `dim::Int`: Total constraint dimension `x_dim * (N - 1)`
+
+# Constructor
+```julia
+TimeDependentBilinearIntegrator(
+    G::Function, x::Symbol, u::Symbol, t::Symbol,
+    traj::NamedTrajectory;
+    spline_order::Int=1, solve_kwargs=(;)
+)
+```
+
+# Arguments
+- `G`: Function `(u, t) -> Matrix` returning the generator at control value `u` and time `t`
+- `x`: State variable name
+- `u`: Control variable name
+- `t`: Time variable name
+- `traj`: Trajectory providing dimensions and structure
+
+# Keyword Arguments
+- `spline_order=1`: Order of control interpolation (0 for piecewise constant, 1 for linear)
+- `solve_kwargs=(;)`: Additional keyword arguments passed to `OrdinaryDiffEq.solve`
+
+# Example
+```julia
+G(u, t) = [-0.1 1.0; -1.0 -0.1] + u[1] * [0.0 cos(t); cos(t) 0.0]
+integrator = TimeDependentBilinearIntegrator(G, :x, :u, :t, traj)
+```
+"""
 struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     f::F
     x_name::Symbol
@@ -79,6 +129,13 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
 
         return new{typeof(f)}(f, x, u, t, spline_order, x_dim, u_dim, dim)
     end
+end
+
+function Base.show(io::IO, B::TimeDependentBilinearIntegrator)
+    print(
+        io,
+        "TimeDependentBilinearIntegrator: :$(B.x_name) via G(:$(B.u_name), t)  (dim = $(B.x_dim), order = $(B.spline_order))",
+    )
 end
 
 # -------------------------------------------------------------------------------- #

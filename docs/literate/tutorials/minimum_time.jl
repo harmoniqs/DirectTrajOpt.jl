@@ -19,6 +19,7 @@
 using DirectTrajOpt
 using NamedTrajectories
 using LinearAlgebra
+using Statistics
 using Printf
 
 # ## Fixed Time vs Free Time
@@ -60,12 +61,12 @@ x_init = [0.0, 0.0]
 x_goal = [1.0, 0.0]
 
 # Initial guess
-x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t = 0:(T-1)]...)
+x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t = 0:(N-1)]...)
 u_guess = 0.1 * randn(1, N)
 Δt_guess = fill(Δt_init, N)
 
 println("\nProblem setup:")
-println("  Time steps: $T")
+println("  Time steps: $N")
 println("  Initial guess for Δt: $Δt_init")
 println("  Initial total time: ", sum(Δt_guess))
 
@@ -113,7 +114,10 @@ println("  → Emphasizes minimizing time")
 integrator_mintime = BilinearIntegrator(G, :x, :u, traj_mintime)
 prob_mintime = DirectTrajOptProblem(traj_mintime, obj_mintime, integrator_mintime)
 
-println("\n" * "="^50)
+prob_mintime
+
+#-
+
 println("Solving minimum time problem...")
 println("="^50)
 
@@ -144,7 +148,7 @@ println("  ||u||: ", norm(u_sol_mintime))
 
 # Check if controls saturate
 u_saturated = sum(abs.(u_sol_mintime) .> 0.99)
-println("  Time steps with |u| > 0.99: $u_saturated / $T")
+println("  Time steps with |u| > 0.99: $u_saturated / $N")
 
 # ## Step 7: Comparison with Fixed-Time Solution
 
@@ -153,7 +157,7 @@ println("COMPARISON: MINIMUM TIME vs FIXED TIME")
 println("="^50)
 
 # Solve fixed-time problem with same total time
-Δt_fixed = total_time_mintime / T
+Δt_fixed = total_time_mintime / N
 
 traj_fixed = NamedTrajectory(
     (x = x_guess, u = u_guess, Δt = fill(Δt_fixed, N));
@@ -245,163 +249,81 @@ println("  - Higher weight → faster trajectory, more aggressive controls")
 
 # ## Step 9: Time Step Adaptation
 
-println("\n" * "="^50)
-println("TIME STEP ADAPTATION ANALYSIS")
-println("="^50)
-
-# Analyze how Δt varies along the trajectory
 Δt_variation = std(Δt_sol_mintime)
-
-println("\nTime step statistics:")
-println("  Mean: ", mean(Δt_sol_mintime))
-println("  Std dev: ", Δt_variation)
-println("  Coefficient of variation: ", Δt_variation / mean(Δt_sol_mintime))
-
-# Show time steps at different points
-println("\nTime step profile:")
-println("k    | Δt      | |u|    | Comment")
-println("-"^45)
-for k in [1, T÷4, T÷2, 3*T÷4, T]
-    if k <= T
-        dt = Δt_sol_mintime[k]
-        u_mag = abs(u_sol_mintime[1, k])
-
-        comment = if u_mag > 0.9
-            "High control"
-        elseif u_mag < 0.1
-            "Low control"
-        else
-            "Moderate"
-        end
-
-        println(@sprintf("%2d   | %.5f | %.4f | %s", k, dt, u_mag, comment))
-    end
-end
-
-# ## Step 10: Solution Visualization (Text)
-
-println("\n" * "="^50)
-println("MINIMUM TIME TRAJECTORY")
-println("="^50)
-
-times_mintime = cumsum([0.0; Δt_sol_mintime[:]])
-
-println("\nState trajectory:")
-println("Time  | x₁      | x₂      | |u|")
-println("-"^40)
-for k in [1, 5, 10, 15, 20, 25, 30, 35, T]
-    t = times_mintime[k]
-    u_mag = abs(u_sol_mintime[1, k])
-    println(
-        @sprintf(
-            "%.3f | %7.4f | %7.4f | %.4f",
-            t,
-            x_sol_mintime[1, k],
-            x_sol_mintime[2, k],
-            u_mag
-        )
-    )
-end
+println("\nTime step adaptation:")
+println("  Std dev(Δt): ", Δt_variation)
+println(
+    "  Coefficient of variation: ",
+    @sprintf("%.3f", Δt_variation / mean(Δt_sol_mintime))
+)
 
 # ## Key Insights
-
-println("\n" * "="^50)
-println("KEY INSIGHTS")
-println("="^50)
-
-println("""
-1. **Free time variables**: Setting `timestep=:Δt` makes time steps optimizable
-
-2. **Time bounds are crucial**: 
-   - Lower bound prevents Δt → 0
-   - Upper bound prevents unrealistically large steps
-
-3. **Time weight balances speed vs control**:
-   - High weight → fast but aggressive
-   - Low weight → slow but gentle
-
-4. **Control saturation**: Time-optimal solutions often saturate control bounds
-   - This is expected for bang-bang or bang-singular behavior
-
-5. **Non-uniform time steps**: Optimizer may choose variable Δt
-   - Larger steps where less control is needed
-   - Smaller steps during high-control phases
-
-6. **Initial guess**: Start with reasonable Δt to help convergence
-""")
+#
+# 1. **Free time variables**: Setting `timestep=:Δt` makes time steps optimizable
+# 2. **Time bounds are crucial**: Lower bound prevents Δt -> 0, upper bound prevents unrealistically large steps
+# 3. **Time weight balances speed vs control**: High weight -> fast but aggressive, low weight -> slow but gentle
+# 4. **Control saturation**: Time-optimal solutions often saturate control bounds (bang-bang behavior)
+# 5. **Non-uniform time steps**: Optimizer may choose variable Δt — larger steps where less control is needed
+# 6. **Initial guess**: Start with reasonable Δt to help convergence
 
 # ## Best Practices
-
-println("\n" * "="^50)
-println("BEST PRACTICES FOR MINIMUM TIME PROBLEMS")
-println("="^50)
-
-println("""
-### Time Step Bounds
-- **Lower bound**: ~0.01 to 0.05 (prevent numerical issues)
-- **Upper bound**: 1/10 to 1/5 of expected total time
-- Start conservative, relax if needed
-
-### Control Weights
-- Usually small (1e-3 to 1e-2) for regularization
-- Just enough to ensure well-conditioned problem
-- Too large defeats the purpose of time minimization
-
-### Time Weights
-- Start with ~1.0 and adjust
-- Increase to prioritize speed more
-- Decrease if controls become too aggressive
-
-### Number of Time Steps
-- Fewer steps → less resolution, harder to satisfy dynamics
-- More steps → more variables, slower solve
-- Rule of thumb: 30-100 steps for most problems
-
-### Initialization
-- Use solution from fixed-time problem as warm start
-- Or solve with high control weight first, then reduce
-""")
+#
+# ### Time Step Bounds
+# - **Lower bound**: ~0.01 to 0.05 (prevent numerical issues)
+# - **Upper bound**: 1/10 to 1/5 of expected total time
+# - Start conservative, relax if needed
+#
+# ### Control Weights
+# - Usually small (1e-3 to 1e-2) for regularization
+# - Just enough to ensure well-conditioned problem
+# - Too large defeats the purpose of time minimization
+#
+# ### Time Weights
+# - Start with ~1.0 and adjust
+# - Increase to prioritize speed more
+# - Decrease if controls become too aggressive
+#
+# ### Number of Time Steps
+# - Fewer steps = less resolution, harder to satisfy dynamics
+# - More steps = more variables, slower solve
+# - Rule of thumb: 30-100 steps for most problems
+#
+# ### Initialization
+# - Use solution from fixed-time problem as warm start
+# - Or solve with high control weight first, then reduce
 
 # ## Exercises
-
-println("\n" * "="^50)
-println("EXERCISES")
-println("="^50)
-
-println("""
-### Exercise 1: Bang-Bang Control
-Increase time weight to w_time=100.0. Do controls saturate more?
-
-### Exercise 2: Time Step Constraints
-Try tighter bounds: Δt ∈ [0.05, 0.15]. How does total time change?
-
-### Exercise 3: Longer Distance
-Change goal to x_goal = [2.0, 0.0]. How does optimal time scale?
-
-### Exercise 4: Multiple Objectives
-Add terminal cost with soft goal:
-```julia
-obj = w_control * QuadraticRegularizer(:u, traj, 1.0) +
-      w_time * MinimumTimeObjective(traj, 1.0) +
-      100.0 * TerminalObjective(x -> norm(x - x_goal)^2, :x, traj)
-```
-
-### Exercise 5: Warm Starting
-Solve fixed-time problem first, use as initial guess for free-time:
-```julia
-traj_warm = NamedTrajectory(
-    (x = prob_fixed.trajectory.x,  # Use fixed-time solution
-     u = prob_fixed.trajectory.u,
-     Δt = Δt_guess);
-    # ... rest of setup
-)
-```
-""")
+#
+# ### Exercise 1: Bang-Bang Control
+# Increase time weight to `w_time=100.0`. Do controls saturate more?
+#
+# ### Exercise 2: Time Step Constraints
+# Try tighter bounds: `Δt ∈ [0.05, 0.15]`. How does total time change?
+#
+# ### Exercise 3: Longer Distance
+# Change goal to `x_goal = [2.0, 0.0]`. How does optimal time scale?
+#
+# ### Exercise 4: Multiple Objectives
+# Add terminal cost with soft goal:
+# ```julia
+# obj = w_control * QuadraticRegularizer(:u, traj, 1.0) +
+#       w_time * MinimumTimeObjective(traj, 1.0) +
+#       100.0 * TerminalObjective(x -> norm(x - x_goal)^2, :x, traj)
+# ```
+#
+# ### Exercise 5: Warm Starting
+# Solve fixed-time problem first, use as initial guess for free-time:
+# ```julia
+# traj_warm = NamedTrajectory(
+#     (x = prob_fixed.trajectory.x,
+#      u = prob_fixed.trajectory.u,
+#      Δt = Δt_guess);
+#     # ... rest of setup
+# )
+# ```
 
 # ## Next Steps
-
-println("""
-- **Smooth Controls Tutorial**: Add derivative penalties while minimizing time
-- **How-To Guide: Tune the Solver**: Improve convergence for difficult problems  
-- **Advanced Topics: Performance**: Optimize large-scale problems
-""")
+#
+# - **Smooth Controls Tutorial**: Add derivative penalties while minimizing time
+# - **How-To Guide: Tune the Solver**: Improve convergence for difficult problems
+# - **Advanced Topics: Performance**: Optimize large-scale problems
