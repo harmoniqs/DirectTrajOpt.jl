@@ -252,7 +252,10 @@ println("  - Higher weight → faster trajectory, more aggressive controls")
 Δt_variation = std(Δt_sol_mintime)
 println("\nTime step adaptation:")
 println("  Std dev(Δt): ", Δt_variation)
-println("  Coefficient of variation: ", @sprintf("%.3f", Δt_variation / mean(Δt_sol_mintime)))
+println(
+    "  Coefficient of variation: ",
+    @sprintf("%.3f", Δt_variation / mean(Δt_sol_mintime))
+)
 
 # ## Key Insights
 #
