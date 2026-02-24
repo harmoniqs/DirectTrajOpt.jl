@@ -23,19 +23,19 @@
 
 # ## Decision Variables
 
-# ### States: `x₁, x₂, ..., xₖ`
+# ### States: `x₁, x₂, ..., xₙ`
 # The **state** represents the configuration of your system at each time step.
 # - For a robot arm: joint angles and velocities
 # - For a spacecraft: position and velocity
 # - For a quantum system: state vector or unitary operator
 
-# ### Controls: `u₁, u₂, ..., uₖ`
+# ### Controls: `u₁, u₂, ..., uₙ`
 # The **control** (or input) represents what you can actuate.
 # - For a robot: motor torques
 # - For a spacecraft: thruster forces
 # - For quantum systems: electromagnetic field amplitudes
 
-# ### Time Steps: `Δt₁, Δt₂, ..., Δtₖ`
+# ### Time Steps: `Δt₁, Δt₂, ..., Δtₙ`
 # The **time step** can be:
 # - **Fixed**: All Δt are equal and constant
 # - **Free**: Each Δt is a decision variable (for minimum time problems)
@@ -156,7 +156,7 @@ constraint = NonlinearKnotPointConstraint(
 # ### Initial Condition: `x₁ = x_init`
 # Fixes the starting state.
 
-# ### Final Condition: `xₖ = x_goal`
+# ### Final Condition: `xₙ = x_goal`
 # Fixes the ending state (or penalizes deviation via terminal cost).
 
 traj_bc = NamedTrajectory(
@@ -207,7 +207,7 @@ traj_bc = NamedTrajectory(
 # | Objective | `J(x, u)` | `Objective` (sum of terms) |
 # | Dynamics | `f(xₖ₊₁, xₖ, uₖ) = 0` | `AbstractIntegrator` |
 # | Path Constraints | `c(x, u) ≥ 0` | `AbstractConstraint` |
-# | Boundary Conditions | `x₁ = x_init, xₖ = x_goal` | `initial`, `final` in trajectory |
+# | Boundary Conditions | `x₁ = x_init, xₙ = x_goal` | `initial`, `final` in trajectory |
 
 # ## Next Steps
 

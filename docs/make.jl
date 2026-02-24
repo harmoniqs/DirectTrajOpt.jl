@@ -14,6 +14,11 @@ pages = [
         "Objectives" => "generated/concepts/objectives.md",
         "Constraints" => "generated/concepts/constraints.md",
     ],
+    "Tutorials" => [
+        "Linear System" => "generated/tutorials/linear_system.md",
+        "Bilinear Control" => "generated/tutorials/bilinear_control.md",
+        "Minimum Time" => "generated/tutorials/minimum_time.md",
+    ],
     "Library" => "lib.md",
 ]
 
@@ -22,5 +27,10 @@ generate_docs(
     "DirectTrajOpt",
     DirectTrajOpt,
     pages;
-    format_kwargs = (canonical = "https://docs.harmoniqs.co/DirectTrajOpt.jl",),
+    format_kwargs = (
+        canonical = "https://docs.harmoniqs.co/DirectTrajOpt.jl",
+        size_threshold = 400 * 2^10,       # 400 KiB (matches Piccolo.jl)
+        size_threshold_warn = 200 * 2^10,   # 200 KiB
+        example_size_threshold = 16 * 2^10, # 16 KiB
+    ),
 )

@@ -67,6 +67,11 @@ integrator = BilinearIntegrator(G, :x, :u, traj)
 obj = (QuadraticRegularizer(:u, traj, 1.0) + 0.5 * MinimumTimeObjective(traj, 1.0))
 
 prob = DirectTrajOptProblem(traj, obj, integrator)
+
+prob
+
+#-
+
 solve!(prob; max_iter = 50)
 
 # ## Visualize Solution

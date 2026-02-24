@@ -16,7 +16,7 @@ v_{k,i} \\leq s_{k,i}, \\quad -v_{k,i} \\leq s_{k,i}
 ```
 
 The bound `s ≥ 0` is expected to come from the trajectory's bounds on the slack
-component. When combined with a [`LinearRegularizer`](@ref) on the slack variable,
+component. When combined with a [`LinearRegularizer`](@ref DirectTrajOpt.Objectives.LinearRegularizer) on the slack variable,
 this yields an exact L1 penalty on `v`.
 
 # Fields

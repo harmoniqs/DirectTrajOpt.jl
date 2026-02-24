@@ -36,8 +36,31 @@ import ..CommonInterface: eval_jacobian, eval_hessian_of_lagrangian
 #                     Abstract Constraints                                      #
 # ----------------------------------------------------------------------------- #
 
+"""
+    AbstractConstraint
+
+Abstract supertype for all constraints in a trajectory optimization problem.
+"""
 abstract type AbstractConstraint end
+
+"""
+    AbstractLinearConstraint <: AbstractConstraint
+
+Abstract type for linear constraints (bounds, equality, symmetry, etc.).
+Linear constraints are applied directly to the optimizer via MathOptInterface
+rather than through the NLP evaluator.
+"""
 abstract type AbstractLinearConstraint <: AbstractConstraint end
+
+"""
+    AbstractNonlinearConstraint <: AbstractConstraint
+
+Abstract type for nonlinear constraints evaluated at each solver iteration.
+
+Subtypes must implement the [`CommonInterface`](@ref) methods and have a `dim::Int` field
+giving the total constraint dimension, plus an `equality::Bool` field indicating
+whether the constraint is `g(x) = 0` (equality) or `g(x) ≤ 0` (inequality).
+"""
 abstract type AbstractNonlinearConstraint <: AbstractConstraint end
 
 # ----------------------------------------------------------------------------- #
