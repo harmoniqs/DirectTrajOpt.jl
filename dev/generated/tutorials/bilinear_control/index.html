@@ -59,8 +59,8 @@ Boundary conditions:
  1.0  0.983051   0.966102   0.949153   …  0.0338983  0.0169492  0.0
  0.0  0.0        0.0        0.0           0.0        0.0        0.0
  0.0  0.0169492  0.0338983  0.0508475     0.966102   0.983051   1.0</code></pre><p>Small random controls</p><pre><code class="language-julia hljs">u_guess = 0.1 * randn(2, N)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2×60 Matrix{Float64}:
- 0.0429914  0.0172772   0.0314879   …  -0.0806018  0.131512   -0.0546321
- 0.216835   0.042033   -0.00785251     -0.0186448  0.0216447  -0.0261361</code></pre><h2 id="Step-3:-Create-Trajectory-with-Bounds"><a class="docs-heading-anchor" href="#Step-3:-Create-Trajectory-with-Bounds">Step 3: Create Trajectory with Bounds</a><a id="Step-3:-Create-Trajectory-with-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Create-Trajectory-with-Bounds" title="Permalink"></a></h2><p>Control bounds: -1 ≤ u ≤ 1 for both controls</p><pre><code class="language-julia hljs">traj = NamedTrajectory(
+  0.0549574   0.0697472  -0.0545332  …   0.0782373  -0.0150009  -0.0858236
+ -0.0383426  -0.052943   -0.077254      -0.104394   -0.0740484   0.034266</code></pre><h2 id="Step-3:-Create-Trajectory-with-Bounds"><a class="docs-heading-anchor" href="#Step-3:-Create-Trajectory-with-Bounds">Step 3: Create Trajectory with Bounds</a><a id="Step-3:-Create-Trajectory-with-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Create-Trajectory-with-Bounds" title="Permalink"></a></h2><p>Control bounds: -1 ≤ u ≤ 1 for both controls</p><pre><code class="language-julia hljs">traj = NamedTrajectory(
     (x = x_guess, u = u_guess, Δt = fill(Δt, N));
     timestep = :Δt,
     controls = :u,
@@ -120,22 +120,22 @@ Total number of inequality constraints...............:        0
         inequality constraints with only upper bounds:        0
 
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-   0  1.3253783e-02 1.50e-01 3.06e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
-   1  8.1665286e-03 1.25e-01 6.98e+228  -0.9 8.82e-01   2.0 8.38e-01 1.68e-01h  1
-   2  1.9362410e-02 1.25e-01 1.12e+01  -2.5 2.61e+226   2.4 3.69e-227 3.69e-227s324
-   3  2.0620845e-02 1.21e-01 2.89e+01  -0.7 1.17e+00   1.9 1.90e-01 3.20e-02h  1
-   4  2.3813615e-02 1.16e-01 4.06e+03  -0.4 1.34e+00   2.4 1.00e+00 4.14e-02h  1
+   0  1.3544448e-02 1.50e-01 9.99e-01   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  4.4634132e-03 1.13e-01 1.58e+00  -4.0 6.08e-01   0.0 7.15e-01 2.44e-01h  1
+   2  2.2171234e-02 1.03e-01 1.25e+01  -0.4 2.91e+00   0.4 2.79e-01 9.69e-02h  1
+   3  3.3815610e-02 9.72e-02 2.70e+161  -0.3 1.42e+00   1.8 1.00e+00 5.91e-02h  1
+   4  3.3764613e-02 9.72e-02 2.62e+02  -2.1 1.76e+159   2.2 6.02e-160 5.20e-160h  1
 
 Number of Iterations....: 5
 
-Number of objective function evaluations             = 330
+Number of objective function evaluations             = 6
 Number of objective gradient evaluations             = 6
-Number of equality constraint evaluations            = 330
+Number of equality constraint evaluations            = 6
 Number of inequality constraint evaluations          = 0
 Number of equality constraint Jacobian evaluations   = 5
 Number of inequality constraint Jacobian evaluations = 0
 Number of Lagrangian Hessian evaluations             = 5
-Total seconds in IPOPT                               = 7.122
+Total seconds in IPOPT                               = 6.714
 
 EXIT: Invalid number in NLP function or derivative detected.
 ==================================================
@@ -144,25 +144,25 @@ Optimization complete!
 u_sol = prob.trajectory.u
 times = cumsum([0.0; prob.trajectory.Δt[:]])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">61-element Vector{Float64}:
  0.0
- 0.09513052886178196
- 0.24258555594079478
- 0.378859034366126
- 0.4963436625346356
- 0.5817139654832468
- 0.6697976321179313
- 0.8089489783593334
- 0.9190069690572904
- 1.0181599840711355
+ 0.19341752188591554
+ 0.39986481245454314
+ 0.5336371392307153
+ 0.7282625995281322
+ 0.8026094760258551
+ 0.8183672870449363
+ 1.0171982523479888
+ 1.0355944235330612
+ 1.0956437954673928
  ⋮
- 4.9060958242787285
- 4.909136039507843
- 4.910019845599378
- 4.911334721585717
- 4.911602300412249
- 4.912466820613833
- 4.9129388638153335
- 4.913411747905351
- 5.062716806321067</code></pre><h3 id="Goal-Reaching"><a class="docs-heading-anchor" href="#Goal-Reaching">Goal Reaching</a><a id="Goal-Reaching-1"></a><a class="docs-heading-anchor-permalink" href="#Goal-Reaching" title="Permalink"></a></h3><pre><code class="language-julia hljs">println(&quot;\nGoal reaching:&quot;)
+ 2.8004783675007623
+ 2.8031551780694404
+ 2.8089383287317453
+ 2.8112271872542522
+ 2.8146664659764182
+ 2.8187373189940015
+ 2.8216352465257137
+ 2.82577799030042
+ 3.049857733118542</code></pre><h3 id="Goal-Reaching"><a class="docs-heading-anchor" href="#Goal-Reaching">Goal Reaching</a><a id="Goal-Reaching-1"></a><a class="docs-heading-anchor-permalink" href="#Goal-Reaching" title="Permalink"></a></h3><pre><code class="language-julia hljs">println(&quot;\nGoal reaching:&quot;)
 println(&quot;  Initial state: &quot;, x_sol[:, 1])
 println(&quot;  Final state:   &quot;, x_sol[:, end])
 println(&quot;  Goal state:    &quot;, x_goal)
@@ -187,21 +187,21 @@ for i = 1:2
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 Control statistics:
   u1:
-    Max magnitude: 0.24408144015390737
-    Mean magnitude: 0.0791161075639217
-    Total norm: 0.7412398386543707
+    Max magnitude: 0.373877539202783
+    Mean magnitude: 0.10679359177279464
+    Total norm: 1.0207494121982377
     ✓ Bounds satisfied
   u2:
-    Max magnitude: 0.999828127761326
-    Mean magnitude: 0.11886216538980945
-    Total norm: 1.4250823304362055
+    Max magnitude: 0.9173917051733186
+    Mean magnitude: 0.22970282530254352
+    Total norm: 2.325911755941668
     ✓ Bounds satisfied</code></pre><h3 id="State-Trajectory-Analysis"><a class="docs-heading-anchor" href="#State-Trajectory-Analysis">State Trajectory Analysis</a><a id="State-Trajectory-Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#State-Trajectory-Analysis" title="Permalink"></a></h3><pre><code class="language-julia hljs">println(&quot;\nState trajectory:&quot;)
 println(&quot;  Max |x₁|: &quot;, maximum(abs.(x_sol[1, :])))
 println(&quot;  Max |x₂|: &quot;, maximum(abs.(x_sol[2, :])))
 println(&quot;  Max |x₃|: &quot;, maximum(abs.(x_sol[3, :])))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 State trajectory:
-  Max |x₁|: 1.0
-  Max |x₂|: 0.14608230248431417
+  Max |x₁|: 1.009978134238197
+  Max |x₂|: 0.43146928681598573
   Max |x₃|: 1.0</code></pre><h2 id="Step-7:-Detailed-Results"><a class="docs-heading-anchor" href="#Step-7:-Detailed-Results">Step 7: Detailed Results</a><a id="Step-7:-Detailed-Results-1"></a><a class="docs-heading-anchor-permalink" href="#Step-7:-Detailed-Results" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
 println(&quot;SOLUTION DETAILS&quot;)
 println(&quot;=&quot;^50)
@@ -231,23 +231,23 @@ State trajectory (selected time points):
 Time  |   x₁    |   x₂    |   x₃
 ----------------------------------------
 0.00 |  1.0000 |  0.0000 |  0.0000
-1.02 |  0.8746 | -0.0024 |  0.1242
-2.18 |  0.6911 | -0.0600 |  0.2725
-3.19 |  0.5471 | -0.0241 |  0.4193
-4.27 |  0.3466 | -0.0856 |  0.5767
-4.76 |  0.1616 | -0.0672 |  0.7744
-4.91 |  0.0000 |  0.0000 |  1.0000
+1.10 |  0.8109 | -0.3493 |  0.2196
+1.77 |  0.6879 | -0.2487 |  0.3608
+2.35 |  0.5427 | -0.1814 |  0.4906
+2.74 |  0.3403 | -0.1850 |  0.6547
+2.79 |  0.1461 | -0.1067 |  0.8205
+2.83 |  0.0000 |  0.0000 |  1.0000
 
 Control trajectory (selected time points):
 Time  |   u₁    |   u₂
 ------------------------------
-0.00 |  0.0183 |  0.1828
-1.02 | -0.0647 |  0.0232
-2.18 |  0.1053 |  0.0054
-3.19 | -0.0201 | -0.1452
-4.27 | -0.0354 |  0.1566
-4.76 | -0.0601 | -0.0458
-4.91 | -0.0546 | -0.9998</code></pre><h2 id="Step-8:-Verify-Dynamics-Satisfaction"><a class="docs-heading-anchor" href="#Step-8:-Verify-Dynamics-Satisfaction">Step 8: Verify Dynamics Satisfaction</a><a id="Step-8:-Verify-Dynamics-Satisfaction-1"></a><a class="docs-heading-anchor-permalink" href="#Step-8:-Verify-Dynamics-Satisfaction" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\nDynamics verification:&quot;)
+0.00 |  0.2104 | -0.2680
+1.10 |  0.0533 | -0.0637
+1.77 |  0.0691 | -0.1651
+2.35 |  0.1629 | -0.0932
+2.74 |  0.0055 | -0.1401
+2.79 | -0.1260 | -0.2686
+2.83 | -0.0823 |  0.0329</code></pre><h2 id="Step-8:-Verify-Dynamics-Satisfaction"><a class="docs-heading-anchor" href="#Step-8:-Verify-Dynamics-Satisfaction">Step 8: Verify Dynamics Satisfaction</a><a id="Step-8:-Verify-Dynamics-Satisfaction-1"></a><a class="docs-heading-anchor-permalink" href="#Step-8:-Verify-Dynamics-Satisfaction" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\nDynamics verification:&quot;)
 max_error = 0.0
 for k = 1:(N-1)
     global max_error
@@ -262,7 +262,7 @@ for k = 1:(N-1)
 end
 println(&quot;  Maximum dynamics error: $max_error&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 Dynamics verification:
-  Maximum dynamics error: 0.11630297229724453</code></pre><h2 id="Comparison:-Different-Control-Weights"><a class="docs-heading-anchor" href="#Comparison:-Different-Control-Weights">Comparison: Different Control Weights</a><a id="Comparison:-Different-Control-Weights-1"></a><a class="docs-heading-anchor-permalink" href="#Comparison:-Different-Control-Weights" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
+  Maximum dynamics error: 0.0899122356155125</code></pre><h2 id="Comparison:-Different-Control-Weights"><a class="docs-heading-anchor" href="#Comparison:-Different-Control-Weights">Comparison: Different Control Weights</a><a id="Comparison:-Different-Control-Weights-1"></a><a class="docs-heading-anchor-permalink" href="#Comparison:-Different-Control-Weights" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
 println(&quot;EXPLORING DIFFERENT CONTROL WEIGHTS&quot;)
 println(&quot;=&quot;^50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 ==================================================
@@ -308,115 +308,30 @@ Number of nonzeros in equality constraint Jacobian...:     2106
 Number of nonzeros in inequality constraint Jacobian.:        0
 Number of nonzeros in Lagrangian Hessian.............:     3318
 
-Total number of variables............................:      354
-                     variables with only lower bounds:       60
-                variables with lower and upper bounds:      120
-                     variables with only upper bounds:        0
-Total number of equality constraints.................:      177
-Total number of inequality constraints...............:        0
-        inequality constraints with only lower bounds:        0
-   inequality constraints with lower and upper bounds:        0
-        inequality constraints with only upper bounds:        0
 
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-   0  1.3395398e-01 1.48e-01 1.00e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
-   1  5.3022946e-02 1.12e-01 1.37e+00  -4.0 6.12e-01   0.0 7.04e-01 2.43e-01h  1
-   2  1.3365827e-01 1.04e-01 3.35e+00  -4.0 2.94e+00   0.4 1.25e-01 6.60e-02h  1
-   3  6.3036174e-01 1.05e-01 5.56e+01  -0.3 6.22e+00   0.9 6.07e-01 5.52e-02f  1
-   4  1.3996465e+00 1.05e-01 1.62e+02  -0.1 1.87e+00   1.3 9.06e-01 1.03e-01h  1
-   5  2.3596056e+00 8.54e-02 1.53e+02   0.5 2.61e+00   0.8 1.00e+00 1.36e-01f  1
-   6  2.8251332e+00 1.19e-01 5.08e+02   1.3 8.53e+00    -  4.58e-01 4.33e-02f  1
-   7  4.4655117e+00 1.13e-01 1.64e+03   1.3 8.07e+00    -  8.55e-01 2.88e-01h  1
-   8  4.9341355e+00 1.01e-01 9.23e+03   1.2 1.49e+00   2.1 9.98e-01 1.14e-01h  1
-   9  6.6467669e+00 8.99e-02 5.50e+04   1.5 2.26e+00   2.6 1.00e+00 1.10e-01h  1
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  10  6.8181967e+00 8.97e-02 5.44e+04  -4.0 1.96e+02    -  3.87e-03 1.02e-03f  3
-  11  6.1606833e+00 7.89e-02 5.26e+04   1.6 1.08e+02    -  3.48e-02 9.50e-03h  1
-  12  4.4013220e+00 5.65e-02 4.97e+04  -4.0 1.21e+01    -  5.07e-02 5.14e-02h  1
-  13  4.6704633e+00 8.21e-02 1.08e+05   2.9 9.91e+00   3.0 2.12e-01 3.80e-02f  1
-  14  5.1344217e+00 8.01e-02 1.07e+05   1.1 8.39e+00    -  9.16e-02 1.32e-02h  2
-  15  6.5051550e+00 8.24e-02 5.18e+05   2.9 7.75e+00   2.5 7.24e-01 3.62e-02h  1
-  16  9.7102807e+00 9.34e-02 3.78e+05  -3.1 7.70e+00    -  7.12e-02 9.30e-02h  1
-  17  8.9071962e+00 9.68e-02 3.77e+05  -3.2 2.94e+01    -  9.57e-03 5.00e-03h  1
-  18  1.4130859e+01 3.21e-01 2.93e+05   2.7 3.82e+01    -  4.02e-02 1.62e-02f  1
-  19  1.4365698e+01 3.20e-01 3.02e+05   2.6 1.72e+01    -  4.30e-03 2.85e-03h  1
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  20  1.5017658e+01 3.16e-01 6.94e+05   2.0 1.47e+01    -  5.57e-02 1.26e-02h  1
-  21  1.5872719e+01 3.05e-01 4.51e+06   1.3 5.21e+00    -  1.91e-01 3.30e-02h  1
-  22  1.7756451e+01 3.02e-01 1.58e+07   1.3 2.41e+01    -  4.08e-02 1.13e-02h  1
-  23  1.6326443e+01 3.00e-01 1.35e+08   1.3 1.40e+01    -  8.90e-02 5.90e-03h  2
-  24  1.7146034e+01 2.99e-01 3.19e+08   1.3 2.60e+01    -  2.37e-02 1.95e-03h  4
-  25  1.6643099e+01 2.99e-01 7.49e+08   1.3 1.91e+02    -  4.53e-03 7.19e-04h  3
-  26  1.7314894e+01 2.99e-01 1.49e+09   1.3 1.66e+02    -  5.10e-03 1.03e-03h  3
-  27  1.6888247e+01 2.99e-01 3.65e+09   1.3 2.38e+02    -  4.35e-03 6.48e-04h  3
-  28  1.7347615e+01 2.98e-01 1.68e+10   1.3 6.25e+02    -  3.57e-03 4.82e-04h  2
-  29  1.6836256e+01 2.98e-01 1.22e+11   1.3 1.04e+02    -  1.38e-02 5.83e-04h  3
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  30  1.7081025e+01 2.98e-01 5.20e+11   1.3 1.17e+02    -  1.02e-02 1.99e-04h  5
-  31  1.6991401e+01 2.98e-01 2.56e+12   1.3 1.57e+03    -  1.04e-03 3.26e-05h  4
-  32  1.7063529e+01 2.98e-01 2.61e+13   1.3 4.84e+02    -  6.66e-03 2.28e-05h  6
-  33  1.7012967e+01 2.98e-01 1.18e+14   1.3 2.25e+03    -  7.86e-04 1.74e-04h  1
-  34  1.7010695e+01 2.98e-01 1.18e+12   1.3 8.57e-04  14.3 9.90e-01 1.00e+00h  1
-  35  1.7008969e+01 2.98e-01 2.06e+11   0.6 3.46e-04  14.8 9.90e-01 1.00e+00h  1
-  36  1.6961240e+01 2.96e-01 5.45e+11  -0.1 1.39e+00    -  2.12e-03 6.40e-03f  1
-  37  1.6960716e+01 2.96e-01 2.76e+12  -0.8 9.55e+02    -  4.71e-06 7.83e-05h  1
-  38r 1.6960716e+01 2.96e-01 1.00e+03  -0.5 0.00e+00    -  0.00e+00 3.57e-07R  3
-  39r 1.4789916e+01 7.41e-02 4.04e+02   0.8 2.37e+02    -  9.12e-01 1.24e-03f  1
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  40  1.4840531e+01 7.41e-02 2.17e+02  -4.0 2.89e+01    -  1.90e-02 8.66e-05h  1
-  41  1.5301477e+01 7.44e-02 2.14e+02   0.6 6.20e+02    -  3.67e-05 3.67e-05s  8
-  42  8.2101414e+00 2.43e-01 1.95e+04  -0.2 3.64e+01    -  3.63e-02 1.63e-02f  1
-  43  8.3959185e+00 2.38e-01 1.90e+04  -0.2 1.81e+00    -  7.95e-03 2.33e-02f  1
-  44  8.8462702e+00 2.29e-01 1.81e+04  -0.2 1.66e+01    -  4.47e-02 4.07e-02f  1
-  45r 8.8462702e+00 2.29e-01 1.00e+03  -0.2 0.00e+00  14.3 0.00e+00 3.32e-08R  2
-  46r 7.6822776e+00 1.61e-01 7.83e+02   1.2 3.66e+01    -  9.95e-01 4.25e-03f  1
-  47  2.1652731e+01 7.76e-01 2.04e+01  -0.9 4.22e+00    -  6.41e-02 3.45e-01f  1
-  48  2.0861388e+01 7.12e-01 2.95e+12  -0.9 5.21e-01  13.8 9.52e-02 8.40e-02h  1
-  49  2.0858427e+01 7.12e-01 2.95e+12  -0.9 5.45e-01  13.3 7.61e-01 8.03e-04h  1
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  50r 2.0858427e+01 7.12e-01 1.00e+03  -0.1 0.00e+00  13.8 0.00e+00 2.54e-07R  6
-  51r 1.3074007e+01 2.55e-01 9.62e+02   1.4 3.36e+02    -  1.00e+00 1.63e-03f  1
-  52  2.8791647e+00 5.53e-01 1.98e+00  -0.9 2.58e+00    -  1.65e-01 4.15e-01f  1
-  53  3.8099435e+00 5.61e-01 3.84e+00  -0.9 1.21e+00    -  9.51e-01 4.65e-01h  1
-  54  4.4650321e+00 4.95e-01 5.00e+00  -0.9 5.43e+00    -  6.19e-02 1.17e-01h  1
-  55  4.4866769e+00 4.94e-01 1.01e+11  -0.9 3.07e+00  13.3 1.64e-02 1.65e-03h  1
-  56  4.4869049e+00 4.94e-01 1.01e+11  -0.9 3.11e+00  12.8 3.75e-02 1.71e-05h  1
-  57r 4.4869049e+00 4.94e-01 1.00e+03  -0.3 0.00e+00  12.3 0.00e+00 9.52e-08R  2
-  58r 3.4265690e+00 4.74e-01 9.95e+02   1.5 1.44e+02    -  8.58e-01 2.39e-03f  1
-  59r 3.1971512e+00 4.35e-01 5.32e+02   1.6 4.36e+00    -  1.00e+00 1.54e-02f  1
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  60  7.7431950e+00 3.95e-01 7.16e+02  -0.9 1.02e+01    -  2.41e-01 9.31e-02h  1
-  61  1.2783046e+01 2.81e-01 6.50e+02  -0.9 5.30e+00    -  9.35e-02 2.84e-01f  1
-  62  1.2862074e+01 2.79e-01 4.22e+09  -0.9 1.06e+00  11.9 8.42e-03 5.48e-03h  1
-  63  1.2862468e+01 2.79e-01 4.23e+09  -0.9 1.06e+00  11.4 1.47e-02 2.74e-05h  2
-  64  1.2862670e+01 2.79e-01 4.07e+09  -0.9 1.03e+00  10.9 3.54e-02 1.44e-05h  2
-  65  1.2865072e+01 2.79e-01 3.96e+09  -0.9 1.28e+00  10.4 2.42e-02 1.58e-04h  2
-  66  1.2901425e+01 2.78e-01 3.12e+09  -0.9 8.24e-01  10.0 5.34e-02 2.92e-03h  2
-  67  1.3112099e+01 2.75e-01 2.73e+09  -0.9 7.80e-01  10.4 1.98e-02 1.13e-02h  2
+Number of Iterations....: 0
 
-Number of Iterations....: 68
-
-Number of objective function evaluations             = 135
-Number of objective gradient evaluations             = 68
-Number of equality constraint evaluations            = 135
+Number of objective function evaluations             = 0
+Number of objective gradient evaluations             = 1
+Number of equality constraint evaluations            = 0
 Number of inequality constraint evaluations          = 0
-Number of equality constraint Jacobian evaluations   = 72
+Number of equality constraint Jacobian evaluations   = 1
 Number of inequality constraint Jacobian evaluations = 0
-Number of Lagrangian Hessian evaluations             = 68
-Total seconds in IPOPT                               = 0.705
+Number of Lagrangian Hessian evaluations             = 0
+Total seconds in IPOPT                               = 0.003
 
 EXIT: Invalid number in NLP function or derivative detected.
 
 Comparison:
   Original (R=1.0):
-    ||u||: 1.6063300242882355
+    ||u||: 2.540038357767596
   High weight (R=10.0):
-    ||u||: 4.289150380893068
-  Control reduction: -167.0155146227557%</code></pre><h2 id="Key-Observations"><a class="docs-heading-anchor" href="#Key-Observations">Key Observations</a><a id="Key-Observations-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Observations" title="Permalink"></a></h2><ol><li><strong>Multiple controls</strong> allow independent actuation of different system modes</li><li><strong>Bounds are strictly enforced</strong> — check that max|u| ≤ 1</li><li><strong>Control weight</strong> affects aggressiveness: lower weight produces larger controls that may saturate bounds, higher weight produces gentler controls</li><li><strong>Initial guess matters</strong> for bounded problems — random works here, but more complex problems may need better initialization</li><li><strong>BilinearIntegrator</strong> handles multi-input systems naturally — just provide all drive matrices in a vector</li></ol><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><p>Try these modifications:</p><h3 id="Exercise-1:-Asymmetric-Bounds"><a class="docs-heading-anchor" href="#Exercise-1:-Asymmetric-Bounds">Exercise 1: Asymmetric Bounds</a><a id="Exercise-1:-Asymmetric-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-1:-Asymmetric-Bounds" title="Permalink"></a></h3><p>Set different bounds for each control:</p><pre><code class="language-julia hljs">bounds=(u = ([-1.0, -0.5], [1.0, 2.0]),)</code></pre><h3 id="Exercise-2:-Initial-Control-Constraints"><a class="docs-heading-anchor" href="#Exercise-2:-Initial-Control-Constraints">Exercise 2: Initial Control Constraints</a><a id="Exercise-2:-Initial-Control-Constraints-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-2:-Initial-Control-Constraints" title="Permalink"></a></h3><p>Start and end with zero control:</p><pre><code class="language-julia hljs">initial=(x = x_init, u = [0.0, 0.0]),
+    ||u||: 1.1339981648969577
+  Control reduction: 55.355077161369614%</code></pre><h2 id="Key-Observations"><a class="docs-heading-anchor" href="#Key-Observations">Key Observations</a><a id="Key-Observations-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Observations" title="Permalink"></a></h2><ol><li><strong>Multiple controls</strong> allow independent actuation of different system modes</li><li><strong>Bounds are strictly enforced</strong> — check that max|u| ≤ 1</li><li><strong>Control weight</strong> affects aggressiveness: lower weight produces larger controls that may saturate bounds, higher weight produces gentler controls</li><li><strong>Initial guess matters</strong> for bounded problems — random works here, but more complex problems may need better initialization</li><li><strong>BilinearIntegrator</strong> handles multi-input systems naturally — just provide all drive matrices in a vector</li></ol><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><p>Try these modifications:</p><h3 id="Exercise-1:-Asymmetric-Bounds"><a class="docs-heading-anchor" href="#Exercise-1:-Asymmetric-Bounds">Exercise 1: Asymmetric Bounds</a><a id="Exercise-1:-Asymmetric-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-1:-Asymmetric-Bounds" title="Permalink"></a></h3><p>Set different bounds for each control:</p><pre><code class="language-julia hljs">bounds=(u = ([-1.0, -0.5], [1.0, 2.0]),)</code></pre><h3 id="Exercise-2:-Initial-Control-Constraints"><a class="docs-heading-anchor" href="#Exercise-2:-Initial-Control-Constraints">Exercise 2: Initial Control Constraints</a><a id="Exercise-2:-Initial-Control-Constraints-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-2:-Initial-Control-Constraints" title="Permalink"></a></h3><p>Start and end with zero control:</p><pre><code class="language-julia hljs">initial=(x = x_init, u = [0.0, 0.0]),
 final=(x = x_goal, u = [0.0, 0.0])</code></pre><h3 id="Exercise-3:-Intermediate-Waypoint"><a class="docs-heading-anchor" href="#Exercise-3:-Intermediate-Waypoint">Exercise 3: Intermediate Waypoint</a><a id="Exercise-3:-Intermediate-Waypoint-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-3:-Intermediate-Waypoint" title="Permalink"></a></h3><p>Add a waypoint constraint at t=30:</p><pre><code class="language-julia hljs">waypoint = [0.5, 0.5, 0.5]
 constraint = NonlinearKnotPointConstraint(
     x -&gt; x - waypoint, :x, traj;
     times=[30], equality=true
 )</code></pre><h3 id="Exercise-4:-Different-Goal"><a class="docs-heading-anchor" href="#Exercise-4:-Different-Goal">Exercise 4: Different Goal</a><a id="Exercise-4:-Different-Goal-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-4:-Different-Goal" title="Permalink"></a></h3><p>Try reaching <code>[0, 1, 0]</code> instead of <code>[0, 0, 1]</code></p><h3 id="Exercise-5:-Add-Minimum-Time"><a class="docs-heading-anchor" href="#Exercise-5:-Add-Minimum-Time">Exercise 5: Add Minimum Time</a><a id="Exercise-5:-Add-Minimum-Time-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-5:-Add-Minimum-Time" title="Permalink"></a></h3><p>Make Δt variable and add MinimumTimeObjective:</p><pre><code class="language-julia hljs">obj = QuadraticRegularizer(:u, traj, 1.0) +
       MinimumTimeObjective(traj, 0.5)
-bounds=(u = 1.0, Δt = (0.05, 0.3))</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Minimum Time Tutorial</strong>: Optimize trajectory duration</li><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties for implementability</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linear_system/">« Linear System</a><a class="docs-footer-nextpage" href="../minimum_time/">Minimum Time »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 24 February 2026 22:11">Tuesday 24 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+bounds=(u = 1.0, Δt = (0.05, 0.3))</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Minimum Time Tutorial</strong>: Optimize trajectory duration</li><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties for implementability</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linear_system/">« Linear System</a><a class="docs-footer-nextpage" href="../minimum_time/">Minimum Time »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 25 February 2026 17:38">Wednesday 25 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

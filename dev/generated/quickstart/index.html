@@ -53,18 +53,43 @@ Number of nonzeros in equality constraint Jacobian...:      776
 Number of nonzeros in inequality constraint Jacobian.:        0
 Number of nonzeros in Lagrangian Hessian.............:     1254
 
+Total number of variables............................:      196
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      100
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:       98
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
 
-Number of Iterations....: 0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  1.6196417e-01 4.40e+00 2.75e-08   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  2.3363943e-01 2.98e-01 1.72e+00  -1.1 2.55e+00    -  9.63e-01 1.00e+00f  1
+   2  1.2720003e-01 2.05e-01 1.66e+00  -1.0 5.39e+00    -  4.96e-01 3.40e-01f  1
+   3  1.0741115e-01 1.30e-01 5.15e-01  -1.2 3.60e+00    -  7.37e-01 3.68e-01f  1
+   4  1.5074628e-01 7.99e-02 9.03e+263  -1.5 3.23e+00    -  5.41e-01 3.86e-01h  1
+   5  1.8834242e-01 7.98e-02 9.03e+263  -3.1 2.25e+262    -  3.88e-263 2.39e-263h  1
+   6  2.1424494e-01 7.98e-02 9.03e+263  -3.2 3.48e+262    -  2.66e-263 1.50e-263h  1
+   7  2.4008844e-01 7.98e-02 9.03e+263  -3.2 1.88e+262    -  7.67e-263 2.86e-263h  1
+   8r 2.4008844e-01 7.98e-02 9.99e+02  -1.1 0.00e+00    -  0.00e+00 2.69e-263R  2
+   9r 2.3841069e-01 5.10e-02 9.97e+02   0.8 3.30e+01    -  3.12e-02 2.49e-03f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10r 2.3841069e-01 5.10e-02 9.99e+02  -1.3 0.00e+00    -  0.00e+00 4.66e-265R  2
+  11r 2.3539691e-01 3.21e-02 9.95e+02   0.7 3.67e+02    -  2.29e-02 4.75e-03f  1
+  12  2.3065192e-01 3.21e-02 9.03e+263  -3.2 1.10e+263    -  2.15e-264 2.15e-264S  2
 
-Number of objective function evaluations             = 0
-Number of objective gradient evaluations             = 1
-Number of equality constraint evaluations            = 0
+Number of Iterations....: 13
+
+Number of objective function evaluations             = 24
+Number of objective gradient evaluations             = 14
+Number of equality constraint evaluations            = 24
 Number of inequality constraint evaluations          = 0
-Number of equality constraint Jacobian evaluations   = 1
+Number of equality constraint Jacobian evaluations   = 15
 Number of inequality constraint Jacobian evaluations = 0
-Number of Lagrangian Hessian evaluations             = 0
-Total seconds in IPOPT                               = 3.046
+Number of Lagrangian Hessian evaluations             = 13
+Total seconds in IPOPT                               = 6.599
 
-EXIT: Invalid number in NLP function or derivative detected.</code></pre><h3 id="Step-5:-Access-the-Solution"><a class="docs-heading-anchor" href="#Step-5:-Access-the-Solution">Step 5: Access the Solution</a><a id="Step-5:-Access-the-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Step-5:-Access-the-Solution" title="Permalink"></a></h3><p>Let&#39;s look at the results.</p><pre><code class="language-julia hljs">plot(prob.trajectory)</code></pre><img src="15b2fd47.png" alt="Example block output"/><p>The optimized trajectory is stored in <code>prob.trajectory</code>:</p><pre><code class="language-julia hljs">println(&quot;Final state: &quot;, prob.trajectory.x[:, end])
+EXIT: Invalid number in NLP function or derivative detected.</code></pre><h3 id="Step-5:-Access-the-Solution"><a class="docs-heading-anchor" href="#Step-5:-Access-the-Solution">Step 5: Access the Solution</a><a id="Step-5:-Access-the-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Step-5:-Access-the-Solution" title="Permalink"></a></h3><p>Let&#39;s look at the results.</p><pre><code class="language-julia hljs">plot(prob.trajectory)</code></pre><img src="41fb3bea.png" alt="Example block output"/><p>The optimized trajectory is stored in <code>prob.trajectory</code>:</p><pre><code class="language-julia hljs">println(&quot;Final state: &quot;, prob.trajectory.x[:, end])
 println(&quot;Control norm: &quot;, norm(prob.trajectory.u))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Final state: [1.0, 0.0]
-Control norm: 5.577021565883864</code></pre><h2 id="What-You-Can-Do"><a class="docs-heading-anchor" href="#What-You-Can-Do">What You Can Do</a><a id="What-You-Can-Do-1"></a><a class="docs-heading-anchor-permalink" href="#What-You-Can-Do" title="Permalink"></a></h2><ul><li><strong>Multiple objectives</strong>: Combine regularization, minimum time, terminal costs</li><li><strong>Flexible dynamics</strong>: Linear, bilinear, time-dependent systems</li><li><strong>Add constraints</strong>: Bounds, path constraints, custom nonlinear constraints</li><li><strong>Smooth controls</strong>: Penalize derivatives for smooth, implementable controls</li><li><strong>Free time</strong>: Optimize trajectory duration</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../example/">Complete Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 24 February 2026 22:11">Tuesday 24 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Control norm: 4.3125045085225295</code></pre><h2 id="What-You-Can-Do"><a class="docs-heading-anchor" href="#What-You-Can-Do">What You Can Do</a><a id="What-You-Can-Do-1"></a><a class="docs-heading-anchor-permalink" href="#What-You-Can-Do" title="Permalink"></a></h2><ul><li><strong>Multiple objectives</strong>: Combine regularization, minimum time, terminal costs</li><li><strong>Flexible dynamics</strong>: Linear, bilinear, time-dependent systems</li><li><strong>Add constraints</strong>: Bounds, path constraints, custom nonlinear constraints</li><li><strong>Smooth controls</strong>: Penalize derivatives for smooth, implementable controls</li><li><strong>Free time</strong>: Optimize trajectory duration</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../example/">Complete Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 25 February 2026 17:38">Wednesday 25 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
