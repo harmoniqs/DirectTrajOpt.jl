@@ -78,36 +78,39 @@ function DirectTrajOptProblem(
         # Add lower bound of 0 to prevent negative timesteps
         # Create new trajectory with updated bounds
         timestep_dim = traj.dims[timestep_var]
-        new_bounds = merge(traj.bounds, (; timestep_var => (zeros(timestep_dim), fill(Inf, timestep_dim))))
-        
+        new_bounds = merge(
+            traj.bounds,
+            (; timestep_var => (zeros(timestep_dim), fill(Inf, timestep_dim))),
+        )
+
         # Extract component data
         comps_data = NamedTuple(name => traj[name] for name in traj.names)
-        
+
         # Extract global component data if present
         if traj.global_dim > 0
             gcomps_data = NamedTuple(
-                name => Vector(traj.global_data[traj.global_components[name]]) 
-                for name in keys(traj.global_components)
+                name => Vector(traj.global_data[traj.global_components[name]]) for
+                name in keys(traj.global_components)
             )
             traj = NamedTrajectory(
                 comps_data,
                 gcomps_data;
-                timestep=traj.timestep,
-                controls=traj.control_names,
-                bounds=new_bounds,
-                initial=traj.initial,
-                final=traj.final,
-                goal=traj.goal
+                timestep = traj.timestep,
+                controls = traj.control_names,
+                bounds = new_bounds,
+                initial = traj.initial,
+                final = traj.final,
+                goal = traj.goal,
             )
         else
             traj = NamedTrajectory(
                 comps_data;
-                timestep=traj.timestep,
-                controls=traj.control_names,
-                bounds=new_bounds,
-                initial=traj.initial,
-                final=traj.final,
-                goal=traj.goal
+                timestep = traj.timestep,
+                controls = traj.control_names,
+                bounds = new_bounds,
+                initial = traj.initial,
+                final = traj.final,
+                goal = traj.goal,
             )
         end
     end

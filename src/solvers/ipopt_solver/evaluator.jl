@@ -96,7 +96,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
         verbose = false,
     )
         t_start = time()
-        
+
         # Calculate total dynamics constraint dimension
         n_dynamics_constraints =
             sum(integrator.dim for integrator in prob.integrators; init = 0)
@@ -106,19 +106,26 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
         n_nonlinear_constraints = sum(c -> c.dim, nonlinear_constraints; init = 0)
 
         if verbose
-            println("      building evaluator: $(length(prob.integrators)) integrators, $(length(nonlinear_constraints)) nonlinear constraints")
-            println("      dynamics constraints: $n_dynamics_constraints, nonlinear constraints: $n_nonlinear_constraints")
+            println(
+                "      building evaluator: $(length(prob.integrators)) integrators, $(length(nonlinear_constraints)) nonlinear constraints",
+            )
+            println(
+                "      dynamics constraints: $n_dynamics_constraints, nonlinear constraints: $n_nonlinear_constraints",
+            )
         end
 
         # Build Jacobian structure from integrators
         t_jac = time()
-        ∂g = spzeros(0, prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim)
-        
+        ∂g =
+            spzeros(0, prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim)
+
         for (i, integrator) in enumerate(prob.integrators)
             t_int = time()
             ∂g = vcat(∂g, get_jacobian_structure(integrator, prob.trajectory))
             if verbose
-                println("        integrator $i jacobian structure: $(round(time() - t_int, digits=3))s")
+                println(
+                    "        integrator $i jacobian structure: $(round(time() - t_int, digits=3))s",
+                )
             end
         end
 
@@ -126,13 +133,17 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
             t_con = time()
             ∂g = vcat(∂g, eval_jacobian(c, prob.trajectory))
             if verbose
-                println("        constraint $i ($(typeof(c).name.name)) jacobian structure: $(round(time() - t_con, digits=3))s")
+                println(
+                    "        constraint $i ($(typeof(c).name.name)) jacobian structure: $(round(time() - t_con, digits=3))s",
+                )
             end
         end
 
         jacobian_structure = collect(zip(findnz(∂g)[1:2]...))
         if verbose
-            println("      jacobian structure: $(length(jacobian_structure)) nonzeros ($(round(time() - t_jac, digits=3))s)")
+            println(
+                "      jacobian structure: $(length(jacobian_structure)) nonzeros ($(round(time() - t_jac, digits=3))s)",
+            )
         end
 
         # Build Hessian structure from integrators
@@ -141,12 +152,14 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
             prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
             prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
         )
-        
+
         for (i, integrator) in enumerate(prob.integrators)
             t_int = time()
             hessian .+= get_hessian_of_lagrangian_structure(integrator, prob.trajectory)
             if verbose
-                println("        integrator $i hessian structure: $(round(time() - t_int, digits=3))s")
+                println(
+                    "        integrator $i hessian structure: $(round(time() - t_int, digits=3))s",
+                )
             end
         end
 
@@ -155,32 +168,44 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
             t_con = time()
             hessian .+= eval_hessian_of_lagrangian(con, prob.trajectory, ones(con.dim))
             if verbose
-                println("        constraint $i ($(typeof(con).name.name)) hessian structure: $(round(time() - t_con, digits=3))s")
+                println(
+                    "        constraint $i ($(typeof(con).name.name)) hessian structure: $(round(time() - t_con, digits=3))s",
+                )
             end
         end
 
         # objective hessian structure
         t_obj = time()
         if verbose
-            println("        computing objective hessian structure ($(typeof(prob.objective).name.name))...")
+            println(
+                "        computing objective hessian structure ($(typeof(prob.objective).name.name))...",
+            )
         end
         if prob.objective isa Objectives.CompositeObjective
-            hessian .+= Objectives.hessian_structure(prob.objective, prob.trajectory; verbose=verbose)
+            hessian .+= Objectives.hessian_structure(
+                prob.objective,
+                prob.trajectory;
+                verbose = verbose,
+            )
         else
             hessian .+= Objectives.hessian_structure(prob.objective, prob.trajectory)
         end
         if verbose
-            println("        objective hessian structure: $(round(time() - t_obj, digits=3))s")
+            println(
+                "        objective hessian structure: $(round(time() - t_obj, digits=3))s",
+            )
         end
 
         hessian_structure =
             filter(((i, j),) -> i ≤ j, collect(zip(findnz(hessian)[1:2]...)))
         n_constraint_hessian_elements = length(hessian_structure)
-        
+
         if verbose
-            println("      hessian structure: $(length(hessian_structure)) nonzeros ($(round(time() - t_hess, digits=3))s)")
+            println(
+                "      hessian structure: $(length(hessian_structure)) nonzeros ($(round(time() - t_hess, digits=3))s)",
+            )
         end
-        
+
         # Pre-compute offsets for fast indexing
         t_maps = time()
         integrator_offsets = Vector{Int}(undef, length(prob.integrators) + 1)
@@ -219,12 +244,12 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
             linear_idx = (i - 1) * hessian_ncols + j
             hessian_linear_map[linear_idx] = idx
         end
-        
+
         if verbose
             println("      linear index maps built ($(round(time() - t_maps, digits=3))s)")
             println("      evaluator ready (total: $(round(time() - t_start, digits=3))s)")
         end
-        
+
         return new(
             prob.trajectory,
             prob.objective,

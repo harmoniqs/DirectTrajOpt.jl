@@ -138,7 +138,7 @@ function get_optimizer_and_variables(
 
     # get evaluator
     t_eval = time()
-    evaluator = IpoptEvaluator(prob; eval_hessian=options.eval_hessian, verbose=verbose)
+    evaluator = IpoptEvaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
     if verbose
         println("    evaluator created ($(round(time() - t_eval, digits=3))s)")
     end
@@ -147,7 +147,9 @@ function get_optimizer_and_variables(
     t_nlcons = time()
     nl_cons = get_nonlinear_constraints(prob)
     if verbose
-        println("    NL constraint bounds extracted ($(round(time() - t_nlcons, digits=3))s)")
+        println(
+            "    NL constraint bounds extracted ($(round(time() - t_nlcons, digits=3))s)",
+        )
     end
 
     # build NLP block data
@@ -184,19 +186,24 @@ function get_optimizer_and_variables(
 
     # add linear constraints
     t_lincons = time()
-    linear_constraints = AbstractLinearConstraint[
-        filter(c -> c isa AbstractLinearConstraint, prob.constraints)...
-    ]
-    constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose=verbose)
+    linear_constraints = AbstractLinearConstraint[filter(
+        c->c isa AbstractLinearConstraint,
+        prob.constraints,
+    )...]
+    constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose = verbose)
     if verbose
-        println("    linear constraints added: $(length(linear_constraints)) ($(round(time() - t_lincons, digits=3))s)")
+        println(
+            "    linear constraints added: $(length(linear_constraints)) ($(round(time() - t_lincons, digits=3))s)",
+        )
     end
 
     # set solver options
     set_options!(optimizer, options)
 
     if verbose
-        println("    optimizer initialization complete (total: $(round(time() - t_init_start, digits=3))s)")
+        println(
+            "    optimizer initialization complete (total: $(round(time() - t_init_start, digits=3))s)",
+        )
     end
 
     return optimizer, variables
