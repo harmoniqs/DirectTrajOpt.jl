@@ -19,8 +19,8 @@ Indices are computed when constraint is applied in constrain!.
 - `label::String`: Constraint label
 """
 struct EqualityConstraint <: AbstractLinearConstraint
-    var_names::Union{Symbol, Vector{Symbol}}
-    times::Union{Nothing, Vector{Int}}
+    var_names::Union{Symbol,Vector{Symbol}}
+    times::Union{Nothing,Vector{Int}}
     values::Vector{Float64}
     is_global::Bool
     label::String
@@ -40,18 +40,18 @@ Indices are computed when applied to a trajectory.
 function EqualityConstraint(
     name::Symbol,
     ts::AbstractVector{Int},
-    val::Union{Float64, Vector{Float64}};
-    label="equality constraint on trajectory variable $name"
+    val::Union{Float64,Vector{Float64}};
+    label = "equality constraint on trajectory variable $name",
 )
     # Convert scalar to vector (will be repeated per time step)
     values = val isa Float64 ? [val] : val
-    
+
     return EqualityConstraint(
         name,
         collect(ts),
         values,
         false,  # not global
-        label
+        label,
     )
 end
 
@@ -67,19 +67,23 @@ Indices are computed when applied to a trajectory.
 """
 function GlobalEqualityConstraint(
     name::Symbol,
-    val::Union{Float64, Vector{Float64}};
-    label="equality constraint on global variable $name"
+    val::Union{Float64,Vector{Float64}};
+    label = "equality constraint on global variable $name",
 )
     # Convert scalar to vector
     values = val isa Float64 ? [val] : val
-    
+
     return EqualityConstraint(
         name,
         nothing,  # no times for global
         values,
         true,  # is global
-        label
+        label,
     )
+end
+
+function Base.show(io::IO, c::EqualityConstraint)
+    print(io, "EqualityConstraint: \"$(c.label)\"")
 end
 
 # =========================================================================== #
@@ -92,7 +96,7 @@ end
     integrators = [
         BilinearIntegrator(G, :x, :u, traj),
         DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj)
+        DerivativeIntegrator(:du, :ddu, traj),
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -101,7 +105,7 @@ end
 
     # Test that trajectory constraints from traj.initial are applied correctly
     prob = DirectTrajOptProblem(traj, J, integrators)
-    solve!(prob; max_iter=100)
+    solve!(prob; max_iter = 100)
 
     # Verify initial constraint from traj.initial is satisfied
     @test prob.trajectory[1][:x] ≈ [1.0, 0.0, 0.0, 0.0] atol=1e-6
@@ -115,7 +119,7 @@ end
     integrators = [
         BilinearIntegrator(G, :x, :u, traj),
         DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj)
+        DerivativeIntegrator(:du, :ddu, traj),
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -126,9 +130,9 @@ end
     # (avoiding conflict with traj.initial and traj.final)
     du_mid = 0.0
     mid_con = EqualityConstraint(:du, [5], du_mid)
-    
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=[mid_con])
-    solve!(prob; max_iter=100)
+
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints = [mid_con])
+    solve!(prob; max_iter = 100)
 
     # Verify constraint is satisfied (scalar applied to all components)
     @test all(abs.(prob.trajectory[5][:du]) .< 1e-6)
@@ -137,12 +141,12 @@ end
 @testitem "GlobalEqualityConstraint" begin
     include("../../../test/test_utils.jl")
 
-    G, traj = bilinear_dynamics_and_trajectory(add_global=true)
+    G, traj = bilinear_dynamics_and_trajectory(add_global = true)
 
     integrators = [
         BilinearIntegrator(G, :x, :u, traj),
         DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj)
+        DerivativeIntegrator(:du, :ddu, traj),
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -153,13 +157,11 @@ end
     # g has dimension N (10 by default in test_utils)
     g_value = fill(0.5, traj.N)
     global_con = GlobalEqualityConstraint(:g, g_value)
-    
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=[global_con])
-    solve!(prob; max_iter=100)
+
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints = [global_con])
+    solve!(prob; max_iter = 100)
 
     # Verify global constraint is satisfied
     g_components = traj.global_components[:g]
     @test prob.trajectory.global_data[g_components] ≈ g_value atol=1e-6
 end
-
-

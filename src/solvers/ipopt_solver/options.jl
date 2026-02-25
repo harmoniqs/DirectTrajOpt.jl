@@ -1,9 +1,25 @@
 export IpoptOptions
 
 """
-    Solver options for Ipopt
+    IpoptOptions <: AbstractSolverOptions
 
-    https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_print_options_documentation
+Configuration options for the Ipopt nonlinear solver. All fields map directly to
+[Ipopt options](https://coin-or.github.io/Ipopt/OPTIONS.html).
+
+# Commonly used fields
+- `tol::Float64 = 1e-8`: Overall NLP convergence tolerance
+- `max_iter::Int = 1_000`: Maximum number of solver iterations
+- `max_cpu_time = 1_000_000.0`: Maximum CPU time in seconds
+- `constr_viol_tol::Float64 = 1e-6`: Constraint violation tolerance
+- `eval_hessian = true`: Whether to provide exact Hessians (false uses L-BFGS)
+- `linear_solver = "mumps"`: Linear solver backend (`"mumps"`, `"pardiso"`, `"ma27"`, etc.)
+- `print_level::Int = 5`: Ipopt output verbosity (0 = silent, 12 = maximum)
+
+# Example
+```julia
+opts = IpoptOptions(max_iter=200, tol=1e-6, print_level=0)
+solve!(prob; options=opts)
+```
 """
 Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     tol::Float64 = 1e-8
@@ -27,7 +43,7 @@ Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     linear_solver = "mumps"
     mu_strategy = "adaptive"
     refine = true
-    adaptive_mu_globalization = refine ? "obj-constr-filter" : "never-monotone-mode" 
+    adaptive_mu_globalization = refine ? "obj-constr-filter" : "never-monotone-mode"
     mu_target::Float64 = 1.0e-4
     nlp_scaling_method = "gradient-based"
     output_file = nothing

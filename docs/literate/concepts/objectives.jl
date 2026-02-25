@@ -16,10 +16,10 @@ using LinearAlgebra
 N = 50
 traj = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [0.0, 0.0],),
-    goal=(x = [1.0, 0.0],)
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),
+    goal = (x = [1.0, 0.0],),
 )
 
 # ## QuadraticRegularizer
@@ -46,8 +46,8 @@ obj_x = QuadraticRegularizer(:x, traj, 0.1)
 
 traj_smooth = NamedTrajectory(
     (x = randn(2, N), u = randn(2, N), du = zeros(2, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 obj_du = QuadraticRegularizer(:du, traj_smooth, 1.0)
@@ -56,8 +56,9 @@ obj_du = QuadraticRegularizer(:du, traj_smooth, 1.0)
 # ### Combining Regularizers
 
 # Typical combination: control effort + smoothness
-obj_combined = QuadraticRegularizer(:u, traj_smooth, 1e-2) + 
-               QuadraticRegularizer(:du, traj_smooth, 1e-1)
+obj_combined =
+    QuadraticRegularizer(:u, traj_smooth, 1e-2) +
+    QuadraticRegularizer(:du, traj_smooth, 1e-1)
 # Small control penalty, larger smoothness penalty
 
 # ### Per-Component Weights
@@ -84,8 +85,7 @@ obj_time = MinimumTimeObjective(traj, 0.1)
 # ### Time-Energy Tradeoff
 
 # Combine with control regularization to trade off speed vs effort:
-obj_tradeoff = QuadraticRegularizer(:u, traj, 1.0) + 
-               MinimumTimeObjective(traj, 0.5)
+obj_tradeoff = QuadraticRegularizer(:u, traj, 1.0) + MinimumTimeObjective(traj, 0.5)
 # Higher time weight → faster but more control effort
 # Lower time weight → slower but less control effort
 
@@ -93,13 +93,14 @@ obj_tradeoff = QuadraticRegularizer(:u, traj, 1.0) +
 
 traj_free_time = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    bounds=(Δt = (0.01, 0.5),)  # Allow variable time steps
+    timestep = :Δt,
+    controls = :u,
+    bounds = (Δt = (0.01, 0.5),),  # Allow variable time steps
 )
 
-obj_free_time = QuadraticRegularizer(:u, traj_free_time, 1.0) + 
-                MinimumTimeObjective(traj_free_time, 1.0)
+obj_free_time =
+    QuadraticRegularizer(:u, traj_free_time, 1.0) +
+    MinimumTimeObjective(traj_free_time, 1.0)
 
 # ## TerminalObjective
 
@@ -114,21 +115,13 @@ obj_free_time = QuadraticRegularizer(:u, traj_free_time, 1.0) +
 # ### Distance to Goal
 
 x_goal = [1.0, 0.0]
-obj_terminal = TerminalObjective(
-    x -> norm(x - x_goal)^2,
-    :x,
-    traj
-)
+obj_terminal = TerminalObjective(x -> norm(x - x_goal)^2, :x, traj)
 # Penalizes: ||x_N - x_goal||²
 
 # ### Custom Terminal Cost
 
 # Any function of the final state:
-obj_custom_terminal = TerminalObjective(
-    x -> x[1]^2 + 2*x[2]^2 + x[1]*x[2],
-    :x,
-    traj
-)
+obj_custom_terminal = TerminalObjective(x -> x[1]^2 + 2*x[2]^2 + x[1]*x[2], :x, traj)
 
 # ### When to Use
 # - **Soft goal**: Don't enforce exact final state, just penalize deviation
@@ -140,17 +133,17 @@ obj_custom_terminal = TerminalObjective(
 # Hard constraint (via trajectory):
 traj_hard = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    final=(x = x_goal,)  # Exact constraint
+    timestep = :Δt,
+    controls = :u,
+    final = (x = x_goal,),  # Exact constraint
 )
 
 # Soft constraint (via terminal objective):
 traj_soft = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    goal=(x = x_goal,)  # For reference only
+    timestep = :Δt,
+    controls = :u,
+    goal = (x = x_goal,),  # For reference only
 )
 obj_soft = TerminalObjective(x -> 100.0 * norm(x - x_goal)^2, :x, traj_soft)
 # Large weight approximates hard constraint
@@ -168,28 +161,28 @@ obj_soft = TerminalObjective(x -> 100.0 * norm(x - x_goal)^2, :x, traj_soft)
 # ### Single Time Point
 
 obj_knot_single = KnotPointObjective(
-    (x, u) -> norm(x - [0.5, 0.5])^2,
-    [:x, :u],
+    x -> norm(x - [0.5, 0.5])^2,
+    :x,
     traj;
-    times=[25]  # Only at k=25
+    times = [25],  # Only at k=25
 )
 
 # ### Multiple Time Points
 
 obj_knot_multi = KnotPointObjective(
-    (x, u) -> norm(u)^2,
-    [:x, :u],
+    u -> norm(u)^2,
+    :u,
     traj;
-    times=[10, 20, 30, 40]  # At k=10, 20, 30, 40
+    times = [10, 20, 30, 40],  # At k=10, 20, 30, 40
 )
 
 # ### All Time Points (Path Cost)
 
 obj_knot_all = KnotPointObjective(
-    (x, u) -> x[1]^2 + u[1]^2,
+    xu -> xu[1]^2 + xu[3]^2,  # xu is concatenated [x; u]
     [:x, :u],
     traj;
-    times=1:N  # All time steps
+    times = 1:N,  # All time steps
 )
 # Equivalent to manually summing costs
 
@@ -202,13 +195,8 @@ waypoints = [
 waypoint_times = [13, 38]
 
 obj_waypoints = sum(
-    KnotPointObjective(
-        (x, u) -> 10.0 * norm(x - wp)^2,
-        [:x, :u],
-        traj;
-        times=[t]
-    )
-    for (wp, t) in zip(waypoints, waypoint_times)
+    KnotPointObjective(x -> 10.0 * norm(x - wp)^2, :x, traj; times = [t]) for
+    (wp, t) in zip(waypoints, waypoint_times)
 )
 
 # ## GlobalObjective
@@ -224,21 +212,17 @@ obj_waypoints = sum(
 # ### Example with Global Parameter
 
 traj_global = NamedTrajectory(
-    (
-        x = randn(2, N),
-        u = randn(1, N),
-        Δt = fill(0.1, N)
-    );
-    timestep=:Δt,
-    controls=:u,
-    global_data=[1.0],  # Global parameter
-    global_components=(α = 1:1,)
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    global_data = [1.0],  # Global parameter
+    global_components = (α = 1:1,),
 )
 
 obj_global = GlobalObjective(
     α -> (α[1] - 2.0)^2,  # Penalize α deviating from 2
     :α,
-    traj_global
+    traj_global,
 )
 
 # ## Combining Objectives
@@ -259,7 +243,9 @@ obj_pattern = (
     1e-2 * QuadraticRegularizer(:u, traj, 1.0) +      # Small control penalty
     1e-1 * MinimumTimeObjective(traj, 1.0) +          # Moderate time penalty
     1e2 * TerminalObjective(                          # Large goal penalty
-        x -> norm(x - x_goal)^2, :x, traj
+        x -> norm(x - x_goal)^2,
+        :x,
+        traj,
     )
 )
 
@@ -293,16 +279,18 @@ obj_energy = (
 
 traj_mintime = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    bounds=(u = 1.0, Δt = (0.01, 0.5))
+    timestep = :Δt,
+    controls = :u,
+    bounds = (u = 1.0, Δt = (0.01, 0.5)),
 )
 
 obj_mintime = (
     1e-3 * QuadraticRegularizer(:u, traj_mintime, 1.0) +  # Small regularization
     1.0 * MinimumTimeObjective(traj_mintime, 1.0) +       # Minimize time
     100.0 * TerminalObjective(                            # Strong goal
-        x -> norm(x - x_goal)^2, :x, traj_mintime
+        x -> norm(x - x_goal)^2,
+        :x,
+        traj_mintime,
     )
 )
 
@@ -311,10 +299,10 @@ obj_mintime = (
 
 traj_smooth_obj = NamedTrajectory(
     (x = randn(2, N), u = randn(2, N), du = zeros(2, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    initial=(u = [0.0, 0.0],),
-    final=(u = [0.0, 0.0],)
+    timestep = :Δt,
+    controls = :u,
+    initial = (u = [0.0, 0.0],),
+    final = (u = [0.0, 0.0],),
 )
 
 obj_smooth_pattern = (

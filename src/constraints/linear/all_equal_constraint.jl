@@ -24,11 +24,13 @@ end
 Constraint that all timesteps are equal (for fixed-timestep trajectories).
 The trajectory's timestep variable is inferred when applied.
 """
-function TimeStepsAllEqualConstraint(;
-    label="timesteps all equal constraint"
-)
+function TimeStepsAllEqualConstraint(; label = "timesteps all equal constraint")
     # Use a placeholder; actual timestep variable determined from trajectory
     return AllEqualConstraint(:Δt, 1, label)
+end
+
+function Base.show(io::IO, c::AllEqualConstraint)
+    print(io, "AllEqualConstraint: \"$(c.label)\"")
 end
 
 # =========================================================================== #
@@ -41,7 +43,7 @@ end
     integrators = [
         BilinearIntegrator(G, :x, :u, traj),
         DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj)
+        DerivativeIntegrator(:du, :ddu, traj),
     ]
 
     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
@@ -50,16 +52,19 @@ end
 
     # Test fixed timestep constraint
     timesteps_equal_con = TimeStepsAllEqualConstraint()
-    
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=[timesteps_equal_con])
-    solve!(prob; max_iter=100)
+
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints = [timesteps_equal_con])
+    solve!(prob; max_iter = 100)
 
     # Verify all timesteps are equal
     timestep_var = prob.trajectory.timestep
     @assert timestep_var isa Symbol
-    
-    Δts = [prob.trajectory[t].data[prob.trajectory.components[timestep_var]][1] for t in 1:prob.trajectory.N]
-    
+
+    Δts = [
+        prob.trajectory[t].data[prob.trajectory.components[timestep_var]][1] for
+        t = 1:prob.trajectory.N
+    ]
+
     # All timesteps should be equal to the last one
     @test all(abs.(Δts .- Δts[end]) .< 1e-6)
 end
@@ -74,13 +79,13 @@ end
             x = rand(2, N),
             u = rand(1, N),
             a = rand(1, N),  # Custom variable
-            Δt = fill(0.1, N)
+            Δt = fill(0.1, N),
         );
-        controls=(:u, :a),
-        timestep=:Δt,
-        bounds=(Δt = (0.01, 0.5),),
-        initial=(x = [0.0, 0.0],),
-        goal=(x = [1.0, 0.0],)
+        controls = (:u, :a),
+        timestep = :Δt,
+        bounds = (Δt = (0.01, 0.5),),
+        initial = (x = [0.0, 0.0],),
+        goal = (x = [1.0, 0.0],),
     )
 
     # Create dynamics function G(u) for bilinear integrator
@@ -96,11 +101,11 @@ end
 
     # Constrain all values of variable 'a' to be equal
     a_equal_con = AllEqualConstraint(:a, 1, "all a values equal")
-    
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=[a_equal_con])
-    solve!(prob; max_iter=100)
+
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints = [a_equal_con])
+    solve!(prob; max_iter = 100)
 
     # Verify all 'a' values are equal
-    a_vals = [prob.trajectory[t][:a][1] for t in 1:prob.trajectory.N]
+    a_vals = [prob.trajectory[t][:a][1] for t = 1:prob.trajectory.N]
     @test all(abs.(a_vals .- a_vals[end]) .< 1e-6)
 end

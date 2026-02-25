@@ -1,6 +1,7 @@
 module Problems
 
 export DirectTrajOptProblem
+export show_problem_details
 
 export get_trajectory_constraints
 
@@ -57,7 +58,7 @@ function DirectTrajOptProblem(
     traj::NamedTrajectory,
     obj::AbstractObjective,
     integrators::Vector{<:AbstractIntegrator};
-    constraints::Vector{<:AbstractConstraint}=AbstractConstraint[]
+    constraints::Vector{<:AbstractConstraint} = AbstractConstraint[],
 )
     # Validate timestep bounds if trajectory has a timestep variable
     timestep_var = traj.timestep
@@ -65,15 +66,15 @@ function DirectTrajOptProblem(
         @warn """
             Trajectory has timestep variable :$timestep_var but no bounds on it.
             Adding default lower bound of 0 to prevent negative timesteps.
-            
+
             Recommended: Add explicit bounds when creating the trajectory:
               NamedTrajectory(...; Δt_bounds=(min, max))
             Example:
               NamedTrajectory(qtraj, N; Δt_bounds=(1e-3, 0.5))
-            
+
             Or use timesteps_all_equal=true in problem options to fix timesteps.
             """ maxlog=1
-        
+
         # Add lower bound of 0 to prevent negative timesteps
         # Create new trajectory with updated bounds
         timestep_dim = traj.dims[timestep_var]
@@ -110,7 +111,7 @@ function DirectTrajOptProblem(
             )
         end
     end
-    
+
     traj_constraints = get_trajectory_constraints(traj)
     # Convert to AbstractConstraint vector to allow mixed types
     all_constraints = AbstractConstraint[constraints..., traj_constraints...]
@@ -121,14 +122,9 @@ function DirectTrajOptProblem(
     traj::NamedTrajectory,
     obj::AbstractObjective,
     integrator::AbstractIntegrator;
-    kwargs...
+    kwargs...,
 )
-    return DirectTrajOptProblem(
-        traj, 
-        obj, 
-        AbstractIntegrator[integrator];
-        kwargs...
-    )
+    return DirectTrajOptProblem(traj, obj, AbstractIntegrator[integrator]; kwargs...)
 end
 
 
@@ -160,42 +156,42 @@ function get_trajectory_constraints(traj::NamedTrajectory)
     # add initial equality constraints
     for (name, val) ∈ pairs(traj.initial)
         con_label = "initial value of $name"
-        eq_con = EqualityConstraint(name, [1], val; label=con_label)
+        eq_con = EqualityConstraint(name, [1], val; label = con_label)
         push!(cons, eq_con)
     end
 
     # add final equality constraints
     for (name, val) ∈ pairs(traj.final)
         label = "final value of $name"
-        eq_con = EqualityConstraint(name, [traj.N], val; label=label)
+        eq_con = EqualityConstraint(name, [traj.N], val; label = label)
         push!(cons, eq_con)
     end
-    
+
     # add bounds constraints
     for (name, bound) ∈ pairs(traj.bounds)
-        if name ∈ keys(traj.initial) && name ∈ keys(traj.final) 
-            ts = 2:traj.N-1
+        if name ∈ keys(traj.initial) && name ∈ keys(traj.final)
+            ts = 2:(traj.N-1)
         elseif name ∈ keys(traj.initial) && !(name ∈ keys(traj.final))
             ts = 2:traj.N
         elseif name ∈ keys(traj.final) && !(name ∈ keys(traj.initial))
-            ts = 1:traj.N-1
+            ts = 1:(traj.N-1)
         else
             ts = 1:traj.N
         end
         con_label = "bounds on $name"
-        bounds_con = BoundsConstraint(name, ts, bound; label=con_label)
+        bounds_con = BoundsConstraint(name, ts, bound; label = con_label)
         push!(cons, bounds_con)
     end
-    
+
     # add time consistency constraint if trajectory has both :t and timestep variable
     timestep_var = traj.timestep
     if timestep_var isa Symbol && :t ∈ traj.names && timestep_var ∈ traj.names
-        time_con = TimeConsistencyConstraint(; time_name=:t, timestep_name=timestep_var)
+        time_con = TimeConsistencyConstraint(; time_name = :t, timestep_name = timestep_var)
         push!(cons, time_con)
-        
+
         # add t_1 = 0 constraint if not already specified in initial
         if :t ∉ keys(traj.initial)
-            t_init_con = EqualityConstraint(:t, [1], [0.0]; label="initial time t₁ = 0")
+            t_init_con = EqualityConstraint(:t, [1], [0.0]; label = "initial time t₁ = 0")
             push!(cons, t_init_con)
         end
     end
@@ -203,15 +199,95 @@ function get_trajectory_constraints(traj::NamedTrajectory)
     return cons
 end
 
-function Base.show(io::IO, prob::DirectTrajOptProblem)
-    println(io, "DirectTrajOptProblem")
-    println(io, "   timesteps            = ", prob.trajectory.N)
-    println(io, "   duration             = ", get_duration(prob.trajectory))
-    println(io, "   variable names       = ", prob.trajectory.names)
-    println(io, "   knot point dimension = ", prob.trajectory.dim)
+"""
+    show_problem_details(io::IO, prob::DirectTrajOptProblem)
+
+Print the trajectory, objective, dynamics, and constraints sections of a problem.
+
+This is used by both `DirectTrajOptProblem` and `QuantumControlProblem` display methods.
+"""
+function show_problem_details(io::IO, prob::DirectTrajOptProblem)
+    traj = prob.trajectory
+
+    # --- Trajectory section ---
+    println(io, "  Trajectory")
+    println(io, "    Timesteps: ", traj.N)
+    println(io, "    Duration:  ", round(get_duration(traj), sigdigits = 6))
+    println(io, "    Knot dim:  ", traj.dim)
+    vars = join(["$n ($(traj.dims[n]))" for n in traj.names], ", ")
+    println(io, "    Variables: ", vars)
+    ctrl_str = isempty(traj.control_names) ? "(none)" : join(traj.control_names, ", ")
+    println(io, "    Controls:  ", ctrl_str)
+    if traj.global_dim > 0
+        gvars = join(
+            [
+                "$n ($(length(traj.global_components[n])))" for
+                n in keys(traj.global_components)
+            ],
+            ", ",
+        )
+        println(io, "    Globals:   ", gvars)
+    end
+
+    # --- Objective section ---
+    obj = prob.objective
+    if obj isa CompositeObjective
+        n = length(obj.objectives)
+        println(io, "  Objective ($n terms)")
+        for (sub_obj, w) in zip(obj.objectives, obj.weights)
+            w_str = string(round(w, sigdigits = 4))
+            println(io, "    $(lpad(w_str, 8)) * ", sub_obj)
+        end
+    elseif obj isa NullObjective
+        println(io, "  Objective: NullObjective")
+    else
+        println(io, "  Objective: ", obj)
+    end
+
+    # --- Dynamics section ---
+    n_int = length(prob.integrators)
+    println(io, "  Dynamics ($n_int integrators)")
+    for integ in prob.integrators
+        println(io, "    ", integ)
+    end
+
+    # --- Constraints section ---
+    constraints = prob.constraints
+    n_con = length(constraints)
+    if n_con > 0
+        n_eq = count(c -> c isa EqualityConstraint, constraints)
+        n_bnd = count(c -> c isa BoundsConstraint, constraints)
+        n_tc = count(c -> c isa TimeConsistencyConstraint, constraints)
+        n_other = n_con - n_eq - n_bnd - n_tc
+
+        parts = String[]
+        n_eq > 0 && push!(parts, "$n_eq equality")
+        n_bnd > 0 && push!(parts, "$n_bnd bounds")
+        n_tc > 0 && push!(parts, "$n_tc time consistency")
+        n_other > 0 && push!(parts, "$n_other other")
+
+        println(io, "  Constraints ($n_con total: ", join(parts, ", "), ")")
+        max_show = 10
+        for (i, con) in enumerate(constraints)
+            if i <= max_show
+                if i < n_con
+                    println(io, "    ", con)
+                else
+                    print(io, "    ", con)
+                end
+            elseif i == max_show + 1
+                print(io, "    ... and $(n_con - max_show) more")
+                break
+            end
+        end
+    else
+        print(io, "  Constraints: (none)")
+    end
 end
 
-
-
+function Base.show(io::IO, prob::DirectTrajOptProblem)
+    println(io, "DirectTrajOptProblem")
+    show_problem_details(io, prob)
+end
 
 end
