@@ -76,37 +76,21 @@ Total number of inequality constraints...............:        0
         inequality constraints with only upper bounds:        0
 
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-   0  0.0000000e+00 9.68e-02 5.48e+263   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
-   1  3.0250654e-04 9.68e-02 1.37e+02  -2.9 5.44e+262    -  2.51e-262 1.82e-264h  1
-   2  9.2885660e-02 1.49e-01 1.49e+01  -2.1 5.29e+01    -  9.74e-01 1.00e+00h  1
-   3  2.5529187e-01 2.08e-01 1.68e+00  -1.4 7.23e-01   0.0 1.00e+00 8.93e-01f  1
-   4  7.1365175e-01 3.84e-02 2.29e+01  -1.3 1.38e-01   0.4 9.92e-01 1.00e+00f  1
-   5  8.6412921e-01 1.85e-02 3.34e+01  -1.2 1.99e-01  -0.1 1.00e+00 1.00e+00f  1
-   6  8.4952793e-01 2.20e-02 5.04e+01  -1.4 1.21e+00  -0.5 4.31e-01 2.50e-01f  3
-   7  1.5088047e+00 4.70e-02 2.83e+01  -1.8 4.50e-01  -0.1 9.06e-01 9.46e-01H  1
-   8  1.6953493e+00 2.65e-02 1.35e+01  -2.2 3.37e-01   0.3 1.00e+00 4.22e-01h  1
-   9  1.8377833e+00 5.72e-02 3.11e+01  -1.2 9.23e-01  -0.2 9.99e-01 3.85e-01f  1
-iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  10  1.9710700e+00 2.62e-01 5.74e+01  -1.3 1.66e+01  -0.6 3.65e-02 5.22e-02f  3
-  11  1.9696806e+00 2.59e-01 6.64e+01  -1.3 5.91e+01  -1.1 1.33e-02 4.55e-03f  5
-  12  2.0659715e+00 2.38e-01 9.74e+01  -1.3 6.23e+00  -0.7 1.33e-01 3.71e-02h  3
-  13  2.2047116e+00 2.23e-01 1.09e+02  -1.3 4.02e+00  -0.3 2.95e-01 3.12e-02h  3
-  14  2.5369319e+00 1.84e-01 1.38e+02  -1.3 1.66e+00   0.2 1.00e+00 7.94e-02h  1
-  15  3.6234371e+00 2.20e-01 4.06e+01  -1.3 7.51e-01  -0.3 9.28e-01 1.00e+00H  1
-  16  4.6489218e+00 1.05e-01 1.26e+02  -1.3 8.08e-01   0.1 9.20e-01 8.11e-01h  1
-  17  1.2621069e+01 2.17e-01 2.29e+02  -1.3 4.89e-01   0.5 1.00e+00 1.00e+00H  1
-  18  1.2341146e+01 1.56e-01 1.37e+03  -1.3 6.67e-01   1.0 1.00e+00 5.00e-01f  2
+   0  0.0000000e+00 9.68e-02 1.00e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  4.4571464e-05 3.38e-02 1.68e+00  -4.0 3.37e-01   0.0 9.90e-01 1.00e+00h  1
+   2  3.4481712e-04 3.31e-02 7.62e+00  -0.7 4.91e+00  -0.5 9.43e-01 4.11e-02f  1
+   3  9.7296874e-03 3.79e-02 9.30e+01  -0.6 3.07e+00   0.9 1.00e+00 9.19e-02h  1
 
-Number of Iterations....: 19
+Number of Iterations....: 4
 
-Number of objective function evaluations             = 52
-Number of objective gradient evaluations             = 20
-Number of equality constraint evaluations            = 52
+Number of objective function evaluations             = 5
+Number of objective gradient evaluations             = 5
+Number of equality constraint evaluations            = 5
 Number of inequality constraint evaluations          = 0
-Number of equality constraint Jacobian evaluations   = 19
+Number of equality constraint Jacobian evaluations   = 4
 Number of inequality constraint Jacobian evaluations = 0
-Number of Lagrangian Hessian evaluations             = 19
-Total seconds in IPOPT                               = 7.002
+Number of Lagrangian Hessian evaluations             = 4
+Total seconds in IPOPT                               = 7.037
 
 EXIT: Invalid number in NLP function or derivative detected.
 ==================================================
@@ -131,9 +115,9 @@ println(&quot;  Total norm: &quot;, u_norm)
 println(&quot;  Max magnitude: &quot;, u_max)
 println(&quot;  Mean magnitude: &quot;, u_mean)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 Control statistics:
-  Total norm: 53.44125544253155
-  Max magnitude: 52.835266825369615
-  Mean magnitude: 1.7778804574393947</code></pre><h2 id="Step-7:-Verify-Dynamics"><a class="docs-heading-anchor" href="#Step-7:-Verify-Dynamics">Step 7: Verify Dynamics</a><a id="Step-7:-Verify-Dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Step-7:-Verify-Dynamics" title="Permalink"></a></h2><p>Check that the solution satisfies the dynamics at a few points:</p><pre><code class="language-julia hljs">function verify_dynamics(x, u, Δt, G, k)
+  Total norm: 2.3829332128321608
+  Max magnitude: 0.9477913563690697
+  Mean magnitude: 0.24978012551424641</code></pre><h2 id="Step-7:-Verify-Dynamics"><a class="docs-heading-anchor" href="#Step-7:-Verify-Dynamics">Step 7: Verify Dynamics</a><a id="Step-7:-Verify-Dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Step-7:-Verify-Dynamics" title="Permalink"></a></h2><p>Check that the solution satisfies the dynamics at a few points:</p><pre><code class="language-julia hljs">function verify_dynamics(x, u, Δt, G, k)
     # Compute x[k+1] using the dynamics
     x_k = x[:, k]
     u_k = u[:, k]
@@ -152,11 +136,11 @@ for k in [1, 10, 25, 40, N-1]
     println(&quot;  k=$k: error = &quot;, error)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 Dynamics verification (error at selected time steps):
-  k=1: error = 1.4211536761263602e-14
-  k=10: error = 3.459702745760881e-14
-  k=25: error = 1.4509179124327663e-10
-  k=40: error = 1.417620247695869e-8
-  k=49: error = 0.008766245344401636</code></pre><h2 id="Visualization-(Conceptual)"><a class="docs-heading-anchor" href="#Visualization-(Conceptual)">Visualization (Conceptual)</a><a id="Visualization-(Conceptual)-1"></a><a class="docs-heading-anchor-permalink" href="#Visualization-(Conceptual)" title="Permalink"></a></h2><p>In a Jupyter notebook or with plotting packages, you could visualize:</p><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
+  k=1: error = 4.662680916145134e-28
+  k=10: error = 0.007994638209817367
+  k=25: error = 0.02373241598453975
+  k=40: error = 0.027767247894461056
+  k=49: error = 0.0018214268992966566</code></pre><h2 id="Visualization-(Conceptual)"><a class="docs-heading-anchor" href="#Visualization-(Conceptual)">Visualization (Conceptual)</a><a id="Visualization-(Conceptual)-1"></a><a class="docs-heading-anchor-permalink" href="#Visualization-(Conceptual)" title="Permalink"></a></h2><p>In a Jupyter notebook or with plotting packages, you could visualize:</p><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
 println(&quot;SOLUTION SUMMARY&quot;)
 println(&quot;=&quot;^50)
 
@@ -183,49 +167,49 @@ State trajectory (first 10 and last 10 time steps):
 Time | x₁      | x₂
 -------------------------
 0.00 |  0.0000 |  0.0000
-0.87 | -0.0000 | -0.0000
-1.74 |  0.0000 | -0.0000
-2.61 |  0.0000 | -0.0000
-3.47 | -0.0000 | -0.0000
-4.32 | -0.0000 |  0.0000
-5.17 |  0.0000 |  0.0000
-6.02 | -0.0000 | -0.0000
-6.87 |  0.0000 |  0.0000
-7.72 |  0.0000 | -0.0000
-21.45 |  0.0000 |  0.0000
-21.63 |  0.0000 |  0.0000
-21.86 |  0.0000 |  0.0000
-21.87 |  0.0000 |  0.0000
-22.05 |  0.0000 |  0.0000
-22.22 |  0.0000 | -0.0000
-22.58 |  0.0009 |  0.0006
-23.67 |  0.0885 |  0.0572
-25.00 |  0.9013 |  0.5061
-25.56 |  1.0000 |  0.0000
+0.33 |  0.0000 |  0.0000
+0.54 |  0.0000 |  0.0002
+0.72 |  0.0002 |  0.0007
+0.89 |  0.0005 |  0.0019
+1.04 |  0.0013 |  0.0038
+1.18 |  0.0025 |  0.0064
+1.30 |  0.0043 |  0.0099
+1.40 |  0.0069 |  0.0144
+1.50 |  0.0104 |  0.0198
+3.13 |  0.8819 |  0.0960
+3.13 |  0.9091 |  0.0955
+3.14 |  0.9347 |  0.0945
+3.15 |  0.9568 |  0.0872
+3.17 |  0.9738 |  0.0692
+3.20 |  0.9869 |  0.0502
+3.21 |  0.9974 |  0.0378
+3.22 |  1.0030 |  0.0267
+3.23 |  1.0025 |  0.0072
+3.23 |  1.0000 |  0.0000
 
 Control trajectory (first 10 and last 10 time steps):
 Time | u
 ---------------
 0.00 | -0.0000
-0.87 |  0.0016
-1.74 |  0.0033
-2.61 |  0.0050
-3.47 |  0.0066
-4.32 |  0.0082
-5.17 |  0.0095
-6.02 |  0.0103
-6.87 |  0.0103
-7.72 |  0.0095
-21.45 |  1.1556
-21.63 |  0.8774
-21.86 | 52.8353
-21.87 |  1.6678
-22.05 |  3.1599
-22.22 |  2.6436
-22.58 |  3.1747
-23.67 |  1.9141
-25.00 |  0.1140
-25.56 | -0.0000</code></pre><h2 id="Key-Takeaways"><a class="docs-heading-anchor" href="#Key-Takeaways">Key Takeaways</a><a id="Key-Takeaways-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Takeaways" title="Permalink"></a></h2><ol><li><strong>Linear interpolation</strong> provides a good initial guess for smooth problems</li><li><strong>BilinearIntegrator</strong> handles control-linear dynamics exactly</li><li><strong>Boundary conditions</strong> (initial/final) are enforced as hard constraints</li><li><strong>Control effort minimization</strong> produces smooth, efficient controls</li><li>The solver finds a solution that <strong>satisfies dynamics</strong> and <strong>reaches the goal</strong></li></ol><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><p>Try modifying the problem:</p><h3 id="Exercise-1:-Change-the-goal"><a class="docs-heading-anchor" href="#Exercise-1:-Change-the-goal">Exercise 1: Change the goal</a><a id="Exercise-1:-Change-the-goal-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-1:-Change-the-goal" title="Permalink"></a></h3><p>Try reaching <code>x_goal = [0.5, 0.5]</code> instead</p><h3 id="Exercise-2:-Add-control-bounds"><a class="docs-heading-anchor" href="#Exercise-2:-Add-control-bounds">Exercise 2: Add control bounds</a><a id="Exercise-2:-Add-control-bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-2:-Add-control-bounds" title="Permalink"></a></h3><p>Limit the control: <code>-1.0 ≤ u ≤ 1.0</code></p><pre><code class="language-julia hljs">traj_bounded = NamedTrajectory(
+0.33 |  0.0079
+0.54 |  0.0126
+0.72 |  0.0146
+0.89 |  0.0150
+1.04 |  0.0152
+1.18 |  0.0162
+1.30 |  0.0189
+1.40 |  0.0238
+1.50 |  0.0312
+3.13 |  0.2877
+3.13 |  0.2815
+3.14 |  0.2732
+3.15 |  0.2527
+3.17 |  0.2025
+3.20 |  0.0972
+3.21 | -0.0620
+3.22 | -0.1846
+3.23 | -0.0590
+3.23 | -0.0000</code></pre><h2 id="Key-Takeaways"><a class="docs-heading-anchor" href="#Key-Takeaways">Key Takeaways</a><a id="Key-Takeaways-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Takeaways" title="Permalink"></a></h2><ol><li><strong>Linear interpolation</strong> provides a good initial guess for smooth problems</li><li><strong>BilinearIntegrator</strong> handles control-linear dynamics exactly</li><li><strong>Boundary conditions</strong> (initial/final) are enforced as hard constraints</li><li><strong>Control effort minimization</strong> produces smooth, efficient controls</li><li>The solver finds a solution that <strong>satisfies dynamics</strong> and <strong>reaches the goal</strong></li></ol><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><p>Try modifying the problem:</p><h3 id="Exercise-1:-Change-the-goal"><a class="docs-heading-anchor" href="#Exercise-1:-Change-the-goal">Exercise 1: Change the goal</a><a id="Exercise-1:-Change-the-goal-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-1:-Change-the-goal" title="Permalink"></a></h3><p>Try reaching <code>x_goal = [0.5, 0.5]</code> instead</p><h3 id="Exercise-2:-Add-control-bounds"><a class="docs-heading-anchor" href="#Exercise-2:-Add-control-bounds">Exercise 2: Add control bounds</a><a id="Exercise-2:-Add-control-bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-2:-Add-control-bounds" title="Permalink"></a></h3><p>Limit the control: <code>-1.0 ≤ u ≤ 1.0</code></p><pre><code class="language-julia hljs">traj_bounded = NamedTrajectory(
     (x = x_guess, u = u_guess, Δt = fill(Δt, N));
     timestep=:Δt,
     controls=:u,
@@ -239,4 +223,4 @@ Time | u
     initial=(x = x_init,)  # No final constraint
 )
 obj_soft = QuadraticRegularizer(:u, traj_soft, 1.0) +
-           TerminalObjective(x -&gt; 100.0 * norm(x - x_goal)^2, :x, traj_soft)</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Bilinear Control Tutorial</strong>: Multiple drives and bounds</li><li><strong>Minimum Time Tutorial</strong>: Optimize trajectory duration</li><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../concepts/constraints/">« Constraints</a><a class="docs-footer-nextpage" href="../bilinear_control/">Bilinear Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 25 February 2026 17:42">Wednesday 25 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+           TerminalObjective(x -&gt; 100.0 * norm(x - x_goal)^2, :x, traj_soft)</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Bilinear Control Tutorial</strong>: Multiple drives and bounds</li><li><strong>Minimum Time Tutorial</strong>: Optimize trajectory duration</li><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../concepts/constraints/">« Constraints</a><a class="docs-footer-nextpage" href="../bilinear_control/">Bilinear Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 26 February 2026 17:12">Thursday 26 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
