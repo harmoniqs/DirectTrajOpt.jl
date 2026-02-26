@@ -14,11 +14,9 @@ export solve!
     solve!(
         prob::DirectTrajOptProblem;
         options::IpoptOptions=IpoptOptions(),
-        max_iter::Int=options.max_iter,
         verbose::Bool=true,
-        linear_solver::String=options.linear_solver,
-        print_level::Int=options.print_level,
-        callback=nothing
+        callback=nothing,
+        kwargs...
     )
 
 Solve a direct trajectory optimization problem using Ipopt.
@@ -26,33 +24,50 @@ Solve a direct trajectory optimization problem using Ipopt.
 # Arguments
 - `prob::DirectTrajOptProblem`: The trajectory optimization problem to solve.
 - `options::IpoptOptions`: Ipopt solver options. Default is `IpoptOptions()`.
-- `max_iter::Int`: Maximum number of iterations for the optimization solver.
 - `verbose::Bool`: If `true`, print solver progress information.
-- `linear_solver::String`: Linear solver to use (e.g., "mumps", "pardiso", "ma27", "ma57", "ma77", "ma86", "ma97").
-- `print_level::Int`: Ipopt print level (0-12). Higher values provide more detailed output.
 - `callback::Function`: Optional callback function to execute during optimization.
+- `kwargs...`: Any field of `IpoptOptions` can be passed as a keyword argument. These
+  override the corresponding field in `options`. See `IpoptOptions` for valid fields.
+
+# Common keyword arguments
+- `max_iter::Int`: Maximum solver iterations (default: 1000)
+- `tol::Float64`: Convergence tolerance (default: 1e-8)
+- `eval_hessian::Bool`: Use exact Hessians, or L-BFGS if false (default: true)
+- `linear_solver::String`: Linear solver backend, e.g. `"mumps"`, `"pardiso"` (default: `"mumps"`)
+- `print_level::Int`: Ipopt output verbosity 0–12 (default: 5)
+- `mu_strategy::String`: Barrier parameter strategy (default: `"adaptive"`)
 
 # Returns
 - `nothing`: The problem's trajectory is updated in place with the optimized solution.
 
-# Example
+# Examples
 ```julia
-prob = DirectTrajOptProblem(trajectory, objective, dynamics)
+# Simple usage
 solve!(prob; max_iter=100, verbose=true)
+
+# Override multiple Ipopt options
+solve!(prob; max_iter=200, tol=1e-6, eval_hessian=false)
+
+# Pass an options struct and override specific fields
+solve!(prob; options=IpoptOptions(tol=1e-4), max_iter=500)
 ```
 """
 function DTO.Solvers.solve!(
     prob::DirectTrajOptProblem;
     options::IpoptOptions = IpoptOptions(),
-    max_iter::Int = options.max_iter,
     verbose::Bool = true,
-    linear_solver::String = options.linear_solver,
-    print_level::Int = options.print_level,
     callback = nothing,
+    kwargs...,
 )
-    options.max_iter = max_iter
-    options.linear_solver = linear_solver
-    options.print_level = print_level
+    # Apply kwargs to matching IpoptOptions fields
+    ipopt_fields = fieldnames(IpoptOptions)
+    for (k, v) in kwargs
+        if k in ipopt_fields
+            setfield!(options, k, v)
+        else
+            @warn "Unknown solver option: $k. Valid options: $(ipopt_fields)"
+        end
+    end
 
     optimizer, variables =
         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
@@ -391,4 +406,117 @@ end
 
     # Verify global variable is within constraint
     @test norm(traj.global_data[traj.global_components[:g]]) <= 0.5 + 1e-6
+end
+
+# ============================================================================= #
+# Tests for solve! kwargs interface
+# ============================================================================= #
+
+@testitem "solve! kwargs applied to IpoptOptions" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    # Multiple kwargs: max_iter and tol
+    solve!(prob; max_iter = 10, tol = 1e-4)
+end
+
+@testitem "solve! kwargs override options struct" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    # options struct says max_iter=10, kwarg overrides to 50
+    solve!(prob; options = IpoptOptions(max_iter = 10), max_iter = 50)
+end
+
+@testitem "solve! warns on unknown kwargs" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    # Unknown kwarg should produce a warning
+    @test_logs (:warn, r"Unknown solver option: bad_opt") solve!(
+        prob;
+        max_iter = 10,
+        bad_opt = 42,
+    )
+end
+
+@testitem "solve! eval_hessian as kwarg" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    # eval_hessian=false triggers L-BFGS approximation
+    solve!(prob; max_iter = 10, eval_hessian = false)
+end
+
+@testitem "solve! with previously buried Ipopt option" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    # mu_strategy was previously only accessible via IpoptOptions struct
+    solve!(prob; mu_strategy = "monotone", max_iter = 10)
 end

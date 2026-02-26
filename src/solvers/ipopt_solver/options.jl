@@ -6,6 +6,11 @@ export IpoptOptions
 Configuration options for the Ipopt nonlinear solver. All fields map directly to
 [Ipopt options](https://coin-or.github.io/Ipopt/OPTIONS.html).
 
+Any field can also be passed directly as a keyword argument to `solve!`:
+```julia
+solve!(prob; max_iter=200, tol=1e-6, eval_hessian=false)
+```
+
 # Commonly used fields
 - `tol::Float64 = 1e-8`: Overall NLP convergence tolerance
 - `max_iter::Int = 1_000`: Maximum number of solver iterations
@@ -17,8 +22,12 @@ Configuration options for the Ipopt nonlinear solver. All fields map directly to
 
 # Example
 ```julia
+# Pass as struct
 opts = IpoptOptions(max_iter=200, tol=1e-6, print_level=0)
 solve!(prob; options=opts)
+
+# Or pass fields directly as kwargs to solve!
+solve!(prob; max_iter=200, tol=1e-6, print_level=0)
 ```
 """
 Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
