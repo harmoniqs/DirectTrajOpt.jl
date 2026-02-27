@@ -58,27 +58,27 @@ prob</code></pre><pre class="documenter-example-output"><code class="nohighlight
     BoundsConstraint: &quot;bounds on Δt&quot;</code></pre><pre><code class="language-julia hljs">solve!(prob; max_iter = 50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">    initializing optimizer...
       building evaluator: 1 integrators, 0 nonlinear constraints
       dynamics constraints: 147, nonlinear constraints: 0
-        integrator 1 jacobian structure: 0.932s
-      jacobian structure: 1764 nonzeros (0.953s)
-        integrator 1 hessian structure: 0.018s
+        integrator 1 jacobian structure: 0.368s
+      jacobian structure: 1764 nonzeros (0.389s)
+        integrator 1 hessian structure: 0.019s
         computing objective hessian structure (CompositeObjective)...
-          sub-objective 1 (QuadraticRegularizer): 0.356s
+          sub-objective 1 (QuadraticRegularizer): 0.368s
           sub-objective 2 (MinimumTimeObjective): 0.006s
-        objective hessian structure: 0.416s
-      hessian structure: 2814 nonzeros (0.433s)
+        objective hessian structure: 0.43s
+      hessian structure: 2814 nonzeros (0.449s)
       linear index maps built (0.004s)
-      evaluator ready (total: 1.525s)
-    evaluator created (2.075s)
+      evaluator ready (total: 0.982s)
+    evaluator created (1.535s)
     NL constraint bounds extracted (0.024s)
     NLP block data built (0.0s)
     Ipopt optimizer configured (0.008s)
-    variables set (0.134s)
+    variables set (0.137s)
         applying constraint: initial value of x
         applying constraint: final value of x
         applying constraint: bounds on u
         applying constraint: bounds on Δt
-    linear constraints added: 4 (0.465s)
-    optimizer initialization complete (total: 2.706s)
+    linear constraints added: 4 (0.475s)
+    optimizer initialization complete (total: 2.181s)
 
 ******************************************************************************
 This program contains Ipopt, a library for large-scale nonlinear optimization.
@@ -103,74 +103,73 @@ Total number of inequality constraints...............:        0
         inequality constraints with only upper bounds:        0
 
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-   0  3.6869188e+00 1.48e-01 8.84e-02   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
-   1  3.0823134e+00 1.30e-01 1.01e+00  -1.3 3.42e+00    -  1.67e-01 1.25e-01h  1
-   2  2.7250264e+00 8.63e-02 2.49e+00  -0.8 1.37e+00    -  4.49e-01 3.37e-01h  1
-   3  2.5554096e+00 7.70e-02 7.94e+00  -0.5 2.14e+00   0.0 4.91e-01 1.07e-01h  1
-   4  2.6103719e+00 6.94e-02 1.79e+01  -0.1 3.78e+00    -  6.04e-01 1.18e-01h  1
-   5  2.4776790e+00 5.73e-02 2.00e+01  -2.3 2.24e+00    -  2.78e-01 2.45e-01h  1
-   6  2.4423973e+00 5.27e-02 1.90e+01  -2.5 2.78e+00   1.3 5.72e-02 8.33e-02h  1
-   7  2.4826778e+00 5.14e-02 3.77e+02   0.6 8.50e+00   1.8 2.95e-01 2.39e-02f  1
-   8  2.7261784e+00 5.00e-02 4.54e+02   1.6 1.56e+01   1.3 8.21e-01 4.31e-02f  1
-   9  3.3667538e+00 4.63e-02 3.31e+02   1.4 3.25e+00    -  5.04e-01 2.45e-01f  1
+   0  3.6871245e+00 1.49e-01 1.09e-01   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  2.8971446e+00 1.32e-01 6.55e-01  -4.0 1.38e+00    -  1.43e-01 1.11e-01f  1
+   2  2.4667050e+00 1.19e-01 4.02e+00  -1.9 2.48e+00    -  2.93e-01 1.08e-01h  1
+   3  2.3030469e+00 1.14e-01 8.40e+00  -0.6 3.19e+00   0.0 6.22e-01 1.23e-01h  1
+   4  2.2931620e+00 1.01e-01 1.96e+01  -0.2 1.97e+00    -  7.28e-01 1.17e-01f  1
+   5  2.5857706e+00 7.56e-02 6.26e+01  -0.0 3.35e+00    -  9.02e-01 3.06e-01h  1
+   6  2.4751696e+00 6.88e-02 8.02e+02   0.9 3.75e+00   1.3 6.40e-01 9.73e-02h  1
+   7  2.5407938e+00 6.40e-02 5.01e+03   1.3 9.05e+00   1.8 1.00e+00 6.69e-02h  1
+   8  2.8895214e+00 6.15e-02 2.76e+03   1.9 6.43e+00    -  3.30e-01 1.38e-01f  1
+   9  3.2385488e+00 1.23e-01 4.95e+02   1.4 2.80e+00    -  7.84e-01 5.66e-01f  1
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  10  3.4049573e+00 9.07e-02 2.92e+02  -0.7 6.81e-01   1.7 3.36e-01 5.55e-01h  1
-  11  3.7238208e+00 5.40e-02 7.84e+01   1.0 7.29e-01    -  7.05e-01 5.61e-01f  1
-  12  3.7860463e+00 1.09e-02 1.11e+01  -0.1 2.13e-01    -  9.18e-01 1.00e+00f  1
-  13  3.7735762e+00 9.72e-04 4.34e-01  -1.5 5.48e-02    -  9.80e-01 1.00e+00h  1
-  14  3.2634695e+00 5.34e-02 6.96e-02  -1.6 5.44e-01    -  1.00e+00 1.00e+00f  1
-  15  2.9927115e+00 1.14e-01 5.05e-01  -4.0 4.51e+00    -  2.29e-01 2.40e-01h  1
-  16  2.8324203e+00 8.28e-02 3.67e-01  -1.8 1.15e+00    -  8.73e-01 7.66e-01h  1
-  17  2.6860963e+00 3.31e-02 1.16e-01  -2.1 5.36e-01    -  9.80e-01 1.00e+00h  1
-  18  2.5417595e+00 1.02e-02 6.28e-02  -2.4 4.46e-01    -  1.00e+00 8.46e-01h  1
-  19  2.5099790e+00 6.52e-04 6.01e-01  -3.1 3.47e-02   1.2 9.85e-01 1.00e+00h  1
+  10  3.1639931e+00 5.08e-03 4.39e+01   0.0 1.87e-01   1.3 9.07e-01 1.00e+00f  1
+  11  3.1560759e+00 1.00e-05 7.15e-01  -1.6 8.93e-03   0.8 9.86e-01 1.00e+00h  1
+  12  3.1921409e+00 3.45e-02 1.49e-01  -1.4 5.32e-01    -  9.49e-01 1.00e+00f  1
+  13  3.1622274e+00 4.97e-02 3.06e-01  -1.5 1.37e+00    -  1.00e+00 1.00e+00h  1
+  14  2.7485423e+00 1.30e-02 8.74e-02  -2.2 2.65e-01    -  8.84e-01 1.00e+00h  1
+  15  2.7667933e+00 2.50e-04 7.60e-02  -2.9 3.52e-02   0.3 9.85e-01 1.00e+00h  1
+  16  2.7005930e+00 4.64e-04 4.81e-02  -4.0 6.84e-02  -0.2 1.00e+00 1.00e+00h  1
+  17  2.6155025e+00 7.78e-04 3.69e-02  -4.0 1.41e-01  -0.6 1.00e+00 6.21e-01h  1
+  18  2.5895826e+00 3.43e-04 3.23e-02  -4.0 5.12e-02  -0.2 1.00e+00 6.66e-01h  1
+  19  2.5546751e+00 3.39e-04 2.62e-02  -4.0 1.20e-01  -0.7 1.00e+00 3.56e-01h  1
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  20  2.5049718e+00 5.91e-06 5.01e-02  -4.0 8.92e-03   0.7 1.00e+00 1.00e+00h  1
-  21  2.4917500e+00 4.50e-05 4.87e-02  -4.0 2.60e-02   0.3 1.00e+00 1.00e+00f  1
-  22  2.4721223e+00 1.04e-04 4.11e-02  -4.0 6.25e-02  -0.2 1.00e+00 5.65e-01h  1
-  23  2.4549641e+00 1.20e-04 2.64e-02  -4.0 1.17e-01  -0.7 1.00e+00 2.36e-01h  1
-  24  2.4204653e+00 2.03e-04 1.72e-02  -4.0 2.31e-01  -1.2 1.00e+00 2.59e-01f  1
-  25  2.4004449e+00 1.87e-04 1.46e-02  -4.0 8.10e-02  -0.7 1.00e+00 4.96e-01h  1
-  26  2.3713471e+00 3.41e-04 1.25e-02  -4.0 1.81e-01  -1.2 1.00e+00 3.73e-01h  1
-  27  2.3404723e+00 1.71e-03 1.05e-02  -4.0 3.94e-01  -1.7 3.54e-01 2.81e-01h  1
-  28  2.3290844e+00 1.02e-03 8.34e-03  -4.0 1.41e-01  -1.3 1.00e+00 3.92e-01h  1
-  29  2.3159146e+00 1.31e-03 5.96e-03  -3.7 2.89e-01  -1.7 1.00e+00 3.40e-01h  1
+  20  2.5338981e+00 1.76e-04 2.50e-02  -4.0 4.54e-02  -0.3 1.00e+00 6.38e-01h  1
+  21  2.5090711e+00 2.34e-04 2.16e-02  -4.0 1.10e-01  -0.7 1.00e+00 3.42e-01h  1
+  22  2.4742592e+00 3.64e-04 1.97e-02  -4.0 2.85e-01  -1.2 9.98e-01 2.46e-01h  1
+  23  2.4364282e+00 3.17e-04 1.58e-02  -4.0 9.84e-02  -0.8 1.00e+00 7.50e-01h  1
+  24  2.4005083e+00 6.91e-04 1.37e-02  -4.0 2.44e-01  -1.3 1.00e+00 3.82e-01h  1
+  25  2.3844305e+00 3.16e-04 1.21e-02  -4.0 7.58e-02  -0.8 1.00e+00 5.84e-01h  1
+  26  2.3644611e+00 5.20e-04 1.03e-02  -4.0 1.95e-01  -1.3 1.00e+00 3.96e-01h  1
+  27  2.3443155e+00 1.39e-03 8.67e-03  -3.7 4.33e-01  -1.8 1.00e+00 2.61e-01h  1
+  28  2.3246601e+00 1.22e-03 6.69e-03  -4.0 1.51e-01  -1.4 1.00e+00 7.12e-01h  1
+  29  2.3128175e+00 1.65e-03 5.12e-03  -3.7 3.20e-01  -1.8 1.00e+00 3.38e-01h  1
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  30  2.3085010e+00 3.12e-02 2.51e-02  -3.3 7.77e-01  -2.2 1.00e+00 3.85e-01h  1
-  31  2.3520715e+00 3.86e-02 1.74e-01  -1.9 7.02e+00  -2.7 3.16e-01 5.00e-02f  1
-  32  2.4314361e+00 3.24e-02 1.96e-01  -2.5 3.09e+00    -  8.07e-01 6.11e-01h  1
-  33  2.4532644e+00 2.05e-02 5.17e-02  -2.5 6.47e-01    -  1.00e+00 1.00e+00h  1
-  34  2.4405884e+00 5.81e-03 7.17e-02  -2.5 1.54e+00    -  1.00e+00 7.63e-01H  1
-  35  2.4496638e+00 1.58e-03 1.32e-02  -2.5 2.22e-01    -  1.00e+00 1.00e+00h  1
-  36  2.3096151e+00 3.39e-03 9.95e-03  -3.7 2.95e-01    -  8.49e-01 1.00e+00h  1
-  37  2.2947246e+00 3.53e-03 3.85e-03  -3.5 2.46e-01  -3.2 9.67e-01 1.00e+00h  1
-  38  2.3103693e+00 2.83e-02 3.41e-02  -2.9 2.28e+00    -  2.39e-01 2.19e-01h  1
-  39  2.2985800e+00 1.30e-02 1.92e-02  -3.3 2.22e-01    -  1.00e+00 1.00e+00h  1
+  30  2.3621589e+00 1.47e-02 7.09e-02  -1.7 1.03e+01  -2.3 1.35e-01 3.87e-02f  1
+  31  2.3631795e+00 1.85e-02 9.03e-02  -2.7 1.82e+00  -2.8 1.00e+00 1.00e+00H  1
+  32  2.3551196e+00 8.54e-02 3.06e-02  -2.7 2.07e+00    -  1.00e+00 1.00e+00H  1
+  33  2.3888419e+00 2.37e-02 5.56e-02  -2.7 5.98e-01    -  1.00e+00 1.00e+00h  1
+  34  2.3847692e+00 3.00e-03 2.24e-03  -2.7 1.16e-01    -  1.00e+00 1.00e+00h  1
+  35  2.2890020e+00 2.88e-03 1.01e-02  -4.1 3.11e-01    -  8.21e-01 1.00e+00h  1
+  36  2.2866745e+00 7.87e-03 3.61e-03  -3.6 2.20e-01    -  1.00e+00 8.54e-01h  1
+  37  2.2907331e+00 2.34e-02 2.79e-02  -3.4 1.26e+00  -3.3 2.74e-01 3.40e-01h  1
+  38  2.2841175e+00 6.13e-03 7.42e-03  -3.6 1.72e-01    -  1.00e+00 1.00e+00h  1
+  39  2.2765118e+00 3.65e-03 2.64e-03  -4.0 1.87e-01    -  1.00e+00 9.30e-01h  1
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-  40  2.2768626e+00 2.32e-03 1.49e-03  -3.9 1.64e-01    -  9.92e-01 1.00e+00h  1
-  41  2.2751184e+00 2.57e-04 1.68e-04  -4.0 7.30e-02    -  1.00e+00 1.00e+00h  1
-  42  2.2751276e+00 1.01e-05 4.35e-06  -4.0 1.09e-02    -  1.00e+00 1.00e+00h  1
-  43  2.2751282e+00 2.34e-09 9.14e-10  -4.0 2.03e-04    -  1.00e+00 1.00e+00h  1
+  40  2.2751372e+00 1.39e-04 1.94e-04  -4.0 4.07e-02    -  1.00e+00 1.00e+00h  1
+  41  2.2751280e+00 3.39e-06 2.09e-06  -4.0 3.01e-03    -  1.00e+00 1.00e+00h  1
+  42  2.2751282e+00 2.40e-10 2.38e-10  -4.0 4.13e-05    -  1.00e+00 1.00e+00h  1
 
-Number of Iterations....: 43
+Number of Iterations....: 42
 
                                    (scaled)                 (unscaled)
-Objective...............:   2.2751281983408083e+00    2.2751281983408083e+00
-Dual infeasibility......:   9.1351774853410533e-10    9.1351774853410533e-10
-Constraint violation....:   2.3378035063359448e-09    2.3378035063359448e-09
+Objective...............:   2.2751281985234959e+00    2.2751281985234959e+00
+Dual infeasibility......:   2.3843420472605473e-10    2.3843420472605473e-10
+Constraint violation....:   2.4035240464570506e-10    2.4035240464570506e-10
 Variable bound violation:   0.0000000000000000e+00    0.0000000000000000e+00
-Complementarity.........:   1.0000006945609722e-04    1.0000006945609722e-04
-Overall NLP error.......:   2.3378035063359448e-09    2.3378035063359448e-09
+Complementarity.........:   1.0000000008156546e-04    1.0000000008156546e-04
+Overall NLP error.......:   2.4035240464570506e-10    2.4035240464570506e-10
 
 
 Number of objective function evaluations             = 47
-Number of objective gradient evaluations             = 44
+Number of objective gradient evaluations             = 43
 Number of equality constraint evaluations            = 47
 Number of inequality constraint evaluations          = 0
-Number of equality constraint Jacobian evaluations   = 44
+Number of equality constraint Jacobian evaluations   = 43
 Number of inequality constraint Jacobian evaluations = 0
-Number of Lagrangian Hessian evaluations             = 43
-Total seconds in IPOPT                               = 11.972
+Number of Lagrangian Hessian evaluations             = 42
+Total seconds in IPOPT                               = 12.054
 
 EXIT: Optimal Solution Found.</code></pre><h2 id="Visualize-Solution"><a class="docs-heading-anchor" href="#Visualize-Solution">Visualize Solution</a><a id="Visualize-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize-Solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">plot(prob.trajectory) # See NamedTrajectories.jl documentation for plotting options</code></pre><img src="2c12c684.png" alt="Example block output"/><h2 id="Analyze-Solution"><a class="docs-heading-anchor" href="#Analyze-Solution">Analyze Solution</a><a id="Analyze-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Analyze-Solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">x_sol = prob.trajectory.x
 u_sol = prob.trajectory.u
@@ -182,12 +181,12 @@ println(&quot;  Δt range: [$(minimum(Δt_sol)), $(maximum(Δt_sol))]&quot;)
 println(&quot;  Max |u₁|: $(maximum(abs.(u_sol[1,:])))&quot;)
 println(&quot;  Max |u₂|: $(maximum(abs.(u_sol[2,:])))&quot;)
 println(&quot;  Final error: $(norm(x_sol[:,end] - x_goal))&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Solution found!
-  Total time: 4.247067569991621 seconds
-  Δt range: [0.07224452789755871, 0.175]
-  Max |u₁|: 0.9966535060809151
-  Max |u₂|: 0.9978914181522281
+  Total time: 4.247067567230817 seconds
+  Δt range: [0.07224452790075836, 0.175]
+  Max |u₁|: 0.996653506085813
+  Max |u₂|: 0.9978914181667909
   Final error: 0.0</code></pre><h2 id="Key-Insights"><a class="docs-heading-anchor" href="#Key-Insights">Key Insights</a><a id="Key-Insights-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Insights" title="Permalink"></a></h2><p><strong>Free time optimization</strong>: Variable Δt allows the optimizer to adjust trajectory speed, with shorter steps where control is needed and longer steps in smooth regions.</p><p><strong>Control bounds</strong>: With time weight 0.5, controls don&#39;t fully saturate. Increase the weight to push toward bang-bang control.</p><p><strong>Combined objectives</strong>: The <code>+</code> operator makes it easy to balance multiple goals.</p><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><p><strong>1. Bang-bang control:</strong> Set time weight to 5.0 - do controls saturate the bounds?</p><p><strong>2. Fixed time:</strong> Remove <code>Δt</code> from controls and compare total time.</p><p><strong>3. Add waypoint:</strong> Require passing through <code>[0.5, 0, 0.5]</code> at the midpoint:</p><pre><code class="language-julia hljs">constraint = NonlinearKnotPointConstraint(
     x -&gt; x - [0.5, 0, 0.5], :x, traj;
     times=[div(N,2)], equality=true
 )
-prob = DirectTrajOptProblem(traj, obj, integrator; constraints=[constraint])</code></pre><p><strong>4. Different goal:</strong> Try reaching <code>[0, 1, 0]</code> or <code>[0.5, 0.5, 0.5]</code></p><p><strong>5. Tighter bounds:</strong> Use <code>bounds=(u = 0.5, Δt = (0.05, 0.3))</code> - how does time change?</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quickstart/">« Quickstart</a><a class="docs-footer-nextpage" href="../concepts/problem_formulation/">Problem Formulation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 26 February 2026 17:12">Thursday 26 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+prob = DirectTrajOptProblem(traj, obj, integrator; constraints=[constraint])</code></pre><p><strong>4. Different goal:</strong> Try reaching <code>[0, 1, 0]</code> or <code>[0.5, 0.5, 0.5]</code></p><p><strong>5. Tighter bounds:</strong> Use <code>bounds=(u = 0.5, Δt = (0.05, 0.3))</code> - how does time change?</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quickstart/">« Quickstart</a><a class="docs-footer-nextpage" href="../concepts/problem_formulation/">Problem Formulation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 27 February 2026 20:17">Friday 27 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
