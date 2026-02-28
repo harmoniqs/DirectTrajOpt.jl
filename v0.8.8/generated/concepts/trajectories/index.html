@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Trajectories · DirectTrajOpt.jl</title><meta name="title" content="Trajectories · DirectTrajOpt.jl"/><meta property="og:title" content="Trajectories · DirectTrajOpt.jl"/><meta property="twitter:title" content="Trajectories · DirectTrajOpt.jl"/><meta name="description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:description" content="Documentation for DirectTrajOpt.jl."/><meta property="twitter:description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/concepts/trajectories/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/concepts/trajectories/"/><link rel="canonical" href="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/concepts/trajectories/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.svg" alt="DirectTrajOpt.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">DirectTrajOpt.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><span class="tocitem">Getting Started</span><ul><li><a class="tocitem" href="../../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../example/">Complete Example</a></li></ul></li><li><span class="tocitem">Core Concepts</span><ul><li><a class="tocitem" href="../problem_formulation/">Problem Formulation</a></li><li class="is-active"><a class="tocitem" href>Trajectories</a><ul class="internal"><li><a class="tocitem" href="#What-is-a-NamedTrajectory?"><span>What is a NamedTrajectory?</span></a></li><li><a class="tocitem" href="#Basic-Construction"><span>Basic Construction</span></a></li><li><a class="tocitem" href="#Trajectory-Components"><span>Trajectory Components</span></a></li><li><a class="tocitem" href="#Boundary-Conditions"><span>Boundary Conditions</span></a></li><li><a class="tocitem" href="#Bounds-on-Variables"><span>Bounds on Variables</span></a></li><li><a class="tocitem" href="#Accessing-Trajectory-Data"><span>Accessing Trajectory Data</span></a></li><li><a class="tocitem" href="#Building-Trajectories-for-Optimization"><span>Building Trajectories for Optimization</span></a></li><li><a class="tocitem" href="#Common-Patterns"><span>Common Patterns</span></a></li><li><a class="tocitem" href="#Summary"><span>Summary</span></a></li><li><a class="tocitem" href="#Next-Steps"><span>Next Steps</span></a></li></ul></li><li><a class="tocitem" href="../integrators/">Integrators</a></li><li><a class="tocitem" href="../objectives/">Objectives</a></li><li><a class="tocitem" href="../constraints/">Constraints</a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../../tutorials/linear_system/">Linear System</a></li><li><a class="tocitem" href="../../tutorials/bilinear_control/">Bilinear Control</a></li><li><a class="tocitem" href="../../tutorials/minimum_time/">Minimum Time</a></li></ul></li><li><a class="tocitem" href="../../../lib/">Library</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Core Concepts</a></li><li class="is-active"><a href>Trajectories</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Trajectories</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl/blob/main/docs/literate/concepts/trajectories.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Trajectories"><a class="docs-heading-anchor" href="#Trajectories">Trajectories</a><a id="Trajectories-1"></a><a class="docs-heading-anchor-permalink" href="#Trajectories" title="Permalink"></a></h1><h2 id="What-is-a-NamedTrajectory?"><a class="docs-heading-anchor" href="#What-is-a-NamedTrajectory?">What is a NamedTrajectory?</a><a id="What-is-a-NamedTrajectory?-1"></a><a class="docs-heading-anchor-permalink" href="#What-is-a-NamedTrajectory?" title="Permalink"></a></h2><p>A <code>NamedTrajectory</code> is the central data structure in DirectTrajOpt.jl. It stores:</p><ul><li><strong>States</strong> and <strong>controls</strong> over time</li><li><strong>Time step</strong> information (fixed or variable)</li><li><strong>Boundary conditions</strong> (initial, final, goal)</li><li><strong>Bounds</strong> on variables</li><li><strong>Metadata</strong> about which variables are controls, timesteps, etc.</li></ul><pre><code class="language-julia hljs">using DirectTrajOpt
+using NamedTrajectories</code></pre><h2 id="Basic-Construction"><a class="docs-heading-anchor" href="#Basic-Construction">Basic Construction</a><a id="Basic-Construction-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Construction" title="Permalink"></a></h2><h3 id="Minimal-Example"><a class="docs-heading-anchor" href="#Minimal-Example">Minimal Example</a><a id="Minimal-Example-1"></a><a class="docs-heading-anchor-permalink" href="#Minimal-Example" title="Permalink"></a></h3><pre><code class="language-julia hljs">N = 10  # number of time steps</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10</code></pre><p>Specify component data as a NamedTuple:</p><pre><code class="language-julia hljs">data = (
+    x = randn(2, N),    # 2D state
+    u = randn(1, N),    # 1D control
+    Δt = fill(0.1, N),   # time step
+)
+
+traj = NamedTrajectory(
+    data;
+    timestep = :Δt,   # which variable represents time
+    controls = :u,     # which variable(s) are controls
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><p>Access components:</p><pre><code class="language-julia hljs">println(&quot;State at time 1: &quot;, traj.x[:, 1])
+println(&quot;Control at time 5: &quot;, traj.u[:, 5])
+println(&quot;Total time: &quot;, sum(traj.Δt))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">State at time 1: [-2.230515994829089, 2.2104424227699853]
+Control at time 5: [0.23208942719475464]
+Total time: 0.9999999999999999</code></pre><h2 id="Trajectory-Components"><a class="docs-heading-anchor" href="#Trajectory-Components">Trajectory Components</a><a id="Trajectory-Components-1"></a><a class="docs-heading-anchor-permalink" href="#Trajectory-Components" title="Permalink"></a></h2><h3 id="States"><a class="docs-heading-anchor" href="#States">States</a><a id="States-1"></a><a class="docs-heading-anchor-permalink" href="#States" title="Permalink"></a></h3><p>Variables that represent the system configuration. Can be multiple state vectors:</p><pre><code class="language-julia hljs">traj_multi = NamedTrajectory(
+    (
+        position = randn(3, N),  # 3D position
+        velocity = randn(3, N),  # 3D velocity
+        u = randn(2, N),
+        Δt = fill(0.1, N),
+    );
+    timestep = :Δt,
+    controls = :u,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (position = 1:3, velocity = 4:6, u = 7:8, → Δt = 9:9)</code></pre><h3 id="Controls"><a class="docs-heading-anchor" href="#Controls">Controls</a><a id="Controls-1"></a><a class="docs-heading-anchor-permalink" href="#Controls" title="Permalink"></a></h3><p>Variables that you can actuate. Can specify multiple control variables:</p><pre><code class="language-julia hljs">traj_multi_control = NamedTrajectory(
+    (x = randn(2, N), u1 = randn(1, N), u2 = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = (:u1, :u2),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u1 = 3:3, u2 = 4:4, → Δt = 5:5)</code></pre><h3 id="Time-Steps"><a class="docs-heading-anchor" href="#Time-Steps">Time Steps</a><a id="Time-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Steps" title="Permalink"></a></h3><p><strong>Fixed time</strong>: All time steps equal (constant Δt)</p><pre><code class="language-julia hljs">traj_fixed_time = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,  # symbol pointing to timestep component
+    controls = :u,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><p><strong>Free time</strong>: Each time step is a decision variable (with bounds)</p><pre><code class="language-julia hljs">traj_free_time = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = (:u, :Δt),  # Include Δt in controls for optimization
+    bounds = (Δt = (0.01, 0.5),),  # Set bounds on time steps
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h2 id="Boundary-Conditions"><a class="docs-heading-anchor" href="#Boundary-Conditions">Boundary Conditions</a><a id="Boundary-Conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Boundary-Conditions" title="Permalink"></a></h2><h3 id="Initial-Conditions"><a class="docs-heading-anchor" href="#Initial-Conditions">Initial Conditions</a><a id="Initial-Conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Initial-Conditions" title="Permalink"></a></h3><p>Fix the starting state:</p><pre><code class="language-julia hljs">traj_initial = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),  # x₁ = [0, 0]
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><p>Can also fix initial controls:</p><pre><code class="language-julia hljs">traj_initial_u = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0], u = [0.0]),  # x₁ = [0, 0], u₁ = 0
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h3 id="Final-Conditions"><a class="docs-heading-anchor" href="#Final-Conditions">Final Conditions</a><a id="Final-Conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Final-Conditions" title="Permalink"></a></h3><p>Fix the ending state:</p><pre><code class="language-julia hljs">traj_final = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    final = (x = [1.0, 0.0],),  # xₖ = [1, 0]
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h3 id="Goal-Conditions"><a class="docs-heading-anchor" href="#Goal-Conditions">Goal Conditions</a><a id="Goal-Conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Goal-Conditions" title="Permalink"></a></h3><p>Similar to final, but typically used with terminal cost instead of hard constraint:</p><pre><code class="language-julia hljs">traj_goal = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    goal = (x = [1.0, 0.0],),  # target: xₖ → [1, 0]
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h3 id="Complete-Example"><a class="docs-heading-anchor" href="#Complete-Example">Complete Example</a><a id="Complete-Example-1"></a><a class="docs-heading-anchor-permalink" href="#Complete-Example" title="Permalink"></a></h3><pre><code class="language-julia hljs">traj_complete = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0], u = [0.0]),
+    final = (u = [0.0],),
+    goal = (x = [1.0, 0.0],),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h2 id="Bounds-on-Variables"><a class="docs-heading-anchor" href="#Bounds-on-Variables">Bounds on Variables</a><a id="Bounds-on-Variables-1"></a><a class="docs-heading-anchor-permalink" href="#Bounds-on-Variables" title="Permalink"></a></h2><p>Bounds constrain variables to lie within specified ranges.</p><h3 id="Scalar-Bounds-(Symmetric)"><a class="docs-heading-anchor" href="#Scalar-Bounds-(Symmetric)">Scalar Bounds (Symmetric)</a><a id="Scalar-Bounds-(Symmetric)-1"></a><a class="docs-heading-anchor-permalink" href="#Scalar-Bounds-(Symmetric)" title="Permalink"></a></h3><p>A single number creates symmetric bounds: <code>-bound ≤ var ≤ bound</code></p><pre><code class="language-julia hljs">traj_scalar_bound = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    bounds = (u = 1.0,),  # -1 ≤ u ≤ 1 for all components
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><p>Applies to all components of the variable:</p><pre><code class="language-julia hljs">println(&quot;u bounds: &quot;, traj_scalar_bound.bounds.u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u bounds: ([-1.0], [1.0])</code></pre><p>Output: ([-1.0], [1.0])</p><h3 id="Tuple-Bounds-(Asymmetric)"><a class="docs-heading-anchor" href="#Tuple-Bounds-(Asymmetric)">Tuple Bounds (Asymmetric)</a><a id="Tuple-Bounds-(Asymmetric)-1"></a><a class="docs-heading-anchor-permalink" href="#Tuple-Bounds-(Asymmetric)" title="Permalink"></a></h3><p>A tuple <code>(lower, upper)</code> creates asymmetric bounds:</p><pre><code class="language-julia hljs">traj_tuple_bound = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    bounds = (u = (-2.0, 1.0),),  # -2 ≤ u ≤ 1
+)
+
+println(&quot;u bounds: &quot;, traj_tuple_bound.bounds.u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u bounds: ([-2.0], [1.0])</code></pre><p>Output: ([-2.0], [1.0])</p><h3 id="Vector-Bounds-(Component-wise-Symmetric)"><a class="docs-heading-anchor" href="#Vector-Bounds-(Component-wise-Symmetric)">Vector Bounds (Component-wise Symmetric)</a><a id="Vector-Bounds-(Component-wise-Symmetric)-1"></a><a class="docs-heading-anchor-permalink" href="#Vector-Bounds-(Component-wise-Symmetric)" title="Permalink"></a></h3><p>A vector creates component-specific symmetric bounds:</p><pre><code class="language-julia hljs">traj_vector_bound = NamedTrajectory(
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    bounds = (u = [1.0, 2.0],),  # -1 ≤ u₁ ≤ 1, -2 ≤ u₂ ≤ 2
+)
+
+println(&quot;u bounds: &quot;, traj_vector_bound.bounds.u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u bounds: ([-1.0, -2.0], [1.0, 2.0])</code></pre><p>Output: ([-1.0, -2.0], [1.0, 2.0])</p><h3 id="Tuple-of-Vectors-(Component-wise-Asymmetric)"><a class="docs-heading-anchor" href="#Tuple-of-Vectors-(Component-wise-Asymmetric)">Tuple of Vectors (Component-wise Asymmetric)</a><a id="Tuple-of-Vectors-(Component-wise-Asymmetric)-1"></a><a class="docs-heading-anchor-permalink" href="#Tuple-of-Vectors-(Component-wise-Asymmetric)" title="Permalink"></a></h3><p>The most general form - specify lower and upper for each component:</p><pre><code class="language-julia hljs">traj_full_bound = NamedTrajectory(
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    bounds = (u = ([-2.0, -1.0], [1.0, 3.0]),),  # -2 ≤ u₁ ≤ 1, -1 ≤ u₂ ≤ 3
+)
+
+println(&quot;u bounds: &quot;, traj_full_bound.bounds.u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u bounds: ([-2.0, -1.0], [1.0, 3.0])</code></pre><p>Output: ([-2.0, -1.0], [1.0, 3.0])</p><h3 id="Multiple-Variable-Bounds"><a class="docs-heading-anchor" href="#Multiple-Variable-Bounds">Multiple Variable Bounds</a><a id="Multiple-Variable-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Multiple-Variable-Bounds" title="Permalink"></a></h3><pre><code class="language-julia hljs">traj_multi_bounds = NamedTrajectory(
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    bounds = (
+        x = 5.0,           # -5 ≤ x ≤ 5 (both components)
+        u = [1.0, 2.0],    # component-specific
+        Δt = (0.05, 0.15),  # 0.05 ≤ Δt ≤ 0.15
+    ),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:4, → Δt = 5:5)</code></pre><h3 id="Time-Step-Bounds"><a class="docs-heading-anchor" href="#Time-Step-Bounds">Time Step Bounds</a><a id="Time-Step-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Step-Bounds" title="Permalink"></a></h3><p>For free-time problems, bound the time steps:</p><pre><code class="language-julia hljs">traj_time_bounds = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    bounds = (
+        u = 1.0,
+        Δt = (0.01, 0.2),  # 0.01 ≤ Δt ≤ 0.2
+    ),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h2 id="Accessing-Trajectory-Data"><a class="docs-heading-anchor" href="#Accessing-Trajectory-Data">Accessing Trajectory Data</a><a id="Accessing-Trajectory-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Accessing-Trajectory-Data" title="Permalink"></a></h2><h3 id="Direct-Access"><a class="docs-heading-anchor" href="#Direct-Access">Direct Access</a><a id="Direct-Access-1"></a><a class="docs-heading-anchor-permalink" href="#Direct-Access" title="Permalink"></a></h3><pre><code class="language-julia hljs">x_data = traj.x           # Get all states (2 × N matrix)
+u_data = traj.u           # Get all controls (1 × N matrix)
+x_final = traj.x[:, end]  # Get final state</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Float64}:
+ 1.40786223838164
+ 1.1987132119881208</code></pre><h3 id="Metadata"><a class="docs-heading-anchor" href="#Metadata">Metadata</a><a id="Metadata-1"></a><a class="docs-heading-anchor-permalink" href="#Metadata" title="Permalink"></a></h3><pre><code class="language-julia hljs">println(&quot;Number of time steps: &quot;, traj.N)
+println(&quot;State dimension: &quot;, traj.dims.x)
+println(&quot;Control dimension: &quot;, traj.dims.u)
+println(&quot;Total dimension: &quot;, traj.dim)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Number of time steps: 10
+State dimension: 2
+Control dimension: 1
+Total dimension: 4</code></pre><h3 id="Time-Information"><a class="docs-heading-anchor" href="#Time-Information">Time Information</a><a id="Time-Information-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Information" title="Permalink"></a></h3><pre><code class="language-julia hljs">times = get_times(traj)  # Cumulative time at each knot point
+total_time = sum(traj.Δt)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.9999999999999999</code></pre><h2 id="Building-Trajectories-for-Optimization"><a class="docs-heading-anchor" href="#Building-Trajectories-for-Optimization">Building Trajectories for Optimization</a><a id="Building-Trajectories-for-Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Building-Trajectories-for-Optimization" title="Permalink"></a></h2><h3 id="Good-Initialization-Matters"><a class="docs-heading-anchor" href="#Good-Initialization-Matters">Good Initialization Matters</a><a id="Good-Initialization-Matters-1"></a><a class="docs-heading-anchor-permalink" href="#Good-Initialization-Matters" title="Permalink"></a></h3><p>Start with a reasonable guess:</p><ul><li>Linear interpolation between initial and final states</li><li>Zero or small random controls</li><li>Uniform time steps</li></ul><pre><code class="language-julia hljs">x_init = [0.0, 0.0]
+x_goal = [1.0, 1.0]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Float64}:
+ 1.0
+ 1.0</code></pre><p>Linear interpolation</p><pre><code class="language-julia hljs">x_guess = hcat([x_init + (x_goal - x_init) * (t / (N-1)) for t = 0:(N-1)]...)
+
+traj_good_init = NamedTrajectory(
+    (x = x_guess, u = zeros(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = x_init,),
+    final = (x = x_goal,),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 10, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h2 id="Common-Patterns"><a class="docs-heading-anchor" href="#Common-Patterns">Common Patterns</a><a id="Common-Patterns-1"></a><a class="docs-heading-anchor-permalink" href="#Common-Patterns" title="Permalink"></a></h2><h3 id="State-Transfer-Problem"><a class="docs-heading-anchor" href="#State-Transfer-Problem">State Transfer Problem</a><a id="State-Transfer-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#State-Transfer-Problem" title="Permalink"></a></h3><p>Drive from initial to final state with bounded controls</p><pre><code class="language-julia hljs">traj_transfer = NamedTrajectory(
+    (x = randn(3, 50), u = randn(2, 50), Δt = fill(0.1, 50));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = zeros(3),),
+    final = (x = ones(3),),
+    bounds = (u = 1.0,),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 50, (x = 1:3, u = 4:5, → Δt = 6:6)</code></pre><h3 id="Minimum-Time-Problem"><a class="docs-heading-anchor" href="#Minimum-Time-Problem">Minimum Time Problem</a><a id="Minimum-Time-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Minimum-Time-Problem" title="Permalink"></a></h3><p>Free time steps, bounded, with time regularization</p><pre><code class="language-julia hljs">traj_mintime = NamedTrajectory(
+    (x = randn(2, 30), u = randn(1, 30), Δt = fill(0.1, 30));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),
+    final = (x = [1.0, 0.0],),
+    bounds = (u = 1.0, Δt = (0.01, 0.5)),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 30, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h3 id="Smooth-Control-Problem"><a class="docs-heading-anchor" href="#Smooth-Control-Problem">Smooth Control Problem</a><a id="Smooth-Control-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Smooth-Control-Problem" title="Permalink"></a></h3><p>Include control derivatives for smoothness</p><pre><code class="language-julia hljs">traj_smooth = NamedTrajectory(
+    (
+        x = randn(2, 40),
+        u = randn(2, 40),
+        du = zeros(2, 40),   # control derivative
+        Δt = fill(0.1, 40),
+    );
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0], u = [0.0, 0.0]),
+    final = (x = [1.0, 0.0], u = [0.0, 0.0]),
+    bounds = (u = 1.0,),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 40, (x = 1:2, u = 3:4, du = 5:6, → Δt = 7:7)</code></pre><h2 id="Summary"><a class="docs-heading-anchor" href="#Summary">Summary</a><a id="Summary-1"></a><a class="docs-heading-anchor-permalink" href="#Summary" title="Permalink"></a></h2><table><tr><th style="text-align: right">Concept</th><th style="text-align: right">Syntax</th><th style="text-align: right">Example</th></tr><tr><td style="text-align: right">Fixed time</td><td style="text-align: right"><code>timestep=0.1</code></td><td style="text-align: right"><code>timestep=0.1</code></td></tr><tr><td style="text-align: right">Free time</td><td style="text-align: right"><code>timestep=:Δt</code></td><td style="text-align: right"><code>timestep=:Δt</code></td></tr><tr><td style="text-align: right">Initial condition</td><td style="text-align: right"><code>initial=(x = [...],)</code></td><td style="text-align: right"><code>initial=(x = [0, 0],)</code></td></tr><tr><td style="text-align: right">Final condition</td><td style="text-align: right"><code>final=(x = [...],)</code></td><td style="text-align: right"><code>final=(x = [1, 0],)</code></td></tr><tr><td style="text-align: right">Scalar bound</td><td style="text-align: right"><code>bounds=(u = 1.0,)</code></td><td style="text-align: right"><code>-1 ≤ u ≤ 1</code></td></tr><tr><td style="text-align: right">Tuple bound</td><td style="text-align: right"><code>bounds=(u = (-2, 1),)</code></td><td style="text-align: right"><code>-2 ≤ u ≤ 1</code></td></tr><tr><td style="text-align: right">Vector bound</td><td style="text-align: right"><code>bounds=(u = [1, 2],)</code></td><td style="text-align: right"><code>-1 ≤ u₁ ≤ 1, -2 ≤ u₂ ≤ 2</code></td></tr><tr><td style="text-align: right">Full bound</td><td style="text-align: right"><code>bounds=(u = ([-2,-1], [1,3]),)</code></td><td style="text-align: right"><code>-2 ≤ u₁ ≤ 1, -1 ≤ u₂ ≤ 3</code></td></tr></table><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Integrators</strong>: Learn how dynamics are encoded</li><li><strong>Objectives</strong>: Define cost functions on trajectories</li><li><strong>Tutorials</strong>: See complete examples using trajectories</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../problem_formulation/">« Problem Formulation</a><a class="docs-footer-nextpage" href="../integrators/">Integrators »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 28 February 2026 19:22">Saturday 28 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

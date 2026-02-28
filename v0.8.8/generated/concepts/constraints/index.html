@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Constraints · DirectTrajOpt.jl</title><meta name="title" content="Constraints · DirectTrajOpt.jl"/><meta property="og:title" content="Constraints · DirectTrajOpt.jl"/><meta property="twitter:title" content="Constraints · DirectTrajOpt.jl"/><meta name="description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:description" content="Documentation for DirectTrajOpt.jl."/><meta property="twitter:description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/concepts/constraints/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/concepts/constraints/"/><link rel="canonical" href="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/concepts/constraints/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.svg" alt="DirectTrajOpt.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">DirectTrajOpt.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><span class="tocitem">Getting Started</span><ul><li><a class="tocitem" href="../../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../example/">Complete Example</a></li></ul></li><li><span class="tocitem">Core Concepts</span><ul><li><a class="tocitem" href="../problem_formulation/">Problem Formulation</a></li><li><a class="tocitem" href="../trajectories/">Trajectories</a></li><li><a class="tocitem" href="../integrators/">Integrators</a></li><li><a class="tocitem" href="../objectives/">Objectives</a></li><li class="is-active"><a class="tocitem" href>Constraints</a><ul class="internal"><li><a class="tocitem" href="#Bounds-(Cheapest)"><span>Bounds (Cheapest)</span></a></li><li><a class="tocitem" href="#Nonlinear-Constraints"><span>Nonlinear Constraints</span></a></li><li><a class="tocitem" href="#Common-Patterns"><span>Common Patterns</span></a></li><li><a class="tocitem" href="#Time-Selection"><span>Time Selection</span></a></li><li><a class="tocitem" href="#Creating-a-Problem"><span>Creating a Problem</span></a></li><li><a class="tocitem" href="#Summary"><span>Summary</span></a></li><li><a class="tocitem" href="#Performance-Tips"><span>Performance Tips</span></a></li><li><a class="tocitem" href="#Troubleshooting"><span>Troubleshooting</span></a></li></ul></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../../tutorials/linear_system/">Linear System</a></li><li><a class="tocitem" href="../../tutorials/bilinear_control/">Bilinear Control</a></li><li><a class="tocitem" href="../../tutorials/minimum_time/">Minimum Time</a></li></ul></li><li><a class="tocitem" href="../../../lib/">Library</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Core Concepts</a></li><li class="is-active"><a href>Constraints</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Constraints</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl/blob/main/docs/literate/concepts/constraints.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Constraints"><a class="docs-heading-anchor" href="#Constraints">Constraints</a><a id="Constraints-1"></a><a class="docs-heading-anchor-permalink" href="#Constraints" title="Permalink"></a></h1><p>Constraints restrict the feasible region beyond dynamics. DirectTrajOpt supports bounds, boundary conditions, and nonlinear path constraints.</p><pre><code class="language-julia hljs">using DirectTrajOpt
+using NamedTrajectories
+using LinearAlgebra
+
+N = 50
+traj = NamedTrajectory(
+    (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 50, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h2 id="Bounds-(Cheapest)"><a class="docs-heading-anchor" href="#Bounds-(Cheapest)">Bounds (Cheapest)</a><a id="Bounds-(Cheapest)-1"></a><a class="docs-heading-anchor-permalink" href="#Bounds-(Cheapest)" title="Permalink"></a></h2><p>Box constraints on variables:</p><pre><code class="language-julia hljs">traj_bounds = NamedTrajectory(
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    bounds = (
+        x = 5.0,                          # -5 ≤ x ≤ 5
+        u = (-1.0, 2.0),                  # -1 ≤ u ≤ 2
+        Δt = (0.01, 0.5),                  # 0.01 ≤ Δt ≤ 0.5
+    ),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 50, (x = 1:2, u = 3:4, → Δt = 5:5)</code></pre><p>Per-component bounds:</p><pre><code class="language-julia hljs">traj_component_bounds = NamedTrajectory(
+    (x = randn(2, N), u = randn(2, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    bounds = (u = ([-1.0, -2.0], [1.0, 3.0]),),  # Different bounds per component
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 50, (x = 1:2, u = 3:4, → Δt = 5:5)</code></pre><h2 id="Nonlinear-Constraints"><a class="docs-heading-anchor" href="#Nonlinear-Constraints">Nonlinear Constraints</a><a id="Nonlinear-Constraints-1"></a><a class="docs-heading-anchor-permalink" href="#Nonlinear-Constraints" title="Permalink"></a></h2><p><strong>Inequality</strong>: <code>c(x, u) ≥ 0</code> (preferred - easier to satisfy)</p><pre><code class="language-julia hljs">constraint_ineq = NonlinearKnotPointConstraint(
+    u -&gt; [1.0 - norm(u)],  # ||u|| ≤ 1
+    :u,
+    traj;
+    times = 1:N,
+    equality = false,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">NonlinearKnotPointConstraint on [:u], inequality, 50 times (g_dim = 1)</code></pre><p><strong>Equality</strong>: <code>c(x, u) = 0</code> (more restrictive)</p><pre><code class="language-julia hljs">constraint_eq = NonlinearKnotPointConstraint(
+    x -&gt; [x[1] - 0.5],  # x₁ = 0.5
+    :x,
+    traj;
+    times = [25],
+    equality = true,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">NonlinearKnotPointConstraint on [:x], equality, t = [25] (g_dim = 1)</code></pre><p><strong>Multiple variables</strong>:</p><pre><code class="language-julia hljs">constraint_multi = NonlinearKnotPointConstraint(
+    (x, u) -&gt; [x[1]^2 + x[2]^2 - u[1]],
+    [:x, :u],
+    traj;
+    equality = false,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">NonlinearKnotPointConstraint on [:x, :u], inequality, 50 times (g_dim = 1)</code></pre><h2 id="Common-Patterns"><a class="docs-heading-anchor" href="#Common-Patterns">Common Patterns</a><a id="Common-Patterns-1"></a><a class="docs-heading-anchor-permalink" href="#Common-Patterns" title="Permalink"></a></h2><p><strong>Obstacle avoidance</strong>:</p><pre><code class="language-julia hljs">obs_center, obs_radius = [0.5, 0.5], 0.2
+constraint_obstacle = NonlinearKnotPointConstraint(
+    x -&gt; [norm(x - obs_center)^2 - obs_radius^2],
+    :x,
+    traj;
+    times = 1:N,
+    equality = false,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">NonlinearKnotPointConstraint on [:x], inequality, 50 times (g_dim = 1)</code></pre><p><strong>Multiple obstacles</strong>:</p><pre><code class="language-julia hljs">constraints_obstacles = [
+    NonlinearKnotPointConstraint(
+        x -&gt; [norm(x - center)^2 - radius^2],
+        :x,
+        traj;
+        equality = false,
+    ) for (center, radius) in [([0.3, 0.3], 0.15), ([0.7, 0.7], 0.15)]
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{NonlinearKnotPointConstraint{DirectTrajOpt.Constraints.var&quot;#33#34&quot;{Main.var&quot;#17#18&quot;{Float64, Vector{Float64}}}}}:
+ NonlinearKnotPointConstraint on [:x], inequality, 50 times (g_dim = 1)
+ NonlinearKnotPointConstraint on [:x], inequality, 50 times (g_dim = 1)</code></pre><p><strong>State-dependent control limits</strong>:</p><pre><code class="language-julia hljs">constraint_state_dep = NonlinearKnotPointConstraint(
+    (x, u) -&gt; [1.0 - u[1] / (1.0 + abs(x[1]))],
+    [:x, :u],
+    traj;
+    equality = false,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">NonlinearKnotPointConstraint on [:x, :u], inequality, 50 times (g_dim = 1)</code></pre><p><strong>Energy constraints</strong>:</p><pre><code class="language-julia hljs">E_max = 2.0
+constraint_energy = NonlinearKnotPointConstraint(
+    (x, u) -&gt; [E_max - (0.5 * norm(x)^2 + 0.5 * norm(u)^2)],
+    [:x, :u],
+    traj;
+    equality = false,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">NonlinearKnotPointConstraint on [:x, :u], inequality, 50 times (g_dim = 1)</code></pre><h2 id="Time-Selection"><a class="docs-heading-anchor" href="#Time-Selection">Time Selection</a><a id="Time-Selection-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Selection" title="Permalink"></a></h2><p>All times, specific times, or ranges:</p><pre><code class="language-julia hljs">constraint_all = NonlinearKnotPointConstraint(
+    u -&gt; [1.0 - norm(u)],
+    :u,
+    traj;
+    times = 1:N,
+    equality = false,
+)
+
+constraint_specific = NonlinearKnotPointConstraint(
+    x -&gt; [x[1]^2 + x[2]^2 - 1.0],
+    :x,
+    traj;
+    times = [1, 10, 20, 30, 40, 50],
+    equality = false,
+)
+
+constraint_range = NonlinearKnotPointConstraint(
+    u -&gt; [0.5 - norm(u)],
+    :u,
+    traj;
+    times = 10:40,
+    equality = false,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">NonlinearKnotPointConstraint on [:u], inequality, 31 times (g_dim = 1)</code></pre><h2 id="Creating-a-Problem"><a class="docs-heading-anchor" href="#Creating-a-Problem">Creating a Problem</a><a id="Creating-a-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Creating-a-Problem" title="Permalink"></a></h2><pre><code class="language-julia hljs">G_drift = [-0.1 1.0; -1.0 -0.1]
+G_drives = [[0.0 1.0; 1.0 0.0]]
+G = u -&gt; G_drift + sum(u .* G_drives)
+integrator = BilinearIntegrator(G, :x, :u, traj)
+obj = QuadraticRegularizer(:u, traj, 1.0)
+
+constraints = [constraint_obstacle, constraint_ineq]
+prob = DirectTrajOptProblem(traj, obj, integrator; constraints = constraints)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DirectTrajOptProblem
+  Trajectory
+    Timesteps: 50
+    Duration:  4.9
+    Knot dim:  4
+    Variables: x (2), u (1), Δt (1)
+    Controls:  u, Δt
+  Objective: QuadraticRegularizer on :u (R = [1.0], all)
+  Dynamics (1 integrators)
+    BilinearIntegrator: :x = exp(Δt G(:u)) :x  (dim = 2)
+  Constraints (3 total: 1 bounds, 2 other)
+    NonlinearKnotPointConstraint on [:x], inequality, 50 times (g_dim = 1)
+    NonlinearKnotPointConstraint on [:u], inequality, 50 times (g_dim = 1)
+    BoundsConstraint: &quot;bounds on Δt&quot;</code></pre><h2 id="Summary"><a class="docs-heading-anchor" href="#Summary">Summary</a><a id="Summary-1"></a><a class="docs-heading-anchor-permalink" href="#Summary" title="Permalink"></a></h2><table><tr><th style="text-align: right">Constraint Type</th><th style="text-align: right">Form</th><th style="text-align: right">Cost</th><th style="text-align: right">Use Case</th></tr><tr><td style="text-align: right">Bounds</td><td style="text-align: right"><code>l ≤ v ≤ u</code></td><td style="text-align: right">Very cheap</td><td style="text-align: right">Physical limits</td></tr><tr><td style="text-align: right">Dynamics</td><td style="text-align: right"><code>xₖ₊₁ = Φ(xₖ, uₖ)</code></td><td style="text-align: right">Moderate</td><td style="text-align: right">System evolution</td></tr><tr><td style="text-align: right">Boundary</td><td style="text-align: right"><code>x₁ = x₀, xₖ = xf</code></td><td style="text-align: right">Cheap</td><td style="text-align: right">Initial/final states</td></tr><tr><td style="text-align: right">Nonlinear inequality</td><td style="text-align: right"><code>c(x, u) ≥ 0</code></td><td style="text-align: right">Moderate</td><td style="text-align: right">Obstacles, limits</td></tr><tr><td style="text-align: right">Nonlinear equality</td><td style="text-align: right"><code>c(x, u) = 0</code></td><td style="text-align: right">Expensive</td><td style="text-align: right">Exact requirements</td></tr></table><h2 id="Performance-Tips"><a class="docs-heading-anchor" href="#Performance-Tips">Performance Tips</a><a id="Performance-Tips-1"></a><a class="docs-heading-anchor-permalink" href="#Performance-Tips" title="Permalink"></a></h2><table><tr><th style="text-align: right">Recommendation</th><th style="text-align: right">Rationale</th></tr><tr><td style="text-align: right">Use bounds over nonlinear constraints</td><td style="text-align: right">Much faster to evaluate</td></tr><tr><td style="text-align: right">Prefer inequalities over equalities</td><td style="text-align: right">Easier to satisfy, larger feasible region</td></tr><tr><td style="text-align: right">Scale constraint values to O(1)</td><td style="text-align: right">Better numerical conditioning</td></tr><tr><td style="text-align: right">Add constraints incrementally</td><td style="text-align: right">Easier to debug, avoids over-constraining</td></tr><tr><td style="text-align: right">Check initial guess feasibility</td><td style="text-align: right">Prevents infeasible starts</td></tr></table><h2 id="Troubleshooting"><a class="docs-heading-anchor" href="#Troubleshooting">Troubleshooting</a><a id="Troubleshooting-1"></a><a class="docs-heading-anchor-permalink" href="#Troubleshooting" title="Permalink"></a></h2><p>If optimizer struggles:</p><ul><li><strong>Infeasible start</strong>: Initial guess violates constraints → improve initial guess</li><li><strong>Over-constrained</strong>: Too many/conflicting constraints → relax or remove some</li><li><strong>Poorly scaled</strong>: Values span many orders of magnitude → rescale to O(1)</li><li><strong>Tight constraints</strong>: Little feasible space → relax bounds or use soft constraints</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../objectives/">« Objectives</a><a class="docs-footer-nextpage" href="../../tutorials/linear_system/">Linear System »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 28 February 2026 19:22">Saturday 28 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

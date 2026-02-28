@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Quickstart · DirectTrajOpt.jl</title><meta name="title" content="Quickstart · DirectTrajOpt.jl"/><meta property="og:title" content="Quickstart · DirectTrajOpt.jl"/><meta property="twitter:title" content="Quickstart · DirectTrajOpt.jl"/><meta name="description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:description" content="Documentation for DirectTrajOpt.jl."/><meta property="twitter:description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/quickstart/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/quickstart/"/><link rel="canonical" href="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/quickstart/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="DirectTrajOpt.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DirectTrajOpt.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Getting Started</span><ul><li class="is-active"><a class="tocitem" href>Quickstart</a><ul class="internal"><li><a class="tocitem" href="#What-is-DirectTrajOpt?"><span>What is DirectTrajOpt?</span></a></li><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#A-Minimal-Example"><span>A Minimal Example</span></a></li><li><a class="tocitem" href="#What-You-Can-Do"><span>What You Can Do</span></a></li></ul></li><li><a class="tocitem" href="../example/">Complete Example</a></li></ul></li><li><span class="tocitem">Core Concepts</span><ul><li><a class="tocitem" href="../concepts/problem_formulation/">Problem Formulation</a></li><li><a class="tocitem" href="../concepts/trajectories/">Trajectories</a></li><li><a class="tocitem" href="../concepts/integrators/">Integrators</a></li><li><a class="tocitem" href="../concepts/objectives/">Objectives</a></li><li><a class="tocitem" href="../concepts/constraints/">Constraints</a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../tutorials/linear_system/">Linear System</a></li><li><a class="tocitem" href="../tutorials/bilinear_control/">Bilinear Control</a></li><li><a class="tocitem" href="../tutorials/minimum_time/">Minimum Time</a></li></ul></li><li><a class="tocitem" href="../../lib/">Library</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Getting Started</a></li><li class="is-active"><a href>Quickstart</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Quickstart</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl/blob/main/docs/literate/quickstart.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Quickstart-Guide"><a class="docs-heading-anchor" href="#Quickstart-Guide">Quickstart Guide</a><a id="Quickstart-Guide-1"></a><a class="docs-heading-anchor-permalink" href="#Quickstart-Guide" title="Permalink"></a></h1><p>Welcome to <strong>DirectTrajOpt.jl</strong>! This guide will get you up and running in minutes.</p><h2 id="What-is-DirectTrajOpt?"><a class="docs-heading-anchor" href="#What-is-DirectTrajOpt?">What is DirectTrajOpt?</a><a id="What-is-DirectTrajOpt?-1"></a><a class="docs-heading-anchor-permalink" href="#What-is-DirectTrajOpt?" title="Permalink"></a></h2><p>DirectTrajOpt.jl solves <strong>trajectory optimization problems</strong> - finding optimal control sequences that drive a dynamical system from an initial state to a goal state while minimizing a cost function.</p><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>First, install the package:</p><pre><code class="language-julia hljs">using Pkg
+Pkg.add(&quot;DirectTrajOpt&quot;)</code></pre><p>You&#39;ll also need NamedTrajectories.jl for defining trajectories:</p><pre><code class="language-julia hljs">using DirectTrajOpt
+using NamedTrajectories
+using LinearAlgebra
+using CairoMakie</code></pre><h2 id="A-Minimal-Example"><a class="docs-heading-anchor" href="#A-Minimal-Example">A Minimal Example</a><a id="A-Minimal-Example-1"></a><a class="docs-heading-anchor-permalink" href="#A-Minimal-Example" title="Permalink"></a></h2><p>Let&#39;s solve a simple problem: drive a 2D system from <code>[0, 0]</code> to <code>[1, 0]</code> with minimal control effort.</p><h3 id="Step-1:-Define-the-Trajectory"><a class="docs-heading-anchor" href="#Step-1:-Define-the-Trajectory">Step 1: Define the Trajectory</a><a id="Step-1:-Define-the-Trajectory-1"></a><a class="docs-heading-anchor-permalink" href="#Step-1:-Define-the-Trajectory" title="Permalink"></a></h3><p>A trajectory contains your states, controls, and time information:</p><pre><code class="language-julia hljs">N = 50  # number of time steps
+traj = NamedTrajectory(
+    (
+        x = randn(2, N),    # 2D state
+        u = randn(1, N),    # 1D control
+        Δt = fill(0.1, N),   # time step
+    );
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),
+    final = (x = [1.0, 0.0],),
+    bounds = (Δt = (0.05, 0.2), u = 1.0),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">N = 50, (x = 1:2, u = 3:3, → Δt = 4:4)</code></pre><h3 id="Step-2:-Define-the-Dynamics"><a class="docs-heading-anchor" href="#Step-2:-Define-the-Dynamics">Step 2: Define the Dynamics</a><a id="Step-2:-Define-the-Dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Step-2:-Define-the-Dynamics" title="Permalink"></a></h3><p>Specify how your system evolves. For bilinear dynamics <code>ẋ = (G₀ + u₁G₁) x</code>:</p><pre><code class="language-julia hljs">G_drift = [-0.1 1.0; -1.0 -0.1]   # drift term
+G_drives = [[0.0 1.0; 1.0 0.0]]   # control term
+G = u -&gt; G_drift + sum(u .* G_drives)
+
+integrator = BilinearIntegrator(G, :x, :u, traj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">BilinearIntegrator: :x = exp(Δt G(:u)) :x  (dim = 2)</code></pre><h3 id="Step-3:-Define-the-Objective"><a class="docs-heading-anchor" href="#Step-3:-Define-the-Objective">Step 3: Define the Objective</a><a id="Step-3:-Define-the-Objective-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Define-the-Objective" title="Permalink"></a></h3><p>What do we want to minimize? Let&#39;s penalize control effort:</p><pre><code class="language-julia hljs">obj = QuadraticRegularizer(:u, traj, 1.0)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">QuadraticRegularizer on :u (R = [1.0], all)</code></pre><h3 id="Step-4:-Create-and-Solve"><a class="docs-heading-anchor" href="#Step-4:-Create-and-Solve">Step 4: Create and Solve</a><a id="Step-4:-Create-and-Solve-1"></a><a class="docs-heading-anchor-permalink" href="#Step-4:-Create-and-Solve" title="Permalink"></a></h3><p>Combine everything into a problem and solve:</p><pre><code class="language-julia hljs">prob = DirectTrajOptProblem(traj, obj, integrator)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DirectTrajOptProblem
+  Trajectory
+    Timesteps: 50
+    Duration:  4.9
+    Knot dim:  4
+    Variables: x (2), u (1), Δt (1)
+    Controls:  u, Δt
+  Objective: QuadraticRegularizer on :u (R = [1.0], all)
+  Dynamics (1 integrators)
+    BilinearIntegrator: :x = exp(Δt G(:u)) :x  (dim = 2)
+  Constraints (4 total: 2 equality, 2 bounds)
+    EqualityConstraint: &quot;initial value of x&quot;
+    EqualityConstraint: &quot;final value of x&quot;
+    BoundsConstraint: &quot;bounds on Δt&quot;
+    BoundsConstraint: &quot;bounds on u&quot;</code></pre><p>The problem summary shows the trajectory, objective, dynamics, and constraints:</p><pre><code class="language-julia hljs">prob</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DirectTrajOptProblem
+  Trajectory
+    Timesteps: 50
+    Duration:  4.9
+    Knot dim:  4
+    Variables: x (2), u (1), Δt (1)
+    Controls:  u, Δt
+  Objective: QuadraticRegularizer on :u (R = [1.0], all)
+  Dynamics (1 integrators)
+    BilinearIntegrator: :x = exp(Δt G(:u)) :x  (dim = 2)
+  Constraints (4 total: 2 equality, 2 bounds)
+    EqualityConstraint: &quot;initial value of x&quot;
+    EqualityConstraint: &quot;final value of x&quot;
+    BoundsConstraint: &quot;bounds on Δt&quot;
+    BoundsConstraint: &quot;bounds on u&quot;</code></pre><pre><code class="language-julia hljs">solve!(prob; max_iter = 100, verbose = false)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">This is Ipopt version 3.14.19, running with linear solver MUMPS 5.8.2.
+
+Number of nonzeros in equality constraint Jacobian...:      776
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:     1254
+
+Total number of variables............................:      196
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:      100
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:       98
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  1.1822662e-01 3.90e+00 2.16e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  1.6721551e-01 2.99e+00 4.12e+00  -0.3 3.22e+00    -  4.63e-01 2.21e-01f  1
+   2  8.8623681e-02 8.36e-01 4.85e+00  -0.5 3.01e+00    -  8.01e-01 7.39e-01f  1
+   3  7.3087189e-02 2.40e-01 8.33e+00  -0.5 1.69e+00    -  4.26e-01 7.19e-01f  1
+   4  1.2817580e-01 1.39e-01 4.63e+00  -2.4 1.22e+00    -  4.47e-01 4.23e-01h  1
+   5  1.6606278e-01 1.08e-01 3.74e+00  -4.0 3.44e+00    -  1.38e-01 2.25e-01h  1
+   6  2.4243712e-01 6.95e-02 3.97e+00  -0.9 1.48e+00   0.0 6.66e-01 3.54e-01h  1
+   7  2.6600672e-01 6.43e-02 1.40e+01  -0.1 4.22e+00   0.4 3.08e-01 7.50e-02h  1
+   8  3.3847815e-01 4.81e-02 1.40e+01  -4.0 2.60e+00    -  2.43e-01 2.52e-01h  1
+   9  4.2053115e-01 3.77e-02 9.02e+00  -4.0 3.02e+00    -  2.92e-01 2.16e-01h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10  4.9476464e-01 3.11e-02 1.18e+01  -4.0 1.11e+00  -0.1 1.91e-01 1.77e-01h  1
+  11  4.9341732e-01 3.09e-02 1.57e+01  -0.2 1.80e+01  -0.5 3.67e-02 4.06e-03f  1
+  12  5.5234063e-01 2.78e-02 7.69e+01  -0.1 1.30e+00   0.8 7.98e-01 1.02e-01h  1
+  13  6.0847288e-01 2.41e-02 7.15e+01  -4.0 5.95e+00    -  1.63e-01 1.32e-01h  1
+
+Number of Iterations....: 14
+
+Number of objective function evaluations             = 15
+Number of objective gradient evaluations             = 15
+Number of equality constraint evaluations            = 15
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 14
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 14
+Total seconds in IPOPT                               = 6.465
+
+EXIT: Invalid number in NLP function or derivative detected.</code></pre><h3 id="Step-5:-Access-the-Solution"><a class="docs-heading-anchor" href="#Step-5:-Access-the-Solution">Step 5: Access the Solution</a><a id="Step-5:-Access-the-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Step-5:-Access-the-Solution" title="Permalink"></a></h3><p>Let&#39;s look at the results.</p><pre><code class="language-julia hljs">plot(prob.trajectory)</code></pre><img src="a9e77095.png" alt="Example block output"/><p>The optimized trajectory is stored in <code>prob.trajectory</code>:</p><pre><code class="language-julia hljs">println(&quot;Final state: &quot;, prob.trajectory.x[:, end])
+println(&quot;Control norm: &quot;, norm(prob.trajectory.u))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Final state: [1.0, 0.0]
+Control norm: 6.215906904485111</code></pre><h2 id="What-You-Can-Do"><a class="docs-heading-anchor" href="#What-You-Can-Do">What You Can Do</a><a id="What-You-Can-Do-1"></a><a class="docs-heading-anchor-permalink" href="#What-You-Can-Do" title="Permalink"></a></h2><ul><li><strong>Multiple objectives</strong>: Combine regularization, minimum time, terminal costs</li><li><strong>Flexible dynamics</strong>: Linear, bilinear, time-dependent systems</li><li><strong>Add constraints</strong>: Bounds, path constraints, custom nonlinear constraints</li><li><strong>Smooth controls</strong>: Penalize derivatives for smooth, implementable controls</li><li><strong>Free time</strong>: Optimize trajectory duration</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../example/">Complete Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 28 February 2026 19:22">Saturday 28 February 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
