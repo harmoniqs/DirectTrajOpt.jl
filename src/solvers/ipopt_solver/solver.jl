@@ -69,6 +69,16 @@ function DTO.Solvers.solve!(
         end
     end
 
+    # Sync derived fields that depend on other fields.
+    # These are computed at IpoptOptions construction time, so kwarg overrides
+    # of the source field don't automatically propagate.
+    if haskey(kwargs, :eval_hessian) && !haskey(kwargs, :hessian_approximation)
+        options.hessian_approximation = options.eval_hessian ? "exact" : "limited-memory"
+    end
+    if haskey(kwargs, :refine) && !haskey(kwargs, :adaptive_mu_globalization)
+        options.adaptive_mu_globalization = options.refine ? "obj-constr-filter" : "never-monotone-mode"
+    end
+
     optimizer, variables =
         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
@@ -519,4 +529,43 @@ end
 
     # mu_strategy was previously only accessible via IpoptOptions struct
     solve!(prob; mu_strategy = "monotone", max_iter = 10)
+end
+
+@testitem "solve! syncs derived options from eval_hessian and refine kwargs" begin
+    include("../../../test/test_utils.jl")
+
+    # eval_hessian → hessian_approximation
+    opts = IpoptOptions()
+    @test opts.eval_hessian == true
+    @test opts.hessian_approximation == "exact"
+
+    # setfield! alone does NOT update derived field (struct-level limitation)
+    opts2 = IpoptOptions()
+    setfield!(opts2, :eval_hessian, false)
+    @test opts2.hessian_approximation == "exact"
+
+    # IpoptOptions constructor correctly computes derived field
+    opts3 = IpoptOptions(eval_hessian=false)
+    @test opts3.hessian_approximation == "limited-memory"
+
+    # refine → adaptive_mu_globalization
+    opts4 = IpoptOptions(refine=false)
+    @test opts4.adaptive_mu_globalization == "never-monotone-mode"
+
+    # Explicit override takes precedence over sync
+    opts5 = IpoptOptions(eval_hessian=false, hessian_approximation="exact")
+    @test opts5.hessian_approximation == "exact"
+
+    # End-to-end: solve! with eval_hessian=false kwarg should use L-BFGS
+    G, traj = bilinear_dynamics_and_trajectory()
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+    prob = DirectTrajOptProblem(traj, J, integrators)
+    solve!(prob; max_iter=5, eval_hessian=false, print_level=0)
 end
