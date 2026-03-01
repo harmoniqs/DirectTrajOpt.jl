@@ -76,7 +76,8 @@ function DTO.Solvers.solve!(
         options.hessian_approximation = options.eval_hessian ? "exact" : "limited-memory"
     end
     if haskey(kwargs, :refine) && !haskey(kwargs, :adaptive_mu_globalization)
-        options.adaptive_mu_globalization = options.refine ? "obj-constr-filter" : "never-monotone-mode"
+        options.adaptive_mu_globalization =
+            options.refine ? "obj-constr-filter" : "never-monotone-mode"
     end
 
     optimizer, variables =
@@ -545,15 +546,15 @@ end
     @test opts2.hessian_approximation == "exact"
 
     # IpoptOptions constructor correctly computes derived field
-    opts3 = IpoptOptions(eval_hessian=false)
+    opts3 = IpoptOptions(eval_hessian = false)
     @test opts3.hessian_approximation == "limited-memory"
 
     # refine → adaptive_mu_globalization
-    opts4 = IpoptOptions(refine=false)
+    opts4 = IpoptOptions(refine = false)
     @test opts4.adaptive_mu_globalization == "never-monotone-mode"
 
     # Explicit override takes precedence over sync
-    opts5 = IpoptOptions(eval_hessian=false, hessian_approximation="exact")
+    opts5 = IpoptOptions(eval_hessian = false, hessian_approximation = "exact")
     @test opts5.hessian_approximation == "exact"
 
     # End-to-end: solve! with eval_hessian=false kwarg should use L-BFGS
@@ -567,5 +568,5 @@ end
     J += QuadraticRegularizer(:u, traj, 1.0)
     J += MinimumTimeObjective(traj)
     prob = DirectTrajOptProblem(traj, J, integrators)
-    solve!(prob; max_iter=5, eval_hessian=false, print_level=0)
+    solve!(prob; max_iter = 5, eval_hessian = false, print_level = 0)
 end
