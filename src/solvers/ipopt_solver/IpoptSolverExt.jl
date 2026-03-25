@@ -17,7 +17,7 @@ using ..Integrators
 using ..Objectives
 using ..Solvers
 
-const AbstractOptimizer = Union{Ipopt.Optimizer, MadNLP.Optimizer}
+const AbstractOptimizer = Union{Ipopt.Optimizer,MadNLP.Optimizer}
 
 include("options.jl")
 include("constraints.jl")

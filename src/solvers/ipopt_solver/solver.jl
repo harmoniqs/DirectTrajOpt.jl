@@ -73,7 +73,8 @@ function _solve_madnlp!(
         @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
     end
 
-    optimizer, variables = get_optimizer_and_variables(prob, options, callback, verbose = verbose)
+    optimizer, variables =
+        get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
     MOI.optimize!(optimizer)
 
@@ -92,9 +93,9 @@ function _solve!(
 )
     if options isa Solvers.AbstractSolverOptions
         if options isa Solvers.IpoptOptions
-            _solve_ipopt!(prob, options; verbose=verbose, callback=callback, kwargs...)
+            _solve_ipopt!(prob, options; verbose = verbose, callback = callback, kwargs...)
         elseif options isa Solvers.MadNLPOptions
-            _solve_madnlp!(prob, options; verbose=verbose, callback=callback, kwargs...)
+            _solve_madnlp!(prob, options; verbose = verbose, callback = callback, kwargs...)
         else
             @warn "Solver options not recognized"
         end
@@ -153,7 +154,7 @@ function DTO.Solvers.solve!(
     callback = nothing,
     kwargs...,
 )
-    _solve!(prob, options; verbose=verbose, callback=callback, kwargs...)
+    _solve!(prob, options; verbose = verbose, callback = callback, kwargs...)
 
     return nothing
 end

@@ -391,7 +391,9 @@ end
 
 function MOI.eval_constraint_jacobian_transpose_product(
     evaluator::IpoptEvaluator,
-    x::Any, y::Any, z::Any,
+    x::Any,
+    y::Any,
+    z::Any,
 )
     @warn "Constraint jacobian transpose product not implemented"
 end
