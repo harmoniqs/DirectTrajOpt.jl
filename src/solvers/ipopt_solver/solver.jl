@@ -511,7 +511,7 @@ function set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
 end
 
 
-@testitem "testing solver" begin
+@testitem "testing Ipopt.jl solver" begin
 
     include("../../../test/test_utils.jl")
 
@@ -544,6 +544,41 @@ end
     )
 
     solve!(prob; max_iter = 100)
+end
+
+@testitem "testing MadNLP.jl solver" begin
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    g_u_norm = NonlinearKnotPointConstraint(
+        u -> [norm(u) - 1.0],
+        :u,
+        traj;
+        times = 2:(traj.N-1),
+        equality = false,
+    )
+
+    prob = DirectTrajOptProblem(
+        traj,
+        J,
+        integrators;
+        constraints = AbstractConstraint[g_u_norm],
+    )
+
+    _solve_madnlp!(prob; max_iter = 100)
 end
 
 @testitem "testing solver with NonlinearGlobalKnotPointConstraint" begin
