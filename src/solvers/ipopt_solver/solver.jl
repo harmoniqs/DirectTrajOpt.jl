@@ -579,7 +579,7 @@ end
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    _solve_madnlp!(prob; max_iter = 100)
+    IpoptSolverExt._solve_madnlp!(prob; max_iter = 100)
 end
 
 @testitem "testing solver with NonlinearGlobalKnotPointConstraint" begin
