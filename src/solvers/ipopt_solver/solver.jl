@@ -92,9 +92,9 @@ function _solve!(
     kwargs...,
 )
     if options isa Solvers.AbstractSolverOptions
-        if options isa Solvers.IpoptOptions
+        if options isa IpoptSolverExt.IpoptOptions
             _solve_ipopt!(prob, options; verbose = verbose, callback = callback, kwargs...)
-        elseif options isa Solvers.MadNLPOptions
+        elseif options isa IpoptSolverExt.MadNLPOptions
             _solve_madnlp!(prob, options; verbose = verbose, callback = callback, kwargs...)
         else
             @warn "Solver options not recognized"
