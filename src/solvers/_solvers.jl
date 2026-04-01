@@ -2,7 +2,7 @@ module Solvers
 
 
 export AbstractOptimizer
-export AbstractSolverOptions
+export AbstractSolverOptions, DefaultSolverOptions, _DefaultSolverOptions
 export _solve
 export solve!
 
