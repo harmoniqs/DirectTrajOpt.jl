@@ -42,13 +42,13 @@ end
 include("problems.jl")
 @reexport using .Problems
 
-include("solvers.jl")
+include("solvers/_solvers.jl")
 @reexport using .Solvers
 
 include("solvers/ipopt_solver/IpoptSolverExt.jl")
 @reexport using .IpoptSolverExt
 
-include("solvers/ipopt_solver/MadNLPSolverExt.jl")
-@reexport using .MadNLPSolverExt
+# include("solvers/ipopt_solver/MadNLPSolverExt.jl")
+# @reexport using .MadNLPSolverExt
 
 end

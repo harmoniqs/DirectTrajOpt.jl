@@ -129,7 +129,7 @@ solve!(prob; options=IpoptOptions(tol=1e-4), max_iter=500)
 function solve!(
     prob::DirectTrajOptProblem;
     # options::Solvers.AbstractSolverOptions = IpoptOptions(),
-    options=(DefaultSolverOptions[])(),
+    options=(Solvers._DefaultSolverOptions[])(),
     verbose::Bool = true,
     callback = nothing,
     kwargs...,

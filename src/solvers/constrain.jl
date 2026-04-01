@@ -1,3 +1,10 @@
+using DirectTrajOpt
+using NamedTrajectories
+using TrajectoryIndexingUtils
+
+using DirectTrajOpt.Constraints
+
+
 function constrain!(
     opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
