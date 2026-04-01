@@ -6,10 +6,10 @@ using Ipopt
 using TestItemRunner
 using Libdl  # Added for Pardiso library loading
 
-export solve!
+export _solve
 
 
-function Solvers._solve!(
+function Solvers._solve(
     prob::DirectTrajOptProblem,
     options::IpoptOptions = IpoptOptions();
     verbose::Bool = true,
@@ -46,63 +46,6 @@ function Solvers._solve!(
 
     return nothing
 end
-
-# function _solve_madnlp!(
-#     prob::DirectTrajOptProblem,
-#     options::MadNLPOptions = MadNLPOptions();
-#     verbose::Bool = true,
-#     callback = nothing,
-#     kwargs...,
-# )
-#     # Apply kwargs to matching IpoptOptions fields
-#     madnlp_fields = fieldnames(MadNLPOptions)
-#     for (k, v) in kwargs
-#         if k in madnlp_fields
-#             setfield!(options, k, v)
-#         else
-#             @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
-#         end
-#     end
-
-#     # Sync derived fields that depend on other fields.
-#     # These are computed at IpoptOptions construction time, so kwarg overrides
-#     # of the source field don't automatically propagate.
-#     if haskey(kwargs, :eval_hessian)
-#         # options.hessian_approximation = options.eval_hessian ? "exact" : "limited-memory"
-#         # TODO: either implement this manually, or allow users to pass native MadNLP types as option values, or take the middle ground and do conversions from String/Symbol to Union{MadNLP.AbstractHessian, MadNLP.AbstractQuasiNewton}
-#         @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
-#     end
-
-#     optimizer, variables =
-#         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
-
-#     MOI.optimize!(optimizer)
-
-#     update_trajectory!(prob, optimizer, variables)
-
-#     return nothing
-# end
-
-# # Temporary precompile workaround
-# function _solve!(
-#     prob::DirectTrajOptProblem,
-#     options::Any;
-#     verbose::Bool = true,
-#     callback = nothing,
-#     kwargs...,
-# )
-#     if options isa Solvers.AbstractSolverOptions
-#         if options isa IpoptSolverExt.IpoptOptions
-#             _solve_ipopt!(prob, options; verbose = verbose, callback = callback, kwargs...)
-#         elseif options isa IpoptSolverExt.MadNLPOptions
-#             _solve_madnlp!(prob, options; verbose = verbose, callback = callback, kwargs...)
-#         else
-#             @warn "Solver options not recognized"
-#         end
-#     else
-#         @warn "Solver options invalid"
-#     end
-# end
 
 
 # ----------------------------------------------------------------------------
