@@ -38,26 +38,27 @@ end
         slack_name::Symbol,
         traj::NamedTrajectory;
         times::AbstractVector{Int}=1:traj.N,
-        label="L1 slack constraint: |var_name| ≤ slack_name"
+        label=nothing
     )
 
 Construct an L1 slack constraint tying `|var_name|` to `slack_name`.
+If `label` is omitted, an informative default label is generated.
 """
 function L1SlackConstraint(
     var_name::Symbol,
     slack_name::Symbol,
     traj::NamedTrajectory;
     times::AbstractVector{Int} = 1:traj.N,
-    label = "L1 slack constraint: |$var_name| ≤ $slack_name",
+    label = nothing,
 )
     @assert var_name ∈ traj.names "Variable $var_name not found in trajectory"
     @assert slack_name ∈ traj.names "Slack variable $slack_name not found in trajectory"
     @assert traj.dims[var_name] == traj.dims[slack_name] "Dimension mismatch: $(var_name) ($(traj.dims[var_name])) vs $(slack_name) ($(traj.dims[slack_name]))"
+    label = _resolve_constraint_label(
+        label,
+        "L1SlackConstraint: |$(_format_constraint_symbol(var_name))| ≤ $(_format_constraint_symbol(slack_name)) at $(_format_constraint_times(times))",
+    )
     return L1SlackConstraint(var_name, slack_name, Vector{Int}(times), label)
-end
-
-function Base.show(io::IO, c::L1SlackConstraint)
-    print(io, "L1SlackConstraint: |$(c.var_name)| <= $(c.slack_name)")
 end
 
 # =========================================================================== #
@@ -90,6 +91,7 @@ end
     J += MinimumTimeObjective(traj)
 
     l1_con = L1SlackConstraint(:du, :s_du, traj)
+    @test sprint(show, l1_con) == l1_con.label
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [l1_con])
     solve!(prob; max_iter = 100)

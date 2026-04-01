@@ -34,7 +34,7 @@ end
         ts::Vector{Int},
         bounds::Union{Float64, Vector{Float64}, Tuple{Vector{Float64}, Vector{Float64}}};
         subcomponents=nothing,
-        label="bounds constraint on trajectory variable \$name"
+        label=nothing
     )
 
 Constructs box constraint for trajectory variable.
@@ -47,14 +47,21 @@ Indices are computed when applied to a trajectory.
   - Scalar: symmetric bounds [-bounds, bounds]
   - Vector: symmetric bounds [-bounds, bounds] element-wise
   - Tuple: (lower_bounds, upper_bounds)
+- `label`: Custom label. If omitted, an informative default label is generated.
 """
 function BoundsConstraint(
     name::Symbol,
     ts::AbstractVector{Int},
     bounds::Union{Float64,Vector{Float64},Tuple{Vector{Float64},Vector{Float64}}};
     subcomponents::Union{Nothing,UnitRange{Int}} = nothing,
-    label = "bounds constraint on trajectory variable $name",
+    label = nothing,
 )
+    subcomponents_str =
+        isnothing(subcomponents) ? "" : " components $(collect(subcomponents))"
+    label = _resolve_constraint_label(
+        label,
+        "BoundsConstraint: $(_format_constraint_symbol(name)) at $(_format_constraint_times(ts)) with bounds $(bounds)$(subcomponents_str)",
+    )
     return BoundsConstraint(
         name,
         collect(ts),
@@ -69,17 +76,22 @@ end
     GlobalBoundsConstraint(
         name::Symbol,
         bounds::Union{Float64, Vector{Float64}, Tuple{Vector{Float64}, Vector{Float64}}};
-        label="bounds constraint on global variable \$name"
+        label=nothing
     )
 
 Constructs box constraint for global variable.
 Indices are computed when applied to a trajectory.
+If `label` is omitted, an informative default label is generated.
 """
 function GlobalBoundsConstraint(
     name::Symbol,
     bounds::Union{Float64,Vector{Float64},Tuple{Vector{Float64},Vector{Float64}}};
-    label = "bounds constraint on global variable $name",
+    label = nothing,
 )
+    label = _resolve_constraint_label(
+        label,
+        "BoundsConstraint: global $(_format_constraint_symbol(name)) with bounds $(bounds)",
+    )
     return BoundsConstraint(
         name,
         nothing,  # no times for global
@@ -88,10 +100,6 @@ function GlobalBoundsConstraint(
         nothing,  # no subcomponents for global
         label,
     )
-end
-
-function Base.show(io::IO, c::BoundsConstraint)
-    print(io, "BoundsConstraint: \"$(c.label)\"")
 end
 
 # =========================================================================== #
@@ -114,6 +122,7 @@ end
     # Test symmetric scalar bounds (use ddu which has no automatic constraints)
     ddu_bound = 0.5
     bounds_con = BoundsConstraint(:ddu, 1:traj.N, ddu_bound)
+    @test sprint(show, bounds_con) == bounds_con.label
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [bounds_con])
     solve!(prob; max_iter = 100)

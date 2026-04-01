@@ -24,7 +24,7 @@ end
     TimeConsistencyConstraint(;
         time_name::Symbol=:t,
         timestep_name::Symbol=:Δt,
-        label="time consistency constraint (t_{k+1} = t_k + Δt_k)"
+        label=nothing
     )
 
 Construct a constraint enforcing t_{k+1} = t_k + Δt_k for all k.
@@ -32,21 +32,18 @@ Construct a constraint enforcing t_{k+1} = t_k + Δt_k for all k.
 # Arguments
 - `time_name`: Name of the time variable in the trajectory (default `:t`)
 - `timestep_name`: Name of the timestep variable in the trajectory (default `:Δt`)
-- `label`: Constraint label for logging/debugging
+- `label`: Custom label. If omitted, an informative default label is generated.
 """
 function TimeConsistencyConstraint(;
     time_name::Symbol = :t,
     timestep_name::Symbol = :Δt,
-    label = "time consistency constraint (t_{k+1} = t_k + Δt_k)",
+    label = nothing,
 )
-    return TimeConsistencyConstraint(time_name, timestep_name, label)
-end
-
-function Base.show(io::IO, c::TimeConsistencyConstraint)
-    print(
-        io,
-        "TimeConsistencyConstraint: $(c.time_name)_{k+1} = $(c.time_name)_k + $(c.timestep_name)_k",
+    label = _resolve_constraint_label(
+        label,
+        "TimeConsistencyConstraint: $(time_name)_{k+1} = $(time_name)_k + $(timestep_name)_k",
     )
+    return TimeConsistencyConstraint(time_name, timestep_name, label)
 end
 
 # =========================================================================== #
@@ -71,6 +68,7 @@ end
     J = QuadraticRegularizer(:u, traj, 1.0)
 
     time_con = TimeConsistencyConstraint()
+    @test sprint(show, time_con) == time_con.label
 
     prob = DirectTrajOptProblem(traj, J, AbstractIntegrator[]; constraints = [time_con])
     solve!(prob; max_iter = 100)

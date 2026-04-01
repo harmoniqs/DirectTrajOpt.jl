@@ -31,20 +31,25 @@ end
         name::Symbol,
         ts::Vector{Int},
         val::Union{Float64, Vector{Float64}};
-        label="equality constraint on trajectory variable \$name"
+        label=nothing
     )
 
 Constructs equality constraint for trajectory variable.
 Indices are computed when applied to a trajectory.
+If `label` is omitted, an informative default label is generated.
 """
 function EqualityConstraint(
     name::Symbol,
     ts::AbstractVector{Int},
     val::Union{Float64,Vector{Float64}};
-    label = "equality constraint on trajectory variable $name",
+    label = nothing,
 )
     # Convert scalar to vector (will be repeated per time step)
     values = val isa Float64 ? [val] : val
+    label = _resolve_constraint_label(
+        label,
+        "EqualityConstraint: $(_format_constraint_symbol(name)) at $(_format_constraint_times(ts)) == $(val)",
+    )
 
     return EqualityConstraint(
         name,
@@ -59,19 +64,24 @@ end
     GlobalEqualityConstraint(
         name::Symbol,
         val::Union{Float64, Vector{Float64}};
-        label="equality constraint on global variable \$name"
+        label=nothing
     )::EqualityConstraint
 
 Constructs equality constraint for global variable.
 Indices are computed when applied to a trajectory.
+If `label` is omitted, an informative default label is generated.
 """
 function GlobalEqualityConstraint(
     name::Symbol,
     val::Union{Float64,Vector{Float64}};
-    label = "equality constraint on global variable $name",
+    label = nothing,
 )
     # Convert scalar to vector
     values = val isa Float64 ? [val] : val
+    label = _resolve_constraint_label(
+        label,
+        "EqualityConstraint: global $(_format_constraint_symbol(name)) == $(val)",
+    )
 
     return EqualityConstraint(
         name,
@@ -80,10 +90,6 @@ function GlobalEqualityConstraint(
         true,  # is global
         label,
     )
-end
-
-function Base.show(io::IO, c::EqualityConstraint)
-    print(io, "EqualityConstraint: \"$(c.label)\"")
 end
 
 # =========================================================================== #
@@ -130,6 +136,7 @@ end
     # (avoiding conflict with traj.initial and traj.final)
     du_mid = 0.0
     mid_con = EqualityConstraint(:du, [5], du_mid)
+    @test sprint(show, mid_con) == mid_con.label
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [mid_con])
     solve!(prob; max_iter = 100)

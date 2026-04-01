@@ -19,18 +19,30 @@ struct AllEqualConstraint <: AbstractLinearConstraint
 end
 
 """
-    TimeStepsAllEqualConstraint(;label="timesteps all equal constraint")
+    TimeStepsAllEqualConstraint(; label=nothing)
 
 Constraint that all timesteps are equal (for fixed-timestep trajectories).
 The trajectory's timestep variable is inferred when applied.
 """
-function TimeStepsAllEqualConstraint(; label = "timesteps all equal constraint")
-    # Use a placeholder; actual timestep variable determined from trajectory
-    return AllEqualConstraint(:Δt, 1, label)
+function AllEqualConstraint(
+    var_name::Symbol,
+    component_index::Int;
+    label = nothing,
+)
+    label = _resolve_constraint_label(
+        label,
+        "AllEqualConstraint: all values of $(_format_constraint_symbol(var_name))[$component_index] equal",
+    )
+    return AllEqualConstraint(var_name, component_index, label)
 end
 
-function Base.show(io::IO, c::AllEqualConstraint)
-    print(io, "AllEqualConstraint: \"$(c.label)\"")
+function TimeStepsAllEqualConstraint(; label = nothing)
+    # Use a placeholder; actual timestep variable determined from trajectory
+    label = _resolve_constraint_label(
+        label,
+        "AllEqualConstraint: all values of timestep variable equal",
+    )
+    return AllEqualConstraint(:Δt, 1, label)
 end
 
 # =========================================================================== #
@@ -52,6 +64,8 @@ end
 
     # Test fixed timestep constraint
     timesteps_equal_con = TimeStepsAllEqualConstraint()
+    @test timesteps_equal_con.label == "AllEqualConstraint: all values of timestep variable equal"
+    @test sprint(show, timesteps_equal_con) == timesteps_equal_con.label
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [timesteps_equal_con])
     solve!(prob; max_iter = 100)
@@ -101,6 +115,7 @@ end
 
     # Constrain all values of variable 'a' to be equal
     a_equal_con = AllEqualConstraint(:a, 1, "all a values equal")
+    @test sprint(show, a_equal_con) == a_equal_con.label
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [a_equal_con])
     solve!(prob; max_iter = 100)

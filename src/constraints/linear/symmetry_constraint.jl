@@ -29,28 +29,37 @@ end
         idx::Vector{Int};
         even=true,
         include_timestep=true,
-        label="symmetry constraint on \$name"
+        label=nothing
     )
 
 Constraint enforcing symmetry on control variables.
 Indices are computed when applied to a trajectory.
+If `label` is omitted, an informative default label is generated.
 """
+function SymmetryConstraint(
+    var_name::Symbol,
+    component_indices::Vector{Int},
+    even::Bool,
+    include_timestep::Bool;
+    label = nothing,
+)
+    sym_type = even ? "even" : "odd"
+    timestep_str = include_timestep ? ", including timestep symmetry" : ""
+    label = _resolve_constraint_label(
+        label,
+        "SymmetryConstraint: $sym_type symmetry on $(_format_constraint_symbol(var_name)) components $(component_indices)$(timestep_str)",
+    )
+    return SymmetryConstraint(var_name, component_indices, even, include_timestep, label)
+end
+
 function SymmetricControlConstraint(
     name::Symbol,
     idx::Vector{Int};
     even::Bool = true,
     include_timestep::Bool = true,
-    label = "symmetry constraint on $name",
+    label = nothing,
 )
-    return SymmetryConstraint(name, idx, even, include_timestep, label)
-end
-
-function Base.show(io::IO, c::SymmetryConstraint)
-    sym_type = c.even ? "even" : "odd"
-    print(
-        io,
-        "SymmetryConstraint: $sym_type symmetry on :$(c.var_name) components $(c.component_indices)",
-    )
+    return SymmetryConstraint(name, idx, even, include_timestep; label = label)
 end
 
 # =========================================================================== #
@@ -74,6 +83,7 @@ end
     # Test even symmetry constraint on control
     sym_constraint =
         SymmetricControlConstraint(:u, [1]; even = true, include_timestep = true)
+    @test sprint(show, sym_constraint) == sym_constraint.label
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [sym_constraint])
     solve!(prob; max_iter = 100)

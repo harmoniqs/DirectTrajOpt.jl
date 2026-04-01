@@ -14,6 +14,7 @@ export NonlinearGlobalKnotPointConstraint
 export TimeConsistencyConstraint
 export L1SlackConstraint
 
+export constraint_label
 export evaluate!
 export test_constraint
 
@@ -40,6 +41,8 @@ import ..CommonInterface: eval_jacobian, eval_hessian_of_lagrangian
     AbstractConstraint
 
 Abstract supertype for all constraints in a trajectory optimization problem.
+
+Built-in constraints expose a `label::String` used for display and debugging.
 """
 abstract type AbstractConstraint end
 
@@ -48,7 +51,8 @@ abstract type AbstractConstraint end
 
 Abstract type for linear constraints (bounds, equality, symmetry, etc.).
 Linear constraints are applied directly to the optimizer via MathOptInterface
-rather than through the NLP evaluator.
+rather than through the NLP evaluator. Built-in linear constraints expose a
+`label::String`.
 """
 abstract type AbstractLinearConstraint <: AbstractConstraint end
 
@@ -60,12 +64,37 @@ Abstract type for nonlinear constraints evaluated at each solver iteration.
 Subtypes must implement the [`CommonInterface`](@ref) methods and have a `dim::Int` field
 giving the total constraint dimension, plus an `equality::Bool` field indicating
 whether the constraint is `g(x) = 0` (equality) or `g(x) ≤ 0` (inequality).
+Built-in nonlinear constraints also expose a `label::String`.
 """
 abstract type AbstractNonlinearConstraint <: AbstractConstraint end
 
 # ----------------------------------------------------------------------------- #
 #                     Abstract Constraint Interface                             #
 # ----------------------------------------------------------------------------- #
+
+"""
+    constraint_label(constraint::AbstractConstraint)
+
+Return the human-readable label used when displaying a constraint.
+"""
+function constraint_label(constraint::AbstractConstraint)
+    hasfield(typeof(constraint), :label) ||
+        error("$(nameof(typeof(constraint))) does not define a `label` field")
+    return getfield(constraint, :label)
+end
+
+function Base.show(io::IO, constraint::AbstractConstraint)
+    print(io, constraint_label(constraint))
+end
+
+_format_constraint_symbol(name::Symbol) = ":$name"
+_format_constraint_symbols(names::AbstractVector{Symbol}) =
+    join(_format_constraint_symbol.(names), ", ")
+_format_constraint_times(times::AbstractVector{Int}) =
+    length(times) <= 3 ? "t = $(collect(times))" : "$(length(times)) times"
+_format_constraint_kind(equality::Bool) = equality ? "equality" : "inequality"
+_resolve_constraint_label(label, default::AbstractString) =
+    isnothing(label) ? default : String(label)
 
 """
     jacobian_structure(constraint, traj::NamedTrajectory)

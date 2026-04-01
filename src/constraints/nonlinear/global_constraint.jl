@@ -18,6 +18,7 @@ For pre-allocated optimization, see Piccolissimo.OptimizedNonlinearGlobalConstra
 - `g::F`: Constraint function mapping global variables -> constraint values
 - `global_names::Vector{Symbol}`: Names of global variables the constraint depends on
 - `equality::Bool`: If true, g(globals) = 0; if false, g(globals) ≤ 0
+- `label::String`: Constraint label
 - `dim::Int`: Dimension of constraint output
 - `global_dim::Int`: Combined dimension of all constrained global variables
 """
@@ -25,6 +26,7 @@ struct NonlinearGlobalConstraint{F} <: AbstractNonlinearConstraint
     g::F
     global_names::Vector{Symbol}
     equality::Bool
+    label::String
     dim::Int
     global_dim::Int
 
@@ -34,8 +36,7 @@ struct NonlinearGlobalConstraint{F} <: AbstractNonlinearConstraint
             global_names::Union{Symbol, AbstractVector{Symbol}},
             traj::NamedTrajectory;
             equality::Bool=true,
-            jacobian_structure::Union{Nothing, SparseMatrixCSC{Float64, Int}}=nothing,
-            hessian_structure::Union{Nothing, SparseMatrixCSC{Float64, Int}}=nothing
+            label=nothing
         )
 
     Create a NonlinearGlobalConstraint object with global components.
@@ -47,12 +48,14 @@ struct NonlinearGlobalConstraint{F} <: AbstractNonlinearConstraint
 
     # Keyword Arguments
     - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
+    - `label=nothing`: Custom label. If omitted, an informative default label is generated.
     """
     function NonlinearGlobalConstraint(
         g::Function,
         global_names::AbstractVector{Symbol},
         traj::NamedTrajectory;
         equality::Bool = true,
+        label = nothing,
     )
         global_comps = vcat([traj.global_components[name] for name in global_names]...)
         global_dim = length(global_comps)
@@ -61,8 +64,12 @@ struct NonlinearGlobalConstraint{F} <: AbstractNonlinearConstraint
         g_eval = g(traj.global_data[global_comps])
         @assert g_eval isa AbstractVector{<:Real}
         g_dim = length(g_eval)
+        label = _resolve_constraint_label(
+            label,
+            "NonlinearGlobalConstraint: on [$(_format_constraint_symbols(global_names))], $(_format_constraint_kind(equality)) (dim = $g_dim)",
+        )
 
-        return new{typeof(g)}(g, global_names, equality, g_dim, global_dim)
+        return new{typeof(g)}(g, global_names, equality, label, g_dim, global_dim)
     end
 end
 
@@ -73,12 +80,6 @@ function NonlinearGlobalConstraint(
     kwargs...,
 )
     return NonlinearGlobalConstraint(g, [global_name], traj; kwargs...)
-end
-
-function Base.show(io::IO, c::NonlinearGlobalConstraint)
-    globals = join([":$n" for n in c.global_names], ", ")
-    eq_str = c.equality ? "equality" : "inequality"
-    print(io, "NonlinearGlobalConstraint on [$globals], $eq_str (dim = $(c.dim))")
 end
 
 # ----------------------------------------------------------------------------- #
@@ -169,6 +170,8 @@ end
 
     NLC = NonlinearGlobalConstraint(g_fn, :g, traj; equality = false)
 
+    @test NLC.label == "NonlinearGlobalConstraint: on [:g], inequality (dim = 1)"
+
     # Test with validation utility
     test_constraint(
         NLC,
@@ -177,4 +180,6 @@ end
         show_jacobian_diff = false,
         show_hessian_diff = false,
     )
+
+    @test sprint(show, NLC) == NLC.label
 end

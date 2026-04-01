@@ -21,6 +21,7 @@ For pre-allocated optimization, see Piccolissimo.OptimizedNonlinearGlobalKnotPoi
 - `times::Vector{Int}`: Time indices where constraint is applied
 - `equality::Bool`: If true, g(x, globals) = 0; if false, g(x, globals) ≤ 0
 - `params::Vector`: Parameters for each time index
+- `label::String`: Constraint label
 - `g_dim::Int`: Dimension of constraint output at each time step
 - `var_dim::Int`: Combined dimension of knot point variables
 - `global_dim::Int`: Combined dimension of global variables
@@ -34,6 +35,7 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
     times::Vector{Int}
     equality::Bool
     params::Vector
+    label::String
     g_dim::Int
     var_dim::Int
     global_dim::Int
@@ -48,10 +50,16 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
             traj::NamedTrajectory,
             params::AbstractVector;
             times::AbstractVector{Int}=1:traj.N,
-            equality::Bool=true
+            equality::Bool=true,
+            label=nothing
         )
 
-    Create a NonlinearKnotPointConstraint object with global components.
+    Create a NonlinearGlobalKnotPointConstraint object with global components.
+
+    # Keyword Arguments
+    - `times::AbstractVector{Int}=1:traj.N`: Time indices at which the constraint is enforced.
+    - `equality::Bool=true`: If `true`, the constraint is `g(x, globals) = 0`. Otherwise, the constraint is `g(x, globals) ≤ 0`.
+    - `label=nothing`: Custom label. If omitted, an informative default label is generated.
     """
     function NonlinearGlobalKnotPointConstraint(
         g::Function,
@@ -61,6 +69,7 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
         params::AbstractVector;
         times::AbstractVector{Int} = 1:traj.N,
         equality::Bool = true,
+        label = nothing,
     )
         @assert length(params) == length(times) "params must have the same length as times"
 
@@ -81,6 +90,10 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
 
         @assert g(xg_test, params[1]) isa AbstractVector{<:Real}
         g_dim = length(g(xg_test, params[1]))
+        label = _resolve_constraint_label(
+            label,
+            "NonlinearGlobalKnotPointConstraint: on [$(_format_constraint_symbols(names))] + globals [$(_format_constraint_symbols(global_names))], $(_format_constraint_kind(equality)), $(_format_constraint_times(times)) (g_dim = $g_dim)",
+        )
 
         return new{typeof(g)}(
             g,
@@ -89,6 +102,7 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
             times,
             equality,
             params,
+            label,
             g_dim,
             var_dim,
             global_dim_local,
@@ -121,18 +135,6 @@ end
 
 function NonlinearGlobalKnotPointConstraint(g::Function, name::Symbol, args...; kwargs...)
     return NonlinearGlobalKnotPointConstraint(g, [name], args...; kwargs...)
-end
-
-function Base.show(io::IO, c::NonlinearGlobalKnotPointConstraint)
-    vars = join([":$n" for n in c.var_names], ", ")
-    globals = join([":$n" for n in c.global_names], ", ")
-    eq_str = c.equality ? "equality" : "inequality"
-    n = length(c.times)
-    times_str = n <= 3 ? "t = $(c.times)" : "$n times"
-    print(
-        io,
-        "NonlinearGlobalKnotPointConstraint on [$vars] + globals [$globals], $eq_str, $times_str",
-    )
 end
 
 # ----------------------------------------------------------------------------- #
@@ -279,6 +281,10 @@ end
         times = times,
         equality = false,
     )
+
+    @test NLC.label ==
+          "NonlinearGlobalKnotPointConstraint: on [:u] + globals [:g], inequality, 10 times (g_dim = 2)"
+    @test sprint(show, NLC) == NLC.label
 
     # Test with validation utility
     test_constraint(NLC, traj; atol = 1.5e-2, show_hessian_diff = true)

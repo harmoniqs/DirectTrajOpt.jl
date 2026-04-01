@@ -20,6 +20,7 @@ For pre-allocated optimization, see Piccolissimo.OptimizedNonlinearKnotPointCons
 - `equality::Bool`: If true, g(x) = 0; if false, g(x) ≤ 0
 - `times::Vector{Int}`: Time indices where constraint is applied
 - `params::Vector`: Parameters for each time index (e.g., time-varying targets)
+- `label::String`: Constraint label
 - `g_dim::Int`: Dimension of constraint output at each time step
 - `var_dim::Int`: Combined dimension of all constrained variables
 - `dim::Int`: Total constraint dimension (g_dim * length(times))
@@ -30,6 +31,7 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
     equality::Bool
     times::Vector{Int}
     params::Vector
+    label::String
     g_dim::Int
     var_dim::Int
     dim::Int
@@ -57,6 +59,7 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
     - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
     - `times::AbstractVector{Int}=1:traj.N`: Time indices at which the constraint is enforced.
     - `params::AbstractVector=fill(nothing, length(times))`: Parameters for each time step (e.g., time-varying targets).
+    - `label=nothing`: Custom label. If omitted, an informative default label is generated.
 
     # Examples
     ```julia
@@ -80,6 +83,7 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
         params::AbstractVector;
         equality::Bool = true,
         times::AbstractVector{Int} = 1:traj.N,
+        label = nothing,
     )
         @assert length(params) == length(times) "params must have the same length as times"
 
@@ -92,6 +96,10 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
         x_slice_test = slice(1, x_comps, traj.dim)
         @assert g(Z⃗[x_slice_test], params[1]) isa AbstractVector{<:Real}
         g_dim = length(g(Z⃗[x_slice_test], params[1]))
+        label = _resolve_constraint_label(
+            label,
+            "NonlinearKnotPointConstraint: on [$(_format_constraint_symbols(names))], $(_format_constraint_kind(equality)), $(_format_constraint_times(times)) (g_dim = $g_dim)",
+        )
 
         return new{typeof(g)}(
             g,
@@ -99,6 +107,7 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
             equality,
             times,
             params,
+            label,
             g_dim,
             var_dim,
             g_dim * length(times),
@@ -186,17 +195,6 @@ function NonlinearKnotPointConstraint(
     kwargs...,
 )
     return NonlinearKnotPointConstraint(g, [name], traj; kwargs...)
-end
-
-function Base.show(io::IO, c::NonlinearKnotPointConstraint)
-    vars = join([":$n" for n in c.var_names], ", ")
-    eq_str = c.equality ? "equality" : "inequality"
-    n = length(c.times)
-    times_str = n <= 3 ? "t = $(c.times)" : "$n times"
-    print(
-        io,
-        "NonlinearKnotPointConstraint on [$vars], $eq_str, $times_str (g_dim = $(c.g_dim))",
-    )
 end
 
 # ----------------------------------------------------------------------------- #
@@ -306,6 +304,10 @@ end
 
     NLC = NonlinearKnotPointConstraint(g, :u, traj; times = 1:traj.N, equality = false)
 
+    @test NLC.label ==
+          "NonlinearKnotPointConstraint: on [:u], inequality, 10 times (g_dim = 1)"
+    @test sprint(show, NLC) == NLC.label
+
     # Test Jacobian and Hessian against finite differences
     test_constraint(NLC, traj; atol = 1e-3, show_jacobian_diff = true)
 end
@@ -329,6 +331,8 @@ end
     CommonInterface.evaluate!(δ2, NLC2, traj)
 
     @test δ1 ≈ δ2
+    @test sprint(show, NLC1) == NLC1.label
+    @test sprint(show, NLC2) == NLC2.label
 
     # Test both with finite differences
     test_constraint(NLC1, traj; atol = 1e-3)

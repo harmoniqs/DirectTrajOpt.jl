@@ -25,7 +25,7 @@ struct TotalConstraint <: AbstractLinearConstraint
 end
 
 """
-    DurationConstraint(value::Float64; label="duration constraint of \$value")
+    DurationConstraint(value::Float64; label=nothing)
 
 Constraint that the total trajectory duration equals a target value.
 The trajectory's timestep variable is inferred when applied.
@@ -33,14 +33,25 @@ The trajectory's timestep variable is inferred when applied.
 # Note
 Duration is computed as the sum of the first N-1 timesteps, since the final knot point
 represents the end state and has no duration after it.
+If `label` is omitted, an informative default label is generated.
 """
-function DurationConstraint(value::Float64; label = "duration constraint of $value")
-    # Use placeholder; actual timestep variable determined from trajectory
-    return TotalConstraint(:Δt, 1, value, label)
+function TotalConstraint(
+    var_name::Symbol,
+    component_index::Int,
+    value::Float64;
+    label = nothing,
+)
+    label = _resolve_constraint_label(
+        label,
+        "TotalConstraint: sum of $(_format_constraint_symbol(var_name))[$component_index] == $value",
+    )
+    return TotalConstraint(var_name, component_index, value, label)
 end
 
-function Base.show(io::IO, c::TotalConstraint)
-    print(io, "TotalConstraint: \"$(c.label)\"")
+function DurationConstraint(value::Float64; label = nothing)
+    # Use placeholder; actual timestep variable determined from trajectory
+    label = _resolve_constraint_label(label, "DurationConstraint: total duration == $value")
+    return TotalConstraint(:Δt, 1, value, label)
 end
 
 # =========================================================================== #
@@ -63,6 +74,7 @@ end
     # Test duration constraint
     target_duration = 4.0
     dur_constraint = DurationConstraint(target_duration)
+    @test sprint(show, dur_constraint) == dur_constraint.label
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [dur_constraint])
     solve!(prob; max_iter = 100)
@@ -105,6 +117,7 @@ end
     # Constrain sum of 'w' values
     target_sum = 5.0
     total_con = TotalConstraint(:w, 1, target_sum, "sum of w = $target_sum")
+    @test sprint(show, total_con) == total_con.label
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [total_con])
     solve!(prob; max_iter = 100)
