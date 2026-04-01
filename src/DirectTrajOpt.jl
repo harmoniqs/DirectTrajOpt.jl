@@ -48,4 +48,7 @@ include("solvers.jl")
 include("solvers/ipopt_solver/IpoptSolverExt.jl")
 @reexport using .IpoptSolverExt
 
+include("solvers/ipopt_solver/MadNLPSolverExt.jl")
+@reexport using .MadNLPSolverExt
+
 end

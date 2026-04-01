@@ -9,7 +9,7 @@ using Libdl  # Added for Pardiso library loading
 export solve!
 
 
-function _solve_ipopt!(
+function Solvers._solve!(
     prob::DirectTrajOptProblem,
     options::IpoptOptions = IpoptOptions();
     verbose::Bool = true,
@@ -47,178 +47,68 @@ function _solve_ipopt!(
     return nothing
 end
 
-function _solve_madnlp!(
-    prob::DirectTrajOptProblem,
-    options::MadNLPOptions = MadNLPOptions();
-    verbose::Bool = true,
-    callback = nothing,
-    kwargs...,
-)
-    # Apply kwargs to matching IpoptOptions fields
-    madnlp_fields = fieldnames(MadNLPOptions)
-    for (k, v) in kwargs
-        if k in madnlp_fields
-            setfield!(options, k, v)
-        else
-            @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
-        end
-    end
+# function _solve_madnlp!(
+#     prob::DirectTrajOptProblem,
+#     options::MadNLPOptions = MadNLPOptions();
+#     verbose::Bool = true,
+#     callback = nothing,
+#     kwargs...,
+# )
+#     # Apply kwargs to matching IpoptOptions fields
+#     madnlp_fields = fieldnames(MadNLPOptions)
+#     for (k, v) in kwargs
+#         if k in madnlp_fields
+#             setfield!(options, k, v)
+#         else
+#             @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
+#         end
+#     end
 
-    # Sync derived fields that depend on other fields.
-    # These are computed at IpoptOptions construction time, so kwarg overrides
-    # of the source field don't automatically propagate.
-    if haskey(kwargs, :eval_hessian)
-        # options.hessian_approximation = options.eval_hessian ? "exact" : "limited-memory"
-        # TODO: either implement this manually, or allow users to pass native MadNLP types as option values, or take the middle ground and do conversions from String/Symbol to Union{MadNLP.AbstractHessian, MadNLP.AbstractQuasiNewton}
-        @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
-    end
+#     # Sync derived fields that depend on other fields.
+#     # These are computed at IpoptOptions construction time, so kwarg overrides
+#     # of the source field don't automatically propagate.
+#     if haskey(kwargs, :eval_hessian)
+#         # options.hessian_approximation = options.eval_hessian ? "exact" : "limited-memory"
+#         # TODO: either implement this manually, or allow users to pass native MadNLP types as option values, or take the middle ground and do conversions from String/Symbol to Union{MadNLP.AbstractHessian, MadNLP.AbstractQuasiNewton}
+#         @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
+#     end
 
-    optimizer, variables =
-        get_optimizer_and_variables(prob, options, callback, verbose = verbose)
+#     optimizer, variables =
+#         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
-    MOI.optimize!(optimizer)
+#     MOI.optimize!(optimizer)
 
-    update_trajectory!(prob, optimizer, variables)
+#     update_trajectory!(prob, optimizer, variables)
 
-    return nothing
-end
+#     return nothing
+# end
 
-# Temporary precompile workaround
-function _solve!(
-    prob::DirectTrajOptProblem,
-    options::Any;
-    verbose::Bool = true,
-    callback = nothing,
-    kwargs...,
-)
-    if options isa Solvers.AbstractSolverOptions
-        if options isa IpoptSolverExt.IpoptOptions
-            _solve_ipopt!(prob, options; verbose = verbose, callback = callback, kwargs...)
-        elseif options isa IpoptSolverExt.MadNLPOptions
-            _solve_madnlp!(prob, options; verbose = verbose, callback = callback, kwargs...)
-        else
-            @warn "Solver options not recognized"
-        end
-    else
-        @warn "Solver options invalid"
-    end
-end
+# # Temporary precompile workaround
+# function _solve!(
+#     prob::DirectTrajOptProblem,
+#     options::Any;
+#     verbose::Bool = true,
+#     callback = nothing,
+#     kwargs...,
+# )
+#     if options isa Solvers.AbstractSolverOptions
+#         if options isa IpoptSolverExt.IpoptOptions
+#             _solve_ipopt!(prob, options; verbose = verbose, callback = callback, kwargs...)
+#         elseif options isa IpoptSolverExt.MadNLPOptions
+#             _solve_madnlp!(prob, options; verbose = verbose, callback = callback, kwargs...)
+#         else
+#             @warn "Solver options not recognized"
+#         end
+#     else
+#         @warn "Solver options invalid"
+#     end
+# end
 
 
-"""
-    solve!(
-        prob::DirectTrajOptProblem;
-        options::IpoptOptions=IpoptOptions(),
-        verbose::Bool=true,
-        callback=nothing,
-        kwargs...
-    )
+# ----------------------------------------------------------------------------
+# Optimizer Initialization/Synchronization
+# ----------------------------------------------------------------------------
 
-Solve a direct trajectory optimization problem using Ipopt.
-
-# Arguments
-- `prob::DirectTrajOptProblem`: The trajectory optimization problem to solve.
-- `options::IpoptOptions`: Ipopt solver options. Default is `IpoptOptions()`.
-- `verbose::Bool`: If `true`, print solver progress information.
-- `callback::Function`: Optional callback function to execute during optimization.
-- `kwargs...`: Any field of `IpoptOptions` can be passed as a keyword argument. These
-  override the corresponding field in `options`. See `IpoptOptions` for valid fields.
-
-# Common keyword arguments
-- `max_iter::Int`: Maximum solver iterations (default: 1000)
-- `tol::Float64`: Convergence tolerance (default: 1e-8)
-- `eval_hessian::Bool`: Use exact Hessians, or L-BFGS if false (default: true)
-- `linear_solver::String`: Linear solver backend, e.g. `"mumps"`, `"pardiso"` (default: `"mumps"`)
-- `print_level::Int`: Ipopt output verbosity 0–12 (default: 5)
-- `mu_strategy::String`: Barrier parameter strategy (default: `"adaptive"`)
-
-# Returns
-- `nothing`: The problem's trajectory is updated in place with the optimized solution.
-
-# Examples
-```julia
-# Simple usage
-solve!(prob; max_iter=100, verbose=true)
-
-# Override multiple Ipopt options
-solve!(prob; max_iter=200, tol=1e-6, eval_hessian=false)
-
-# Pass an options struct and override specific fields
-solve!(prob; options=IpoptOptions(tol=1e-4), max_iter=500)
-```
-"""
-function DTO.Solvers.solve!(
-    prob::DirectTrajOptProblem;
-    options::Solvers.AbstractSolverOptions = IpoptOptions(),
-    verbose::Bool = true,
-    callback = nothing,
-    kwargs...,
-)
-    _solve!(prob, options; verbose = verbose, callback = callback, kwargs...)
-
-    return nothing
-end
-
-# TODO: take another look at this
-function remove_slack_variables!(prob::DirectTrajOptProblem)
-
-    slack_var_names = Symbol[]
-
-    for con ∈ prob.constraints
-        if con isa L1SlackConstraint
-            push!(slack_var_names, con.slack_name)
-        end
-    end
-
-    prob.trajectory = remove_components(prob.trajectory, slack_var_names)
-    return nothing
-end
-
-function get_num_variables(prob::DirectTrajOptProblem)
-    n_vars = prob.trajectory.dim * prob.trajectory.N
-
-    for global_vars_i ∈ values(prob.trajectory.global_data)
-        n_global_vars = length(global_vars_i)
-        n_vars += n_global_vars
-    end
-
-    return n_vars
-end
-
-function get_nonlinear_constraints(prob)
-    # Compute dynamics dimension from integrators (same as TrajectoryDynamics does)
-    dynamics_dim = 0
-    # TODO: this is hacky as time integrator is being checked for, which should really bea linear constraint
-    for integrator in prob.integrators
-        # Get the state dimension from the trajectory using the integrator's x_name, x_names, or t_name
-        if hasfield(typeof(integrator), :x_name)
-            dynamics_dim += prob.trajectory.dims[integrator.x_name]
-        elseif hasfield(typeof(integrator), :x_names)
-            for x_name in integrator.x_names
-                dynamics_dim += prob.trajectory.dims[x_name]
-            end
-        elseif hasfield(typeof(integrator), :t_name)
-            dynamics_dim += prob.trajectory.dims[integrator.t_name]
-        else
-            error(
-                "Integrator type $(typeof(integrator)) must have either x_name, x_names, or t_name field",
-            )
-        end
-    end
-    n_dynamics_constraints = dynamics_dim * (prob.trajectory.N - 1)
-
-    nl_cons = fill(MOI.NLPBoundsPair(0.0, 0.0), n_dynamics_constraints)
-
-    for nl_con ∈ filter(c -> c isa AbstractNonlinearConstraint, prob.constraints)
-        if nl_con.equality
-            append!(nl_cons, fill(MOI.NLPBoundsPair(0.0, 0.0), nl_con.dim))
-        else
-            append!(nl_cons, fill(MOI.NLPBoundsPair(-Inf, 0.0), nl_con.dim))
-        end
-    end
-
-    return nl_cons
-end
 
 function get_optimizer_and_variables(
     prob::DirectTrajOptProblem,
@@ -240,7 +130,7 @@ function get_optimizer_and_variables(
 
     # get the MOI specific nonlinear constraints
     t_nlcons = time()
-    nl_cons = get_nonlinear_constraints(prob)
+    nl_cons = Solvers.get_nonlinear_constraints(prob)
     if verbose
         println(
             "    NL constraint bounds extracted ($(round(time() - t_nlcons, digits=3))s)",
@@ -285,7 +175,7 @@ function get_optimizer_and_variables(
         c->c isa AbstractLinearConstraint,
         prob.constraints,
     )...]
-    constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose = verbose)
+    Solvers.constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose = verbose)
     if verbose
         println(
             "    linear constraints added: $(length(linear_constraints)) ($(round(time() - t_lincons, digits=3))s)",
@@ -304,121 +194,8 @@ function get_optimizer_and_variables(
     return optimizer, variables
 end
 
-function get_optimizer_and_variables(
-    prob::DirectTrajOptProblem,
-    options::MadNLPOptions,
-    callback::Union{Nothing,Function};
-    verbose::Bool = true,
-)
-    t_init_start = time()
-    if verbose
-        println("    initializing optimizer...")
-    end
-
-    # get evaluator
-    t_eval = time()
-    evaluator = IpoptEvaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
-    if verbose
-        println("    evaluator created ($(round(time() - t_eval, digits=3))s)")
-    end
-
-    # get the MOI specific nonlinear constraints
-    t_nlcons = time()
-    nl_cons = get_nonlinear_constraints(prob)
-    if verbose
-        println(
-            "    NL constraint bounds extracted ($(round(time() - t_nlcons, digits=3))s)",
-        )
-    end
-
-    # build NLP block data
-    t_block = time()
-    block_data = MOI.NLPBlockData(nl_cons, evaluator, true)
-    if verbose
-        println("    NLP block data built ($(round(time() - t_block, digits=3))s)")
-    end
-
-    # initialize optimizer 
-    t_opt = time()
-    optimizer = MadNLP.Optimizer()
-
-    # set NLP block data
-    MOI.set(optimizer, MOI.NLPBlock(), block_data)
-
-    # set objective sense: minimize
-    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    if verbose
-        println("    Ipopt optimizer configured ($(round(time() - t_opt, digits=3))s)")
-    end
-
-    # initialize problem variables 
-    t_vars = time()
-    variables = set_variables!(optimizer, prob.trajectory)
-    if verbose
-        println("    variables set ($(round(time() - t_vars, digits=3))s)")
-    end
-
-    # # set callback function
-    # if !isnothing(callback)
-    #     MOI.set(optimizer, Ipopt.CallbackFunction(), callback(optimizer))
-    # end
-
-    # add linear constraints
-    t_lincons = time()
-    linear_constraints = AbstractLinearConstraint[filter(
-        c->c isa AbstractLinearConstraint,
-        prob.constraints,
-    )...]
-    constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose = verbose)
-    if verbose
-        println(
-            "    linear constraints added: $(length(linear_constraints)) ($(round(time() - t_lincons, digits=3))s)",
-        )
-    end
-
-    # set solver options
-    set_options!(optimizer, options)
-
-    if verbose
-        println(
-            "    optimizer initialization complete (total: $(round(time() - t_init_start, digits=3))s)",
-        )
-    end
-
-    return optimizer, variables
-end
-
-
-# ----------------------------------------------------------------------------
-#                         Optimizer Initialization
-# ----------------------------------------------------------------------------
 
 function set_variables!(optimizer::Ipopt.Optimizer, traj::NamedTrajectory)
-    data_dim = traj.dim * traj.N
-
-    # add variables
-    variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
-
-    # set trajectory data
-    MOI.set(
-        optimizer,
-        MOI.VariablePrimalStart(),
-        variables[1:data_dim],
-        collect(traj.datavec),
-    )
-
-    # set global data
-    MOI.set(
-        optimizer,
-        MOI.VariablePrimalStart(),
-        variables[data_dim .+ (1:traj.global_dim)],
-        collect(traj.global_data),
-    )
-
-    return variables
-end
-
-function set_variables!(optimizer::MadNLP.Optimizer, traj::NamedTrajectory)
     data_dim = traj.dim * traj.N
 
     # add variables
@@ -456,18 +233,10 @@ function update_trajectory!(
     return nothing
 end
 
-function update_trajectory!(
-    prob::DirectTrajOptProblem,
-    optimizer::MadNLP.Optimizer,
-    variables::Vector{MOI.VariableIndex},
-)
-    update!(
-        prob.trajectory,
-        MOI.get(optimizer, MOI.VariablePrimal(), variables),
-        type = :both,
-    )
-    return nothing
-end
+
+# ----------------------------------------------------------------------------
+# Optimizer Configuration/Options
+# ----------------------------------------------------------------------------
 
 
 function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
@@ -491,25 +260,10 @@ function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
     return nothing
 end
 
-function set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
-    ignored_options = [:eval_hessian]
 
-    for name in fieldnames(typeof(options))
-        value = getfield(options, name)
-        if name in ignored_options
-            continue
-        end
-        # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
-        if !isnothing(value)
-            if name == :print_level
-                optimizer.options[name] = MadNLP.LogLevels(value)
-            else
-                optimizer.options[name] = value
-            end
-        end
-    end
-    return nothing
-end
+# ----------------------------------------------------------------------------
+# Optimizer Tests
+# ----------------------------------------------------------------------------
 
 
 @testitem "testing Ipopt.jl solver" begin
@@ -545,41 +299,6 @@ end
     )
 
     solve!(prob; max_iter = 100)
-end
-
-@testitem "testing MadNLP.jl solver" begin
-
-    include("../../../test/test_utils.jl")
-
-    G, traj = bilinear_dynamics_and_trajectory()
-
-    integrators = [
-        BilinearIntegrator(G, :x, :u, traj),
-        DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj),
-    ]
-
-    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
-    J += QuadraticRegularizer(:u, traj, 1.0)
-    J += QuadraticRegularizer(:du, traj, 1.0)
-    J += MinimumTimeObjective(traj)
-
-    g_u_norm = NonlinearKnotPointConstraint(
-        u -> [norm(u) - 1.0],
-        :u,
-        traj;
-        times = 2:(traj.N-1),
-        equality = false,
-    )
-
-    prob = DirectTrajOptProblem(
-        traj,
-        J,
-        integrators;
-        constraints = AbstractConstraint[g_u_norm],
-    )
-
-    IpoptSolverExt._solve_madnlp!(prob; max_iter = 100)
 end
 
 @testitem "testing solver with NonlinearGlobalKnotPointConstraint" begin
