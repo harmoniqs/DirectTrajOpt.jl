@@ -20,7 +20,7 @@ const _DefaultSolverOptions::Ref{Type{<:AbstractSolverOptions}} = Ref{Type{<:Abs
 function _get_DefaultSolverOptions()
     return _DefaultSolverOptions[]
 end
-function _set_DefaultSolverOptions(optty::AbstractSolverOptions)
+function _set_DefaultSolverOptions(optty::Type{<:AbstractSolverOptions})
     _DefaultSolverOptions[] = optty
 end
 
