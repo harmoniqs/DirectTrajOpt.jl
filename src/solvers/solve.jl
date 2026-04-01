@@ -65,7 +65,16 @@ function get_nonlinear_constraints(prob)
 end
 
 
-function _solve!(
+"""
+function _solve(
+    prob::DirectTrajOptProblem,
+    options::Any;
+    kwargs...
+)
+
+Stub
+"""
+function _solve(
     prob::DirectTrajOptProblem,
     options::Any;
     kwargs...,
@@ -74,7 +83,24 @@ function _solve!(
     return nothing
 end
 
-function _solve!(
+"""
+function _solve(
+    prob::DirectTrajOptProblem,
+    options::AbstractSolverOptions;
+    kwargs...
+)
+
+Generic interface for adding support for a new solver in DirectTrajOpt.jl
+
+    # Arguments
+    - `prob::DirectTrajOptProblem`: The trajectory optimization problem to solve.
+    - `options::AbstractSolverOptions`: The solver-specific options struct accompanying the problem to solve
+    - `kwargs...`: Additional keyword arguments
+
+    # Returns
+    - `Any`: The solver interface may return `nothing`, or else it may return statistics pertaining to the success/failure of the solve
+"""
+function _solve(
     prob::DirectTrajOptProblem,
     options::AbstractSolverOptions;
     kwargs...,
@@ -128,13 +154,12 @@ solve!(prob; options=IpoptOptions(tol=1e-4), max_iter=500)
 """
 function solve!(
     prob::DirectTrajOptProblem;
-    # options::Solvers.AbstractSolverOptions = IpoptOptions(),
     options=(Solvers._DefaultSolverOptions[])(),
     verbose::Bool = true,
     callback = nothing,
     kwargs...,
 )
-    _solve!(prob, options; verbose = verbose, callback = callback, kwargs...)
+    _solve(prob, options; verbose = verbose, callback = callback, kwargs...)
 
     return nothing
 end
