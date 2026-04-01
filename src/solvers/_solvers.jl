@@ -15,7 +15,7 @@ const AbstractOptimizer = Union{Ipopt.Optimizer,MadNLP.Optimizer}
 abstract type AbstractSolverOptions end
 
 function constrain! end
-include("constraints.jl")
+include("constrain.jl")
 
 function _solve! end
 function solve! end
