@@ -126,7 +126,7 @@ function get_optimizer_and_variables(
     end
 
     # set solver options
-    set_options!(optimizer, options)
+    Solver.set_options!(optimizer, options)
 
     if verbose
         println(
@@ -182,7 +182,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
+function Solver.set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
     ignored_options = [:eval_hessian, :refine]
 
     for name in fieldnames(typeof(options))

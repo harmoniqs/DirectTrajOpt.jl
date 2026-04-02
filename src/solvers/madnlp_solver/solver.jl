@@ -148,7 +148,7 @@ function get_optimizer_and_variables(
     end
 
     # set solver options
-    set_options!(optimizer, options)
+    Solver.set_options!(optimizer, options)
 
     if verbose
         println(
@@ -204,7 +204,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
+function Solver.set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
 
     for name in fieldnames(typeof(options))

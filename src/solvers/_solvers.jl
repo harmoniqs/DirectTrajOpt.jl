@@ -32,4 +32,6 @@ function _solve end
 function solve! end
 include("solve.jl")
 
+function set_options! end
+
 end
