@@ -1,4 +1,4 @@
-export IpoptEvaluator
+export Evaluator
 
 using LinearAlgebra
 using SparseArrays
@@ -6,7 +6,7 @@ using NamedTrajectories
 using Base.Threads
 
 # ============================================================================ #
-# Performance optimizations applied to IpoptEvaluator:
+# Performance optimizations applied to Evaluator:
 # 
 # 1. Pre-computed offsets - Constraint evaluation uses pre-computed offsets
 #    instead of runtime arithmetic (eliminates ~O(n_constraints) additions)
@@ -49,7 +49,7 @@ function sparse_to_moi(A::SparseMatrixCSC)
 end
 
 """
-    IpoptEvaluator <: MOI.AbstractNLPEvaluator
+    Evaluator <: MOI.AbstractNLPEvaluator
 
 MathOptInterface NLP evaluator that bridges a [`DirectTrajOptProblem`](@ref) to Ipopt.
 
@@ -60,10 +60,10 @@ and constraints.
 
 # Constructor
 ```julia
-IpoptEvaluator(prob::DirectTrajOptProblem; eval_hessian=true, verbose=false)
+Evaluator(prob::DirectTrajOptProblem; eval_hessian=true, verbose=false)
 ```
 """
-mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
+mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     trajectory::NamedTrajectory
     objective::AbstractObjective
     integrators::Vector{<:AbstractIntegrator}
@@ -90,7 +90,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     _jacobian_ncols::Int
     _hessian_ncols::Int
 
-    function IpoptEvaluator(
+    function Evaluator(
         prob::DirectTrajOptProblem;
         eval_hessian = true,
         verbose = false,
@@ -274,9 +274,9 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     end
 end
 
-MOI.initialize(::IpoptEvaluator, features) = nothing
+MOI.initialize(::Evaluator, features) = nothing
 
-function MOI.features_available(evaluator::IpoptEvaluator)
+function MOI.features_available(evaluator::Evaluator)
     if evaluator.eval_hessian
         return [:Grad, :Jac, :Hess]
     else
@@ -287,14 +287,14 @@ end
 
 # objective and gradient
 
-@views function MOI.eval_objective(evaluator::IpoptEvaluator, Z⃗::AbstractVector)
+@views function MOI.eval_objective(evaluator::Evaluator, Z⃗::AbstractVector)
     # Update cached trajectory in-place
     traj = _update_trajectory_cache!(evaluator, Z⃗)
     return Objectives.objective_value(evaluator.objective, traj)
 end
 
 @views function MOI.eval_objective_gradient(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     ∇::AbstractVector,
     Z⃗::AbstractVector,
 )
@@ -307,7 +307,7 @@ end
 # constraints and Jacobian
 
 @views function MOI.eval_constraint(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     g::AbstractVector,
     Z⃗::AbstractVector,
 )
@@ -347,12 +347,12 @@ end
     return nothing
 end
 
-function MOI.jacobian_structure(evaluator::IpoptEvaluator)
+function MOI.jacobian_structure(evaluator::Evaluator)
     return evaluator.jacobian_structure
 end
 
 @views function MOI.eval_constraint_jacobian(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     ∂::AbstractVector,
     Z⃗::AbstractVector,
 )
@@ -368,12 +368,12 @@ end
 
 # Hessian of the Lagrangian
 
-function MOI.hessian_lagrangian_structure(evaluator::IpoptEvaluator)
+function MOI.hessian_lagrangian_structure(evaluator::Evaluator)
     return evaluator.hessian_structure
 end
 
 @views function MOI.eval_hessian_lagrangian(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     H::AbstractVector{T},
     Z⃗::AbstractVector{T},
     σ::T,
@@ -390,7 +390,7 @@ end
 end
 
 function MOI.eval_constraint_jacobian_transpose_product(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     x::Any,
     y::Any,
     z::Any,
@@ -409,7 +409,7 @@ Update the cached trajectory in-place with new data from Z⃗.
 Avoids repeated allocation of NamedTrajectory wrappers.
 """
 @inline @views function _update_trajectory_cache!(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     Z⃗::AbstractVector,
 )
     n_traj = evaluator.trajectory.dim * evaluator.trajectory.N
@@ -434,7 +434,7 @@ direct SparseArrays access to eliminate allocations.
 """
 @inline function _fill_jacobian_values!(
     ∂::AbstractVector,
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     Z::NamedTrajectory,
 )
     # Zero out output first
@@ -503,7 +503,7 @@ direct SparseArrays access to eliminate allocations.
 """
 @inline function _fill_hessian_values!(
     H::AbstractVector{T},
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     Z::NamedTrajectory,
     σ::T,
     μ::AbstractVector{T},
@@ -626,7 +626,7 @@ end
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    evaluator = IpoptEvaluator(prob)
+    evaluator = Evaluator(prob)
 
     J_val = Objectives.objective_value(J, traj)
     @test MOI.eval_objective(evaluator, traj.datavec) ≈ J_val
