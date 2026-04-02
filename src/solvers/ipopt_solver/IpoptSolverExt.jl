@@ -19,7 +19,6 @@ using ..Objectives
 using ..Solvers
 
 include("options.jl")
-include("evaluator.jl")
 include("solver.jl")
 # include("callbacks.jl")
 

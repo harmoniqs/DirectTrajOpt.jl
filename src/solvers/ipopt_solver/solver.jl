@@ -65,7 +65,7 @@ function get_optimizer_and_variables(
 
     # get evaluator
     t_eval = time()
-    evaluator = IpoptEvaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
+    evaluator = Solvers.IpoptEvaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
     if verbose
         println("    evaluator created ($(round(time() - t_eval, digits=3))s)")
     end

@@ -10,6 +10,8 @@ import MathOptInterface as MOI
 import Ipopt
 import MadNLP
 
+using TestItemRunner
+
 
 const AbstractOptimizer = Union{Ipopt.Optimizer,MadNLP.Optimizer}
 abstract type AbstractSolverOptions end
@@ -25,6 +27,7 @@ function _set_DefaultSolverOptions(optty::Type{<:AbstractSolverOptions})
 end
 
 include("constrain.jl")
+include("evaluator.jl")
 include("solve.jl")
 
 end
