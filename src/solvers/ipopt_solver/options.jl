@@ -1,5 +1,4 @@
 export IpoptOptions
-export MadNLPOptions
 
 """
     IpoptOptions <: AbstractSolverOptions

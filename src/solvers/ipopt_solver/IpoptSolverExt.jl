@@ -6,7 +6,6 @@ using DirectTrajOpt
 using NamedTrajectories
 using TrajectoryIndexingUtils
 using Ipopt
-import MadNLP
 using MathOptInterface
 import MathOptInterface as MOI
 import DirectTrajOpt as DTO # Note to self: pick one and stick with it!
