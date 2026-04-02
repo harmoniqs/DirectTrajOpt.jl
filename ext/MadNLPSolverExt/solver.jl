@@ -214,7 +214,7 @@ end
 
 @testitem "testing MadNLP.jl solver" begin
 
-    include("../../../test/test_utils.jl")
+    include("../../test/test_utils.jl")
 
     G, traj = bilinear_dynamics_and_trajectory()
 
