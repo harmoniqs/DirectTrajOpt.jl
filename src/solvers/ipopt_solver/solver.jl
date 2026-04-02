@@ -1,5 +1,6 @@
-using NamedTrajectories
 using DirectTrajOpt
+using NamedTrajectories
+
 using MathOptInterface
 const MOI = MathOptInterface
 using Ipopt
@@ -10,7 +11,7 @@ export _solve
 export set_options!
 
 
-function Solvers._solve(
+function _solve(
     prob::DirectTrajOptProblem,
     options::IpoptOptions = IpoptOptions();
     verbose::Bool = true,
@@ -183,7 +184,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function Solvers.set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
+function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
     ignored_options = [:eval_hessian, :refine]
 
     for name in fieldnames(typeof(options))

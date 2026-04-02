@@ -1,10 +1,11 @@
-using NamedTrajectories
 using DirectTrajOpt
+using NamedTrajectories
+
 using MathOptInterface
 const MOI = MathOptInterface
-using MadNLP
+import MadNLP
 using TestItemRunner
-using Libdl  # Added for Pardiso library loading
+# using Libdl  # Added for Pardiso library loading
 
 import DirectTrajOpt.IpoptSolverExt: IpoptEvaluator
 
@@ -12,7 +13,7 @@ export _solve
 export set_options!
 
 
-function Solvers._solve(
+function _solve(
     prob::DirectTrajOptProblem,
     options::MadNLPOptions = MadNLPOptions();
     verbose::Bool = true,
@@ -149,7 +150,7 @@ function get_optimizer_and_variables(
     end
 
     # set solver options
-    Solver.set_options!(optimizer, options)
+    set_options!(optimizer, options)
 
     if verbose
         println(
@@ -205,7 +206,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function Solvers.set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
+function set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
 
     for name in fieldnames(typeof(options))
