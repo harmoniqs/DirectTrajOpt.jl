@@ -1,11 +1,11 @@
 module Solvers
 
-
 export AbstractOptimizer
 export AbstractSolverOptions, DefaultSolverOptions, _DefaultSolverOptions
 export _solve
 export solve!
 
+import DirectTrajOpt
 import MathOptInterface as MOI
 import Ipopt
 import MadNLP
@@ -24,14 +24,7 @@ function _set_DefaultSolverOptions(optty::Type{<:AbstractSolverOptions})
     _DefaultSolverOptions[] = optty
 end
 
-
-function constrain! end
 include("constrain.jl")
-
-function _solve end
-function solve! end
 include("solve.jl")
-
-function set_options! end
 
 end

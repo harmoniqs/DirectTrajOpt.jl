@@ -74,7 +74,7 @@ function _solve(
 
 Stub
 """
-function _solve(
+function DirectTrajOpt._solve(
     prob::DirectTrajOptProblem,
     options::Any;
     kwargs...,
@@ -100,12 +100,12 @@ Generic interface for adding support for a new solver in DirectTrajOpt.jl
     # Returns
     - `Any`: The solver interface may return `nothing`, or else it may return statistics pertaining to the success/failure of the solve
 """
-function _solve(
+function DirectTrajOpt._solve(
     prob::DirectTrajOptProblem,
     options::AbstractSolverOptions;
     kwargs...,
 )
-    @warn "No solver backend with matching options argument type (an instance of $(typeof(options)))"
+    @error "No solver backend with matching options argument type (an instance of $(typeof(options)))"
     return nothing
 end
 
@@ -152,14 +152,14 @@ solve!(prob; max_iter=200, tol=1e-6, eval_hessian=false)
 solve!(prob; options=IpoptOptions(tol=1e-4), max_iter=500)
 ```
 """
-function solve!(
+function DirectTrajOpt.solve!(
     prob::DirectTrajOptProblem;
     options=(Solvers._DefaultSolverOptions[])(),
     verbose::Bool = true,
     callback = nothing,
     kwargs...,
 )
-    _solve(prob, options; verbose = verbose, callback = callback, kwargs...)
+    DirectTrajOpt._solve(prob, options; verbose = verbose, callback = callback, kwargs...)
 
     return nothing
 end

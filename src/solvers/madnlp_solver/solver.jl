@@ -3,19 +3,16 @@ using NamedTrajectories
 
 using MathOptInterface
 const MOI = MathOptInterface
-import MadNLP
+import MadNLP # DO NOT using!
 using TestItemRunner
 # using Libdl  # Added for Pardiso library loading
 
 import DirectTrajOpt.IpoptSolverExt: IpoptEvaluator
 
-export _solve
-export set_options!
 
-
-function _solve(
+function DirectTrajOpt._solve(
     prob::DirectTrajOptProblem,
-    options::MadNLPOptions = MadNLPOptions();
+    options::MadNLPOptions;
     verbose::Bool = true,
     callback = nothing,
     kwargs...,
@@ -48,28 +45,6 @@ function _solve(
 
     return nothing
 end
-
-# # Temporary precompile workaround
-# function _solve!(
-#     prob::DirectTrajOptProblem,
-#     options::Any;
-#     verbose::Bool = true,
-#     callback = nothing,
-#     kwargs...,
-# )
-#     if options isa Solvers.AbstractSolverOptions
-#         if options isa IpoptSolverExt.IpoptOptions
-#             _solve_ipopt!(prob, options; verbose = verbose, callback = callback, kwargs...)
-#         elseif options isa IpoptSolverExt.MadNLPOptions
-#             _solve_madnlp!(prob, options; verbose = verbose, callback = callback, kwargs...)
-#         else
-#             @warn "Solver options not recognized"
-#         end
-#     else
-#         @warn "Solver options invalid"
-#     end
-# end
-
 
 
 # ----------------------------------------------------------------------------
@@ -142,7 +117,7 @@ function get_optimizer_and_variables(
         c->c isa AbstractLinearConstraint,
         prob.constraints,
     )...]
-    constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose = verbose)
+    Solvers.constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose = verbose)
     if verbose
         println(
             "    linear constraints added: $(length(linear_constraints)) ($(round(time() - t_lincons, digits=3))s)",
@@ -206,7 +181,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
+function DirectTrajOpt.set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
 
     for name in fieldnames(typeof(options))

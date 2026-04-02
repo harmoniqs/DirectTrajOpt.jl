@@ -7,13 +7,10 @@ using Ipopt
 using TestItemRunner
 using Libdl  # Added for Pardiso library loading
 
-export _solve
-export set_options!
 
-
-function _solve(
+function DirectTrajOpt._solve(
     prob::DirectTrajOptProblem,
-    options::IpoptOptions = IpoptOptions();
+    options::IpoptOptions;
     verbose::Bool = true,
     callback = nothing,
     kwargs...,
@@ -128,7 +125,7 @@ function get_optimizer_and_variables(
     end
 
     # set solver options
-    Solver.set_options!(optimizer, options)
+    set_options!(optimizer, options)
 
     if verbose
         println(
@@ -184,7 +181,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
+function DirectTrajOpt.set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
     ignored_options = [:eval_hessian, :refine]
 
     for name in fieldnames(typeof(options))

@@ -6,7 +6,7 @@ using NamedTrajectories
 using TrajectoryIndexingUtils
 
 import MathOptInterface as MOI
-import MadNLP
+import MadNLP # DO NOT using!
 
 using TestItemRunner
 
