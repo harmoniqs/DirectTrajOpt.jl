@@ -10,7 +10,9 @@ import MadNLP
 
 using TestItemRunner
 
-
+using ..Constraints
+using ..Integrators
+using ..Objectives
 using ..Solvers
 
 include("options.jl")

@@ -230,38 +230,38 @@ end
 # ----------------------------------------------------------------------------
 
 
-# @testitem "testing MadNLP.jl solver" begin
+@testitem "testing MadNLP.jl solver" begin
 
-#     include("../../../test/test_utils.jl")
+    include("../../../test/test_utils.jl")
 
-#     G, traj = bilinear_dynamics_and_trajectory()
+    G, traj = bilinear_dynamics_and_trajectory()
 
-#     integrators = [
-#         BilinearIntegrator(G, :x, :u, traj),
-#         DerivativeIntegrator(:u, :du, traj),
-#         DerivativeIntegrator(:du, :ddu, traj),
-#     ]
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
 
-#     J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
-#     J += QuadraticRegularizer(:u, traj, 1.0)
-#     J += QuadraticRegularizer(:du, traj, 1.0)
-#     J += MinimumTimeObjective(traj)
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
 
-#     g_u_norm = NonlinearKnotPointConstraint(
-#         u -> [norm(u) - 1.0],
-#         :u,
-#         traj;
-#         times = 2:(traj.N-1),
-#         equality = false,
-#     )
+    g_u_norm = NonlinearKnotPointConstraint(
+        u -> [norm(u) - 1.0],
+        :u,
+        traj;
+        times = 2:(traj.N-1),
+        equality = false,
+    )
 
-#     prob = DirectTrajOptProblem(
-#         traj,
-#         J,
-#         integrators;
-#         constraints = AbstractConstraint[g_u_norm],
-#     )
+    prob = DirectTrajOptProblem(
+        traj,
+        J,
+        integrators;
+        constraints = AbstractConstraint[g_u_norm],
+    )
 
-#     MadNLPSolverExt._solve_madnlp!(prob; max_iter = 100)
-# end
+    MadNLPSolverExt._solve_madnlp!(prob; max_iter = 100)
+end
 
