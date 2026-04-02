@@ -6,10 +6,9 @@ using MadNLP
 using TestItemRunner
 using Libdl  # Added for Pardiso library loading
 
-import IpoptSolverExt: IpoptEvaluator
+import DirectTrajOpt.IpoptSolverExt: IpoptEvaluator
 
 export _solve
-export solve!
 
 
 function _solve(
