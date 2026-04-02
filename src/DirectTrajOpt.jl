@@ -48,8 +48,8 @@ include("solvers/_solvers.jl")
 include("solvers/ipopt_solver/IpoptSolverExt.jl")
 @reexport using .IpoptSolverExt
 
-include("solvers/madnlp_solver/MadNLPSolverExt.jl")
-@reexport using .MadNLPSolverExt
+# include("solvers/madnlp_solver/MadNLPSolverExt.jl")
+# @reexport using .MadNLPSolverExt
 
 Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions) # once made into extension, could be done by the extension itself
 

@@ -13,7 +13,7 @@ import MadNLP
 using TestItemRunner
 
 
-const AbstractOptimizer = Union{Ipopt.Optimizer,MadNLP.Optimizer}
+const AbstractOptimizer = MOI.AbstractOptimizer
 abstract type AbstractSolverOptions end
 
 struct DefaultSolverOptions <: AbstractSolverOptions end

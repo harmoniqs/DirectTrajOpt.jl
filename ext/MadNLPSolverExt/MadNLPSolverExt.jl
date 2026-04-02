@@ -11,10 +11,10 @@ import MadNLP # DO NOT using!
 using TestItemRunner
 
 
-using ..Constraints
-using ..Integrators
-using ..Objectives
-using ..Solvers
+using DirectTrajOpt.Constraints
+using DirectTrajOpt.Integrators
+using DirectTrajOpt.Objectives
+using DirectTrajOpt.Solvers
 
 include("options.jl")
 include("solver.jl")
