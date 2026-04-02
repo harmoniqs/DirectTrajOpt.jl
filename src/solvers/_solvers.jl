@@ -17,7 +17,8 @@ const AbstractOptimizer = Union{Ipopt.Optimizer,MadNLP.Optimizer}
 abstract type AbstractSolverOptions end
 
 struct DefaultSolverOptions <: AbstractSolverOptions end
-const _DefaultSolverOptions::Ref{Type{<:AbstractSolverOptions}} = Ref{Type{<:AbstractSolverOptions}}(DefaultSolverOptions)
+const _DefaultSolverOptions::Ref{Type{<:AbstractSolverOptions}} =
+    Ref{Type{<:AbstractSolverOptions}}(DefaultSolverOptions)
 
 function _get_DefaultSolverOptions()
     return _DefaultSolverOptions[]

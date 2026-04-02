@@ -90,11 +90,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     _jacobian_ncols::Int
     _hessian_ncols::Int
 
-    function Evaluator(
-        prob::DirectTrajOptProblem;
-        eval_hessian = true,
-        verbose = false,
-    )
+    function Evaluator(prob::DirectTrajOptProblem; eval_hessian = true, verbose = false)
         t_start = time()
 
         # Calculate total dynamics constraint dimension
@@ -408,10 +404,7 @@ end
 Update the cached trajectory in-place with new data from Z⃗.
 Avoids repeated allocation of NamedTrajectory wrappers.
 """
-@inline @views function _update_trajectory_cache!(
-    evaluator::Evaluator,
-    Z⃗::AbstractVector,
-)
+@inline @views function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
     n_traj = evaluator.trajectory.dim * evaluator.trajectory.N
 
     # Create trajectory wrapper with views (minimal allocation)

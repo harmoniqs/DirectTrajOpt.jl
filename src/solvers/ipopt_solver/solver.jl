@@ -65,7 +65,8 @@ function get_optimizer_and_variables(
 
     # get evaluator
     t_eval = time()
-    evaluator = Solvers.Evaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
+    evaluator =
+        Solvers.Evaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
     if verbose
         println("    evaluator created ($(round(time() - t_eval, digits=3))s)")
     end
@@ -117,7 +118,13 @@ function get_optimizer_and_variables(
         c->c isa AbstractLinearConstraint,
         prob.constraints,
     )...]
-    Solvers.constrain!(optimizer, variables, linear_constraints, prob.trajectory; verbose = verbose)
+    Solvers.constrain!(
+        optimizer,
+        variables,
+        linear_constraints,
+        prob.trajectory;
+        verbose = verbose,
+    )
     if verbose
         println(
             "    linear constraints added: $(length(linear_constraints)) ($(round(time() - t_lincons, digits=3))s)",

@@ -71,4 +71,3 @@ Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     watchdog_shortened_iter_trigger = 0
     watchdog_trial_iter_max = 3
 end
-

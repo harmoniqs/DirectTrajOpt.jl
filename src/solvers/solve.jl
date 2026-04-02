@@ -74,11 +74,7 @@ function _solve(
 
 Stub
 """
-function DirectTrajOpt._solve(
-    prob::DirectTrajOptProblem,
-    options::Any;
-    kwargs...,
-)
+function DirectTrajOpt._solve(prob::DirectTrajOptProblem, options::Any; kwargs...)
     @error "Invalid options argument (an instance of $(typeof(options)), not a subtype of $(AbstractSolverOptions))"
     return nothing
 end
@@ -154,7 +150,7 @@ solve!(prob; options=IpoptOptions(tol=1e-4), max_iter=500)
 """
 function DirectTrajOpt.solve!(
     prob::DirectTrajOptProblem;
-    options=(Solvers._DefaultSolverOptions[])(),
+    options = (Solvers._DefaultSolverOptions[])(),
     verbose::Bool = true,
     callback = nothing,
     kwargs...,
