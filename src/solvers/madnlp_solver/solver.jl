@@ -9,9 +9,10 @@ using Libdl  # Added for Pardiso library loading
 import DirectTrajOpt.IpoptSolverExt: IpoptEvaluator
 
 export _solve
+export set_options!
 
 
-function _solve(
+function Solvers._solve(
     prob::DirectTrajOptProblem,
     options::MadNLPOptions = MadNLPOptions();
     verbose::Bool = true,
@@ -204,7 +205,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function Solver.set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
+function Solvers.set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
 
     for name in fieldnames(typeof(options))

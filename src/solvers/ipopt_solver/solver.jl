@@ -7,6 +7,7 @@ using TestItemRunner
 using Libdl  # Added for Pardiso library loading
 
 export _solve
+export set_options!
 
 
 function Solvers._solve(
@@ -182,7 +183,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function Solver.set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
+function Solvers.set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
     ignored_options = [:eval_hessian, :refine]
 
     for name in fieldnames(typeof(options))
