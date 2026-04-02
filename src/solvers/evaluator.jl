@@ -588,7 +588,7 @@ end
     using TrajectoryIndexingUtils
     import MathOptInterface as MOI
 
-    include("../../../test/test_utils.jl")
+    include("../../test/test_utils.jl")
 
     G, traj = bilinear_dynamics_and_trajectory()
 
