@@ -244,7 +244,7 @@ end
     solve!(prob; max_iter = 100)
 end
 
-@testitem "testing solver with NonlinearGlobalKnotPointConstraint" begin
+@testitem "testing Ipopt.jl solver with NonlinearGlobalKnotPointConstraint" begin
 
     include("../../../test/test_utils.jl")
 
@@ -292,7 +292,7 @@ end
     end
 end
 
-@testitem "testing solver with NonlinearGlobalConstraint" begin
+@testitem "testing Ipopt.jl solver with NonlinearGlobalConstraint" begin
 
     include("../../../test/test_utils.jl")
 
