@@ -244,7 +244,7 @@ end
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    solve!(prob; options = MadNLPSolverExt.MadNLPOptions(max_iter = 100))
+    solve!(prob; options = MadNLPOptions(max_iter = 100))
 end
 
 @testitem "testing MadNLP.jl solver with NonlinearGlobalKnotPointConstraint" begin
@@ -285,7 +285,7 @@ end
     prob =
         DirectTrajOptProblem(traj, J, integrators; constraints = AbstractConstraint[g_ug])
 
-    solve!(prob; options = MadNLPSolverExt.MadNLPOptions(max_iter = 100))
+    solve!(prob; options = MadNLPOptions(max_iter = 100))
 
     # Verify constraint is satisfied at each timestep
     for k = 2:(traj.N-1)
