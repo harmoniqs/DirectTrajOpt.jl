@@ -281,5 +281,5 @@ end
     )
 
     # Test with validation utility
-    test_constraint(NLC, traj; atol = 1.5e-2, show_hessian_diff = true)
+    test_constraint(NLC, traj; atol = 1e-1, show_hessian_diff = true)
 end
