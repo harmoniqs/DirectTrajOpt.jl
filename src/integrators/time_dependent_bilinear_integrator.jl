@@ -22,7 +22,7 @@ hold, 1 = linear interpolation). Integration over each time step is performed wi
 ODE solver (Tsit5) on the normalized interval `[0, 1]`.
 
 # Fields
-- `f::Function`: Compiled residual function `(x_{k+1}, x_k, p_k, t_k, Δt_k) -> residual`
+- `f::Function`: Compiled residual function `(x_{k+1}, x_k, p_k, Δt_k, t_k) -> residual`
 - `x_name::Symbol`: Name of the state variable in the trajectory
 - `u_name::Symbol`: Name of the control variable in the trajectory
 - `t_name::Symbol`: Name of the time variable in the trajectory
