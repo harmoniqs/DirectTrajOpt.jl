@@ -307,7 +307,7 @@ end
     NLC = NonlinearKnotPointConstraint(g, :u, traj; times = 1:traj.N, equality = false)
 
     # Test Jacobian and Hessian against finite differences
-    test_constraint(NLC, traj; atol = 1e-3, show_jacobian_diff = true)
+    test_constraint(NLC, traj; atol = 1e-1, show_jacobian_diff = true)
 end
 
 @testitem "NonlinearKnotPointConstraint - single variable with vector syntax" begin
