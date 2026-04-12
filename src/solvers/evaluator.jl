@@ -385,6 +385,32 @@ end
     return nothing
 end
 
+function MOI.eval_constraint_jacobian_product(
+    evaluator::Evaluator,
+    y::AbstractVector{T},
+    x::AbstractVector{T},
+    w::AbstractVector{T},
+) where {T}
+    @warn "Constraint jacobian product using stub implementation"
+
+    # Temporary workaround
+
+    fill!(y, 0.0)
+
+    _x = _update_trajectory_cache!(evaluator, x)
+
+    jac_structure::Vector{Tuple{Int, Int}} = MOI.jacobian_structure(evaluator)
+    jac::Vector{T} = zeros(length(jac_structure))
+    _fill_jacobian_values!(jac, evaluator, _x)
+
+    for idx = eachindex(jac_structure)
+        row, col = jac_structure[idx]
+        y[row] += w[col] * jac[idx]
+    end
+
+    return nothing
+end
+
 function MOI.eval_constraint_jacobian_transpose_product(
     evaluator::Evaluator,
     y::AbstractVector{T},
