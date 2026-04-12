@@ -1,6 +1,6 @@
 name = "DirectTrajOpt"
 uuid = "c823fa1f-8872-4af5-b810-2b9b72bbbf56"
-version = "0.8.10"
+version = "0.8.11"
 authors = ["Aaron Trowbridge <aaron.j.trowbridge@gmail.com> and contributors"]
 
 [deps]
@@ -48,7 +48,8 @@ TrajectoryIndexingUtils = "0.1"
 julia = "1.10, 1.11, 1.12"
 
 [extras]
+MadNLP = "2621e9c9-9eb4-46b1-8089-e8c72242dfb6"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "MadNLP"]
