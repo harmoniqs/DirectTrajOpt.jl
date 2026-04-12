@@ -140,7 +140,7 @@ function get_solver_comparison(seed)
     ti = @elapsed (di = get_ipopt_traj(seed).data[:, :])
     tm = @elapsed (dm = get_madnlp_traj(seed).data[:, :])
     dd = ((dm .- di) .^ 2)
-    err = sqrt(sum(dd) / length(dd))
+    err = sqrt(sum(dd)) / length(dd)
     return err, (ti, tm)
 end
 
@@ -148,7 +148,7 @@ function do_solver_comparison()
     wins = Dict(:ipopt => 0, :madnlp => 0,)
     for seed = 0:99
         err, (ti, tm) = get_solver_comparison(seed)
-        (err < 1e-3) || exit(1)
+        (err < 1e-4) || exit(1)
         wins[(ti < tm) ? :ipopt : :madnlp] += 1
     end
 
