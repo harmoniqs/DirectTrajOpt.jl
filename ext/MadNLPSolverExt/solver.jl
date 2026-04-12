@@ -296,3 +296,21 @@ end
         @test norm(u) * (1.0 + norm(g)) <= 2.0 + 1e-6
     end
 end
+
+@testitem "testing solution trajectory independent of choice of solver" begin
+    include("../../test/madnlp_test_utils.jl")
+    include("../../test/solver_test_utils.jl")
+
+    seed = rand(UInt64)
+
+    prob_ipopt = get_seeded_prob_sol(seed, IpoptSolverExt.IpoptOptions(; max_iter = 100))
+    prob_madnlp = get_seeded_prob_sol(seed, MadNLPSolverExt.MadNLPOptions(; max_iter=100))
+
+    traj_ipopt = prob_ipopt.trajectory
+    traj_madnlp = prob_madnlp.trajectory
+
+    traj_dist = (traj_madnlp.data[:, :] .- traj_ipopt.data[:, :]) .^ 2
+    traj_dist = sum(traj_dist) / length(traj_dist)
+
+    @test traj_dist < 1e-3
+end
