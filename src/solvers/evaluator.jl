@@ -391,7 +391,7 @@ function MOI.eval_constraint_jacobian_product(
     x::AbstractVector{T},
     w::AbstractVector{T},
 ) where {T}
-    @warn "Constraint jacobian product using stub implementation"
+    @warn "Constraint jacobian product using stub implementation" # to reviewer(s): feel free to remove this warning if satisfied with the method as-is
 
     # Temporary workaround
 

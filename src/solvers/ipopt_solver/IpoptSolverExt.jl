@@ -1,6 +1,6 @@
 module IpoptSolverExt
 
-# export Callbacks # temporarily closing down callbacks; not yet sure whether keeping them in here or generalizing them for MOI more generally would be best
+export Callbacks # temporarily closing down callbacks; not yet sure whether keeping them in here or generalizing them for MOI more generally would be best
 
 using DirectTrajOpt
 using NamedTrajectories
@@ -19,6 +19,6 @@ using ..Solvers
 
 include("options.jl")
 include("solver.jl")
-# include("callbacks.jl")
+include("callbacks.jl")
 
 end
