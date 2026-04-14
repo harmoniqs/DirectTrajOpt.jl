@@ -144,7 +144,7 @@ function get_optimizer_and_variables(
 end
 
 
-function set_variables!(optimizer::MadNLP.Optimizer, traj::NamedTrajectory)
+function set_variables!(optimizer::AbstractOptimizer, traj::NamedTrajectory)
     data_dim = traj.dim * traj.N
 
     # add variables
@@ -171,7 +171,7 @@ end
 
 function update_trajectory!(
     prob::DirectTrajOptProblem,
-    optimizer::MadNLP.Optimizer,
+    optimizer::AbstractOptimizer,
     variables::Vector{MOI.VariableIndex},
 )
     update!(
@@ -188,7 +188,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function DirectTrajOpt.set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
+function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
 
     for name in fieldnames(typeof(options))
