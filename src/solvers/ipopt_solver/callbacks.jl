@@ -426,9 +426,47 @@ end
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    @test Callbacks.test_update_trajectory(prob, true)
-    @test Callbacks.test_update_trajectory(prob, false)
-    @test Callbacks.test_update_trajectory_history(prob)
+    # @test Callbacks.test_update_trajectory(prob, true)
+    # @test Callbacks.test_update_trajectory(prob, false)
+    @test Callbacks.test_update_trajectory_history(deepcopy(prob))
+end
+
+@testitem "Callback trajectory update tests" begin
+    using DirectTrajOpt
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    g_u_norm = NonlinearKnotPointConstraint(
+        u -> [norm(u) - 1.0],
+        :u,
+        traj;
+        times = 2:(traj.N-1),
+        equality = false,
+    )
+
+    prob = DirectTrajOptProblem(
+        traj,
+        J,
+        integrators;
+        constraints = AbstractConstraint[g_u_norm],
+    )
+
+    @test Callbacks.test_update_trajectory(deepcopy(prob), true)
+    @test Callbacks.test_update_trajectory(deepcopy(prob), false)
+    # @test Callbacks.test_update_trajectory_history(deepcopy(prob))
 end
 
 @testitem "Callback stopping criterion tests" begin
@@ -464,9 +502,9 @@ end
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    @test Callbacks.test_early_stop(prob, 50, 100, 25) # 25 < [50 < 100]
-    @test Callbacks.test_early_stop(prob, 50, 100, 75) # [50 < 75 < 100]
-    @test Callbacks.test_early_stop(prob, 50, 100, 25) # [50 < 100] < 25
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 25) # 25 < [50 < 100]
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 75) # [50 < 75 < 100]
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 25) # [50 < 100] < 25
 end
 
 end
