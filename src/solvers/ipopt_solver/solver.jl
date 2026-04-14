@@ -1,11 +1,11 @@
-using DirectTrajOpt
-using NamedTrajectories
-
+import MathOptInterface as MOI
 using MathOptInterface
-const MOI = MathOptInterface
 using Ipopt
 using TestItemRunner
 using Libdl  # Added for Pardiso library loading
+
+using DirectTrajOpt
+using NamedTrajectories
 
 
 function DirectTrajOpt._solve(

@@ -1,12 +1,13 @@
 module MadNLPSolverExt
 
+import MathOptInterface as MOI
+import MadNLP # DO NOT using!
+
+const MadNLPMOI = Base.get_extension(MadNLP, :MadNLPMOI)
 
 using DirectTrajOpt
 using NamedTrajectories
 using TrajectoryIndexingUtils
-
-import MathOptInterface as MOI
-import MadNLP # DO NOT using!
 
 using TestItemRunner
 
@@ -16,7 +17,14 @@ using DirectTrajOpt.Integrators
 using DirectTrajOpt.Objectives
 using DirectTrajOpt.Solvers
 
+
+# function __init__()
+#     @assert MadNLP isa Module
+    
+# end
+
+
 include("options.jl")
-include("solver.jl")
+# include("solver.jl")
 
 end

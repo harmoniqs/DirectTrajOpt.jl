@@ -31,9 +31,9 @@ using Base.Threads
 # 7. Parametric typing - NamedTrajectory uses parametric vector types
 #    enabling specialization on Vector, SubArray, etc.
 # ============================================================================ #
-using MathOptInterface
-const MOI = MathOptInterface
 
+import MathOptInterface as MOI
+using MathOptInterface
 
 using ..Objectives
 using ..Integrators: AbstractIntegrator

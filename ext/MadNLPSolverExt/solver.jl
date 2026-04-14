@@ -1,8 +1,10 @@
 using DirectTrajOpt
 using NamedTrajectories
+using TrajectoryIndexingUtils
 
-using MathOptInterface
-const MOI = MathOptInterface
+# using MathOptInterface
+# const MOI = MathOptInterface
+import MathOptInterface as MOI
 import MadNLP # DO NOT using!
 using TestItemRunner
 # using Libdl  # Added for Pardiso library loading

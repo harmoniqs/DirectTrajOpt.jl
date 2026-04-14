@@ -1,9 +1,9 @@
 module Callbacks
 
+using Ipopt
 
 using ..DirectTrajOpt
 using NamedTrajectories
-using Ipopt
 
 using TestItemRunner
 

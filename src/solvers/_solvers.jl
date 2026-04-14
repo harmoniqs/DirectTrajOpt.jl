@@ -5,10 +5,10 @@ export AbstractSolverOptions, DefaultSolverOptions, _DefaultSolverOptions
 export _solve
 export solve!
 
-import DirectTrajOpt
 import MathOptInterface as MOI
 import Ipopt
-import MadNLP
+# import MadNLP
+import DirectTrajOpt
 
 using TestItemRunner
 
