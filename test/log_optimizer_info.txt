@@ -1,0 +1,158 @@
+julia> Ipopt.Optimizer()
+IpoptMOIExt.Optimizer
+├ ObjectiveSense: FEASIBILITY_SENSE
+├ ObjectiveFunctionType: MOI.ScalarAffineFunction{Float64}
+├ NumberOfVariables: 0
+└ NumberOfConstraints: 0
+
+julia> MadNLP.Optimizer()
+MadNLPMOI.Optimizer
+├ ObjectiveSense: FEASIBILITY_SENSE
+├ ObjectiveFunctionType: MOI.ScalarAffineFunction{Float64}
+├ NumberOfVariables: 0
+└ NumberOfConstraints: 0
+
+julia> optim_mini
+MadNLPMOI.Optimizer
+├ ObjectiveSense: MIN_SENSE
+├ ObjectiveFunctionType: MOI.ScalarAffineFunction{Float64}
+├ NumberOfVariables: 110
+└ NumberOfConstraints: 60
+  ├ MOI.VariableIndex in MOI.EqualTo{Float64}: 8
+  ├ MOI.VariableIndex in MOI.GreaterThan{Float64}: 26
+  └ MOI.VariableIndex in MOI.LessThan{Float64}: 26
+
+julia> optim
+IpoptMOIExt.Optimizer
+├ ObjectiveSense: MIN_SENSE
+├ ObjectiveFunctionType: MOI.ScalarAffineFunction{Float64}
+├ NumberOfVariables: 240
+└ NumberOfConstraints: 471
+  ├ MOI.VariableIndex in MOI.EqualTo{Float64}: 9
+  ├ MOI.VariableIndex in MOI.GreaterThan{Float64}: 212
+  ├ MOI.VariableIndex in MOI.LessThan{Float64}: 212
+  └ MOI.ScalarAffineFunction{Float64} in MOI.EqualTo{Float64}: 38
+
+julia> dump_obj(Ipopt.Optimizer(); v_colsz=1000)
+inner:                                 nothing
+name:                                  ""
+invalid_model:                         false
+silent:                                false
+options:                               Dict{String, Any}()
+solve_time:                            NaN
+sense:                                 MathOptInterface.FEASIBILITY_SENSE
+parameters:                            Dict{MathOptInterface.VariableIndex, MathOptInterface.Nonlinear.ParameterIndex}()
+variables:                             MathOptInterface.Utilities.VariablesContainer{Float64}(UInt16[], Float64[], Float64[])
+list_of_variable_indices:              MathOptInterface.VariableIndex[]
+variable_primal_start:                 Union{Nothing, Float64}[]
+mult_x_L:                              Union{Nothing, Float64}[]
+mult_x_U:                              Union{Nothing, Float64}[]
+nlp_data:                              MathOptInterface.NLPBlockData(MathOptInterface.NLPBoundsPair[], IpoptMathOptInterfaceExt._EmptyNLPEvaluator(), false)
+nlp_dual_start:                        nothing
+mult_g_nlp:                            Dict{MathOptInterface.Nonlinear.ConstraintIndex, Float64}()
+qp_data:                               IpoptMathOptInterfaceExt.QPBlockData{Float64}(0.0, IpoptMathOptInterfaceExt._kFunctionTypeScalarAffine, Union{MathOptInterface.ScalarAffineFunction{Float64}, MathOptInterface.ScalarQuadraticFunction{Float64}}[], Float64[], Float64[], Union{Nothing, Float64}[], IpoptMathOptInterfaceExt._FunctionType[], IpoptMathOptInterfaceExt._BoundType[], Dict{Int64, Float64}())
+nlp_model:                             nothing
+callback:                              nothing
+barrier_iterations:                    0
+ad_backend:                            MathOptInterface.Nonlinear.SparseReverseMode()
+vector_nonlinear_oracle_constraints:   Tuple{MathOptInterface.VectorOfVariables, IpoptMathOptInterfaceExt._VectorNonlinearOracleCache}[]
+jacobian_sparsity:                     Tuple{Int64, Int64}[]
+hessian_sparsity:                      nothing
+needs_new_inner:                       true
+has_only_linear_constraints:           false
+
+julia> dump_obj(MadNLP.Optimizer(); v_colsz=1000)
+solver:                                nothing
+nlp:                                   nothing
+result:                                nothing
+name:                                  ""
+invalid_model:                         false
+silent:                                false
+options:                               Dict{Symbol, Any}()
+solve_time:                            NaN
+solve_iterations:                      0
+sense:                                 MathOptInterface.FEASIBILITY_SENSE
+parameters:                            Dict{MathOptInterface.VariableIndex, MathOptInterface.Nonlinear.ParameterIndex}()
+variables:                             MathOptInterface.Utilities.VariablesContainer{Float64}(UInt16[], Float64[], Float64[])
+list_of_variable_indices:              MathOptInterface.VariableIndex[]
+variable_primal_start:                 Union{Nothing, Float64}[]
+nlp_data:                              MathOptInterface.NLPBlockData(MathOptInterface.NLPBoundsPair[], MadNLPMOI._EmptyNLPEvaluator(), false)
+nlp_dual_start:                        nothing
+mult_g_nlp:                            Dict{MathOptInterface.Nonlinear.ConstraintIndex, Float64}()
+qp_data:                               MadNLPMOI.QPBlockData{Float64}(0.0, MadNLPMOI._kFunctionTypeScalarAffine, Union{MathOptInterface.ScalarAffineFunction{Float64}, MathOptInterface.ScalarQuadraticFunction{Float64}}[], Float64[], Float64[], Union{Nothing, Float64}[], MadNLPMOI._FunctionType[], MadNLPMOI._BoundType[], Dict{Int64, Float64}())
+nlp_model:                             nothing
+ad_backend:                            MathOptInterface.Nonlinear.SparseReverseMode()
+vector_nonlinear_oracle_constraints:   Tuple{MathOptInterface.VectorOfVariables, MadNLPMOI._VectorNonlinearOracleCache}[]
+jrows:                                 Int64[]
+jcols:                                 Int64[]
+hrows:                                 Int64[]
+hcols:                                 Int64[]
+needs_new_nlp:                         true
+has_only_linear_constraints:           false
+islp:                                  false
+jprod_available:                       false
+hprod_available:                       false
+hess_available:                        false
+
+julia> dump_obj(optim_mini; v_colsz=1000)
+solver:                                nothing
+nlp:                                   nothing
+result:                                nothing
+name:                                  ""
+invalid_model:                         false
+silent:                                false
+options:                               Dict{Symbol, Any}(:max_iter => 100, :tol => 1.0e-8, :print_level => MadNLP.INFO)
+solve_time:                            NaN
+solve_iterations:                      0
+sense:                                 MathOptInterface.MIN_SENSE
+parameters:                            Dict{MathOptInterface.VariableIndex, MathOptInterface.Nonlinear.ParameterIndex}()
+variables:                             MathOptInterface.Utilities.VariablesContainer{Float64}(UInt16[0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006, 0x0000, 0x0000, 0x0000, 0x0000, 0x0001, 0x0001, 0x0000, 0x0000, 0x0000, 0x0000, 0x0006], [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -Inf, -Inf, -Inf, -Inf, 1....
+list_of_variable_indices:              MathOptInterface.VariableIndex[MOI.VariableIndex(1), MOI.VariableIndex(2), MOI.VariableIndex(3), MOI.VariableIndex(4), MOI.VariableIndex(5), MOI.VariableIndex(6), MOI.VariableIndex(7), MOI.VariableIndex(8), MOI.VariableIndex(9), MOI.VariableIndex(10), MOI.VariableIndex(11), MOI.VariableIndex(12), MOI.VariableIndex(13), MOI.VariableIndex(14), MOI.VariableIndex(15), MOI.VariableIndex(16), MOI.VariableIndex(17), MOI.VariableIndex(18), MOI.VariableIndex(19), MOI.VariableIndex(20), MOI.VariableIndex(21), MOI.VariableIndex(22), MOI.VariableIndex(23), MOI.VariableIndex(24), MOI.VariableIndex(25), MOI.VariableIndex(26), MOI.VariableIndex(27), MOI.VariableIndex(28), MOI.VariableIndex(29), MOI.VariableIndex(30), MOI.VariableIndex(31), MOI.VariableIndex(32), MOI.VariableIndex(33), MOI.VariableIndex(34), MOI.VariableIndex(35), MOI.VariableIndex(36), MOI.VariableIndex(37), MOI.VariableIndex(38), MOI.VariableIndex(39), MOI.VariableIndex(40), MOI.VariableIndex(41), MOI.VariableIndex(42), MOI.Variable...
+variable_primal_start:                 Union{Nothing, Float64}[0.9390301218168997, -0.9742033964882768, 0.5110054608242105, -0.3065168541641974, -0.06528508484109852, -0.03566767616843869, -1.8137968589418314, 0.351668972661715, 1.342862929175634, -0.9962722884240374, 0.1, -0.28061194325053074, -0.479624650438899, 0.9045161399936559, -0.8739104981532075, -0.04828290600936909, -0.06671227118286692, 1.041263914306683, 0.46422300211229406, 0.5735892597413242, 0.16779617569974092, 0.1, -0.6218199675468838, -0.6013011413602607, 0.5679100128349261, 0.9697756694420696, 0.005403001421780318, -0.003395572606309627, 0.04826873156033191, 1.2541502209690871, 0.10928346396793628, -0.5314405685385368, 0.1, 0.5890587136064556, 0.8513701805805114, 0.19302053863005453, 0.3863801883770004, -0.021867322182701668, 0.0605525102559946, -0.22335670215229697, 1.0415674540673705, 0.10145521150756781, 1.7523306866672552, 0.1, -0.9064342140513317, 0.6325175926651481, -0.6843101297346812, 0.2602568159028342, 0.09615153113929419, -0.08111371028571678, ...
+nlp_data:                              MathOptInterface.NLPBlockData(MathOptInterface.NLPBoundsPair[MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterfac...
+nlp_dual_start:                        nothing
+mult_g_nlp:                            Dict{MathOptInterface.Nonlinear.ConstraintIndex, Float64}()
+qp_data:                               MadNLPMOI.QPBlockData{Float64}(0.0, MadNLPMOI._kFunctionTypeScalarAffine, Union{MathOptInterface.ScalarAffineFunction{Float64}, MathOptInterface.ScalarQuadraticFunction{Float64}}[], Float64[], Float64[], Union{Nothing, Float64}[], MadNLPMOI._FunctionType[], MadNLPMOI._BoundType[], Dict{Int64, Float64}())
+nlp_model:                             nothing
+ad_backend:                            MathOptInterface.Nonlinear.SparseReverseMode()
+vector_nonlinear_oracle_constraints:   Tuple{MathOptInterface.VectorOfVariables, MadNLPMOI._VectorNonlinearOracleCache}[]
+jrows:                                 Int64[]
+jcols:                                 Int64[]
+hrows:                                 Int64[]
+hcols:                                 Int64[]
+needs_new_nlp:                         true
+has_only_linear_constraints:           false
+islp:                                  false
+jprod_available:                       false
+hprod_available:                       false
+hess_available:                        false
+
+julia> dump_obj(optim; v_colsz=1000)
+inner:                                 nothing
+name:                                  ""
+invalid_model:                         false
+silent:                                false
+options:                               Dict{String, Any}("print_advanced_options" => "no", "acceptable_iter" => 15, "acceptable_constr_viol_tol" => 0.01, "acceptable_dual_inf_tol" => 1.0e10, "nlp_scaling_method" => "gradient-based", "acceptable_obj_change_tol" => 1.0e-5, "inf_pr_output" => "original", "print_options_mode" => "text", "print_timing_statistics" => "no", "recalc_y_feas_tol" => 1.0e-6, "tol" => 1.0e-8, "mu_strategy" => "adaptive", "mu_target" => 0.0001, "print_frequency_iter" => 1, "watchdog_trial_iter_max" => 3, "print_user_options" => "no", "max_iter" => 250, "compl_inf_tol" => 0.001, "constr_viol_tol" => 1.0e-6, "max_cpu_time" => 1.0e6, "recalc_y" => "no", "watchdog_shortened_iter_trigger" => 0, "print_options_documentation" => "no", "acceptable_tol" => 1.0e-6, "print_info_string" => "no", "print_frequency_time" => 0.0, "adaptive_mu_globalization" => "obj-constr-filter", "s_max" => 100.0, "diverging_iterates_tol" => 1.0e8, "acceptable_compl_inf_tol" => 0.01, "hessian_approximation" => "exact", "print_level" =...
+solve_time:                            NaN
+sense:                                 MathOptInterface.MIN_SENSE
+parameters:                            Dict{MathOptInterface.VariableIndex, MathOptInterface.Nonlinear.ParameterIndex}()
+variables:                             MathOptInterface.Utilities.VariablesContainer{Float64}(UInt16[0x0001, 0x0001, 0x0001, 0x0001, 0x0006, 0x0001, 0x0001, 0x0001, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0006, 0x0000, 0x0006, 0x0006, 0x0006, 0x...
+list_of_variable_indices:              MathOptInterface.VariableIndex[MOI.VariableIndex(1), MOI.VariableIndex(2), MOI.VariableIndex(3), MOI.VariableIndex(4), MOI.VariableIndex(5), MOI.VariableIndex(6), MOI.VariableIndex(7), MOI.VariableIndex(8), MOI.VariableIndex(9), MOI.VariableIndex(10), MOI.VariableIndex(11), MOI.VariableIndex(12), MOI.VariableIndex(13), MOI.VariableIndex(14), MOI.VariableIndex(15), MOI.VariableIndex(16), MOI.VariableIndex(17), MOI.VariableIndex(18), MOI.VariableIndex(19), MOI.VariableIndex(20), MOI.VariableIndex(21), MOI.VariableIndex(22), MOI.VariableIndex(23), MOI.VariableIndex(24), MOI.VariableIndex(25), MOI.VariableIndex(26), MOI.VariableIndex(27), MOI.VariableIndex(28), MOI.VariableIndex(29), MOI.VariableIndex(30), MOI.VariableIndex(31), MOI.VariableIndex(32), MOI.VariableIndex(33), MOI.VariableIndex(34), MOI.VariableIndex(35), MOI.VariableIndex(36), MOI.VariableIndex(37), MOI.VariableIndex(38), MOI.VariableIndex(39), MOI.VariableIndex(40), MOI.VariableIndex(41), MOI.VariableIndex(42), MOI.Variable...
+variable_primal_start:                 Union{Nothing, Float64}[1.0, 0.0, 0.0, 0.0, 0.5263157894736842, 0.0, -0.05719170696951803, -0.23470899456106342, 0.0, 0.0, 0.0, 0.0, 0.8560889131001601, -0.11745902739148088, -0.5004453604820072, 0.028621324410941767, 0.5263157894736842, 0.5263157894736842, -0.05719170696951803, -0.23470899456106342, 0.0, 0.0, 0.0, 0.0, 0.46813821529057154, -0.20126195835010852, -0.8574957202918219, 0.04904164396254564, 0.5263157894736843, 1.0526315789473684, -0.05719170696951803, -0.23470899456106342, 0.0, 0.0, 0.0, 0.0, -0.053515564631140475, -0.22761838367036508, -0.9697897777460172, 0.05546393279088412, 0.5263157894736841, 1.5789473684210527, -0.05719170696951803, -0.23470899456106342, 0.0, 0.0, 0.0, 0.0, -0.5603762475968099, -0.18888673609394355, -0.8047699085720438, 0.04602616478893793, 0.5263157894736845, 2.1052631578947367, -0.05719170696951803, -0.23470899456106342, 0.0, 0.0, 0.0, 0.0, -0.9061159077763764, -0.09589448505593219, -0.4085675763524412, 0.023366677103994683, 0.5263157894736841, 2.6...
+mult_x_L:                              Union{Nothing, Float64}[nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, noth...
+mult_x_U:                              Union{Nothing, Float64}[nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, noth...
+nlp_data:                              MathOptInterface.NLPBlockData(MathOptInterface.NLPBoundsPair[MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterface.NLPBoundsPair(0.0, 0.0), MathOptInterfac...
+nlp_dual_start:                        nothing
+mult_g_nlp:                            Dict{MathOptInterface.Nonlinear.ConstraintIndex, Float64}()
+qp_data:                               IpoptMathOptInterfaceExt.QPBlockData{Float64}(0.0, IpoptMathOptInterfaceExt._kFunctionTypeScalarAffine, Union{MathOptInterface.ScalarAffineFunction{Float64}, MathOptInterface.ScalarQuadraticFunction{Float64}}[0.0 + 1.0 MOI.VariableIndex(5) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(17) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(29) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(41) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(53) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(65) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(77) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(89) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(101) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(113) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(125) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(137) - 1.0 MOI.VariableIndex(233), 0.0 + 1.0 MOI.VariableIndex(149) - 1.0 MOI.V...
+nlp_model:                             nothing
+callback:                              nothing
+barrier_iterations:                    0
+ad_backend:                            MathOptInterface.Nonlinear.SparseReverseMode()
+vector_nonlinear_oracle_constraints:   Tuple{MathOptInterface.VectorOfVariables, IpoptMathOptInterfaceExt._VectorNonlinearOracleCache}[]
+jacobian_sparsity:                     Tuple{Int64, Int64}[]
+hessian_sparsity:                      nothing
+needs_new_inner:                       true
+has_only_linear_constraints:           false
+
+julia> 
