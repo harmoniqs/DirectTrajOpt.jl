@@ -31,14 +31,8 @@ jobs:
 
       - uses: julia-actions/cache@v2
 
-      - name: Install HarmoniqsBenchmarks (unregistered) and dev-install DirectTrajOpt
-        run: |
-          julia --project=benchmark -e '
-            using Pkg
-            Pkg.develop(path=".")
-            Pkg.add(url="https://github.com/harmoniqs/HarmoniqsBenchmarks.jl")
-            Pkg.instantiate()
-          '
+      - name: Instantiate benchmark environment
+        run: julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
 
       - name: Run benchmarks
         run: |
