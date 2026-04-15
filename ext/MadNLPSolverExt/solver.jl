@@ -196,14 +196,15 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
         if name in ignored_options
             continue
         end
-        # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
-        if !isnothing(value)
-            if name == :print_level
-                optimizer.options[name] = MadNLP.LogLevels(value)
-            else
-                optimizer.options[name] = value
-            end
-        end
+        # # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
+        # if !isnothing(value)
+        #     if name == :print_level
+        #         optimizer.options[name] = MadNLP.LogLevels(value)
+        #     else
+        #         optimizer.options[name] = value
+        #     end
+        # end
+        optimizer.options[name] = value
     end
     return nothing
 end
