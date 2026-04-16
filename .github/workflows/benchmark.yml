@@ -45,6 +45,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-${{ github.ref_name }}-${{ github.sha }}
+          name: benchmark-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
           path: benchmark/results/
           retention-days: 90
