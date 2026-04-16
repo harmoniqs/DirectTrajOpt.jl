@@ -6,11 +6,7 @@ Benchmark suite for DirectTrajOpt.jl comparing Ipopt and MadNLP solver performan
 
 ```bash
 # From DirectTrajOpt.jl root
-julia --project=benchmark -e '
-    using Pkg
-    Pkg.add(url="https://github.com/harmoniqs/HarmoniqsBenchmarks.jl")
-    Pkg.instantiate()
-'
+julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
 
 julia --project=benchmark -t auto -e '
     using TestItemRunner
