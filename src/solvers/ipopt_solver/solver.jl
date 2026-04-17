@@ -1,11 +1,11 @@
-using DirectTrajOpt
-using NamedTrajectories
-
+import MathOptInterface as MOI
 using MathOptInterface
-const MOI = MathOptInterface
 using Ipopt
 using TestItemRunner
 using Libdl  # Added for Pardiso library loading
+
+using DirectTrajOpt
+using NamedTrajectories
 
 
 function DirectTrajOpt._solve(
@@ -144,7 +144,7 @@ function get_optimizer_and_variables(
 end
 
 
-function set_variables!(optimizer::Ipopt.Optimizer, traj::NamedTrajectory)
+function set_variables!(optimizer::AbstractOptimizer, traj::NamedTrajectory)
     data_dim = traj.dim * traj.N
 
     # add variables
@@ -171,7 +171,7 @@ end
 
 function update_trajectory!(
     prob::DirectTrajOptProblem,
-    optimizer::Ipopt.Optimizer,
+    optimizer::AbstractOptimizer,
     variables::Vector{MOI.VariableIndex},
 )
     update!(
@@ -188,7 +188,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function DirectTrajOpt.set_options!(optimizer::Ipopt.Optimizer, options::IpoptOptions)
+function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::IpoptOptions)
     ignored_options = [:eval_hessian, :refine]
 
     for name in fieldnames(typeof(options))
