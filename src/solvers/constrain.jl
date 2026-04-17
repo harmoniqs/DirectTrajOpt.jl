@@ -1,5 +1,12 @@
+using DirectTrajOpt
+using NamedTrajectories
+using TrajectoryIndexingUtils
+
+using DirectTrajOpt.Constraints
+
+
 function constrain!(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     cons::Vector{<:AbstractLinearConstraint},
     traj::NamedTrajectory;
@@ -16,7 +23,7 @@ function constrain!(
 end
 
 function (con::EqualityConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -56,7 +63,7 @@ function (con::EqualityConstraint)(
 end
 
 function (con::BoundsConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -127,7 +134,7 @@ function (con::BoundsConstraint)(
 end
 
 function (con::AllEqualConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -155,7 +162,7 @@ function (con::AllEqualConstraint)(
 end
 
 function (con::L1SlackConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -196,7 +203,7 @@ function (con::L1SlackConstraint)(
 end
 
 function (con::TotalConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -224,7 +231,7 @@ function (con::TotalConstraint)(
 end
 
 function (con::SymmetryConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -299,7 +306,7 @@ function (con::SymmetryConstraint)(
 end
 
 function (con::TimeConsistencyConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
