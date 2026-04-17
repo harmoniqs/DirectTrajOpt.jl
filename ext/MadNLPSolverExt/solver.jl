@@ -1,8 +1,10 @@
 using DirectTrajOpt
 using NamedTrajectories
+using TrajectoryIndexingUtils
 
-using MathOptInterface
-const MOI = MathOptInterface
+# using MathOptInterface
+# const MOI = MathOptInterface
+import MathOptInterface as MOI
 import MadNLP # DO NOT using!
 using TestItemRunner
 # using Libdl  # Added for Pardiso library loading
@@ -64,7 +66,7 @@ function get_optimizer_and_variables(
     # get evaluator
     t_eval = time()
     evaluator =
-        Solvers.Evaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
+        Solvers.Evaluator(prob; eval_hessian=true, verbose = verbose)
     if verbose
         println("    evaluator created ($(round(time() - t_eval, digits=3))s)")
     end
@@ -142,7 +144,7 @@ function get_optimizer_and_variables(
 end
 
 
-function set_variables!(optimizer::MadNLP.Optimizer, traj::NamedTrajectory)
+function set_variables!(optimizer::AbstractOptimizer, traj::NamedTrajectory)
     data_dim = traj.dim * traj.N
 
     # add variables
@@ -169,7 +171,7 @@ end
 
 function update_trajectory!(
     prob::DirectTrajOptProblem,
-    optimizer::MadNLP.Optimizer,
+    optimizer::AbstractOptimizer,
     variables::Vector{MOI.VariableIndex},
 )
     update!(
@@ -186,7 +188,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function DirectTrajOpt.set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
+function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
 
     for name in fieldnames(typeof(options))
@@ -194,14 +196,15 @@ function DirectTrajOpt.set_options!(optimizer::MadNLP.Optimizer, options::MadNLP
         if name in ignored_options
             continue
         end
-        # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
-        if !isnothing(value)
-            if name == :print_level
-                optimizer.options[name] = MadNLP.LogLevels(value)
-            else
-                optimizer.options[name] = value
-            end
-        end
+        # # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
+        # if !isnothing(value)
+        #     if name == :print_level
+        #         optimizer.options[name] = MadNLP.LogLevels(value)
+        #     else
+        #         optimizer.options[name] = value
+        #     end
+        # end
+        optimizer.options[name] = value
     end
     return nothing
 end
@@ -295,4 +298,24 @@ end
         g = traj.global_data[traj.global_components[:g]]
         @test norm(u) * (1.0 + norm(g)) <= 2.0 + 1e-6
     end
+end
+
+@testitem "testing solution trajectory independent of choice of solver" begin
+
+    # include("../../test/test_utils.jl)
+    # include("../../test/madnlp_test_utils.jl")
+    include("../../test/solver_test_utils.jl")
+
+    seed = rand(UInt64)
+
+    prob_ipopt = get_seeded_prob_solved(seed, IpoptSolverExt.IpoptOptions(; max_iter = 100))
+    prob_madnlp = get_seeded_prob_solved(seed, MadNLPSolverExt.MadNLPOptions(; max_iter=100))
+
+    traj_ipopt = prob_ipopt.trajectory
+    traj_madnlp = prob_madnlp.trajectory
+
+    traj_dist = (traj_madnlp.data[:, :] .- traj_ipopt.data[:, :]) .^ 2
+    traj_dist = sqrt(sum(traj_dist)) / length(traj_dist)
+
+    @test traj_dist < 1e-4
 end
