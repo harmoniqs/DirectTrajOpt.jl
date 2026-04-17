@@ -296,7 +296,7 @@ end
     solve!(prob; max_iter = 100)
 
     # Pinned values should have zero drift
-    for t in 1:traj.N
+    for t = 1:traj.N
         @test prob.trajectory[t][:u] ≈ u_ref[:, t] atol=1e-10
     end
 end
