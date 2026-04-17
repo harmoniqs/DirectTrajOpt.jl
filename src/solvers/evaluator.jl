@@ -399,11 +399,11 @@ function MOI.eval_constraint_jacobian_product(
 
     _x = _update_trajectory_cache!(evaluator, x)
 
-    jac_structure::Vector{Tuple{Int, Int}} = MOI.jacobian_structure(evaluator)
+    jac_structure::Vector{Tuple{Int,Int}} = MOI.jacobian_structure(evaluator)
     jac::Vector{T} = zeros(length(jac_structure))
     _fill_jacobian_values!(jac, evaluator, _x)
 
-    for idx = eachindex(jac_structure)
+    for idx in eachindex(jac_structure)
         row, col = jac_structure[idx]
         y[row] += w[col] * jac[idx]
     end
@@ -425,11 +425,11 @@ function MOI.eval_constraint_jacobian_transpose_product(
 
     _x = _update_trajectory_cache!(evaluator, x)
 
-    jac_structure::Vector{Tuple{Int, Int}} = MOI.jacobian_structure(evaluator)
+    jac_structure::Vector{Tuple{Int,Int}} = MOI.jacobian_structure(evaluator)
     jac::Vector{T} = zeros(length(jac_structure))
     _fill_jacobian_values!(jac, evaluator, _x)
 
-    for idx = eachindex(jac_structure)
+    for idx in eachindex(jac_structure)
         row, col = jac_structure[idx]
         y[col] += w[row] * jac[idx]
     end

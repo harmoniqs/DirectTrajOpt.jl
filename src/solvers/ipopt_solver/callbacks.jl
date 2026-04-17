@@ -328,14 +328,22 @@ end
 
 ## Test suite setup
 
-function test_early_stop(problem::DirectTrajOptProblem, min_iter::Int, max_iter::Int, stop_iter::Int)
-    options = IpoptOptions(acceptable_iter=min_iter, max_iter=max_iter)
+function test_early_stop(
+    problem::DirectTrajOptProblem,
+    min_iter::Int,
+    max_iter::Int,
+    stop_iter::Int,
+)
+    options = IpoptOptions(acceptable_iter = min_iter, max_iter = max_iter)
     stats = IpoptOptimizerState[]
-    callbacks = [callback_update_optimizer_state_history_factory(stats), callback_stop_iteration_factory(stop_iter)]
+    callbacks = [
+        callback_update_optimizer_state_history_factory(stats),
+        callback_stop_iteration_factory(stop_iter),
+    ]
 
     optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
         problem,
-        IpoptOptions(; acceptable_iter=min_iter, max_iter=max_iter,),
+        IpoptOptions(; acceptable_iter = min_iter, max_iter = max_iter),
         callback_factory(callbacks...),
     )
     IpoptSolverExt.MOI.optimize!(optimizer) # let's not rely on this being "exported" like this going forward
@@ -343,16 +351,25 @@ function test_early_stop(problem::DirectTrajOptProblem, min_iter::Int, max_iter:
     final_iter = stats[end].iter_count
 
     return (
-            final_iter <= max_iter # sanity check
-            && final_iter == (length(stats) - 1) # tests callback_update_optimizer_state_history (accounts for additoinal pre-solve callback)
-            && final_iter <= stop_iter # tests callback_update_stop_iteration
-            && ((final_iter < min_iter) || (!(stop_iter < min_iter))) # sanity check (equivalent to stop_iter < min_iter ==> final_iter < min_iter; this follows immediately from the foregoing statement)
-        )
+        final_iter <= max_iter # sanity check
+        &&
+        final_iter == (length(stats) - 1) # tests callback_update_optimizer_state_history (accounts for additoinal pre-solve callback)
+        &&
+        final_iter <= stop_iter # tests callback_update_stop_iteration
+        &&
+        ((final_iter < min_iter) || (!(stop_iter < min_iter))) # sanity check (equivalent to stop_iter < min_iter ==> final_iter < min_iter; this follows immediately from the foregoing statement)
+    )
 end
 
-function test_update_trajectory(problem::DirectTrajOptProblem, update_trajectory::Bool; n_iters=50)
-    callbacks =
-        [callback_say_hello_factory("Hello, world!"), callback_stop_iteration_factory(n_iters)]
+function test_update_trajectory(
+    problem::DirectTrajOptProblem,
+    update_trajectory::Bool;
+    n_iters = 50,
+)
+    callbacks = [
+        callback_say_hello_factory("Hello, world!"),
+        callback_stop_iteration_factory(n_iters),
+    ]
     if update_trajectory
         pushfirst!(callbacks, callback_update_trajectory_factory(problem))
     end
@@ -374,13 +391,17 @@ function test_update_trajectory(problem::DirectTrajOptProblem, update_trajectory
     return (traj_final == traj_init) == !update_trajectory
 end
 
-function test_update_trajectory_history(problem::DirectTrajOptProblem; n_iters=50)
+function test_update_trajectory_history(problem::DirectTrajOptProblem; n_iters = 50)
     trajectories = NamedTrajectory[]
-    
-    callbacks = [callback_update_trajectory_factory(problem), callback_update_trajectory_history_factory(problem, trajectories), callback_stop_iteration_factory(n_iters)]
+
+    callbacks = [
+        callback_update_trajectory_factory(problem),
+        callback_update_trajectory_history_factory(problem, trajectories),
+        callback_stop_iteration_factory(n_iters),
+    ]
     callback = callback_factory(callbacks...)
 
-    solve!(problem; options=IpoptOptions(; max_iter=100,), callback=callback)
+    solve!(problem; options = IpoptOptions(; max_iter = 100), callback = callback)
 
     return length(trajectories) == (n_iters + 1) # might be flaky if solve takes l.t. n_iters iters
 end

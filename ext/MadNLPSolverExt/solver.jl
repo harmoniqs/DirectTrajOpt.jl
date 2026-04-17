@@ -65,8 +65,7 @@ function get_optimizer_and_variables(
 
     # get evaluator
     t_eval = time()
-    evaluator =
-        Solvers.Evaluator(prob; eval_hessian=true, verbose = verbose)
+    evaluator = Solvers.Evaluator(prob; eval_hessian = true, verbose = verbose)
     if verbose
         println("    evaluator created ($(round(time() - t_eval, digits=3))s)")
     end
@@ -309,7 +308,8 @@ end
     seed = rand(UInt64)
 
     prob_ipopt = get_seeded_prob_solved(seed, IpoptSolverExt.IpoptOptions(; max_iter = 100))
-    prob_madnlp = get_seeded_prob_solved(seed, MadNLPSolverExt.MadNLPOptions(; max_iter=100))
+    prob_madnlp =
+        get_seeded_prob_solved(seed, MadNLPSolverExt.MadNLPOptions(; max_iter = 100))
 
     traj_ipopt = prob_ipopt.trajectory
     traj_madnlp = prob_madnlp.trajectory
