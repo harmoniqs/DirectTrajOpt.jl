@@ -44,19 +44,31 @@ function (con::EqualityConstraint)(
         @assert name ∈ traj.names "Variable $name not found in trajectory"
         ts = con.times
 
-        # Handle scalar value - repeat for variable dimension
-        if length(con.values) == 1
-            val_per_time = fill(con.values[1], traj.dims[name])
+        if con.values isa Matrix{Float64}
+            # Per-timestep values: column k → timestep ts[k]
+            @assert size(con.values, 1) == traj.dims[name] (
+                "Matrix row dimension ($(size(con.values, 1))) must match variable dimension ($(traj.dims[name])) for $name"
+            )
+            for (k, t) ∈ enumerate(ts)
+                indices = slice(t, traj.components[name], traj.dim)
+                for (i, val) ∈ zip(indices, @view con.values[:, k])
+                    MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
+                end
+            end
         else
-            @assert length(con.values) == traj.dims[name] "Value dimension mismatch for variable $name"
-            val_per_time = con.values
-        end
+            # Uniform values (existing behavior)
+            if length(con.values) == 1
+                val_per_time = fill(con.values[1], traj.dims[name])
+            else
+                @assert length(con.values) == traj.dims[name] "Value dimension mismatch for variable $name"
+                val_per_time = con.values
+            end
 
-        # Apply constraint at each time step
-        for t ∈ ts
-            indices = slice(t, traj.components[name], traj.dim)
-            for (i, val) ∈ zip(indices, val_per_time)
-                MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
+            for t ∈ ts
+                indices = slice(t, traj.components[name], traj.dim)
+                for (i, val) ∈ zip(indices, val_per_time)
+                    MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
+                end
             end
         end
     end
