@@ -7,16 +7,12 @@ using SparseArrays
 using NamedTrajectories
 using DirectTrajOpt
 
-const MadNLPSolverExt = [mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt][1]
+const MadNLPSolverExt =
+    [mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt][1]
 
-function get_seeded_trajectory(seed;
-    N = 10,
-    Δt = 0.1,
-    u_bound = 0.1,
-    ω = 0.1,
-)
+function get_seeded_trajectory(seed; N = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
     Random.seed!(seed)
-    
+
     Gx = sparse(Float64[
         0 0 0 1;
         0 0 1 0;
@@ -59,7 +55,7 @@ function get_seeded_trajectory(seed;
         );
         controls = (:ddu, :Δt),
         timestep = :Δt,
-        bounds = (u = (-u_bound, u_bound), Δt = (1., 1.)), # timestep variability is a major source of error as in the "multiple comparisons problem" so we make them constant here
+        bounds = (u = (-u_bound, u_bound), Δt = (1.0, 1.0)), # timestep variability is a major source of error as in the "multiple comparisons problem" so we make them constant here
         initial = (x = x_init, u = zeros(2)),
         final = (u = zeros(2),),
         goal = (x = x_goal,),
@@ -144,7 +140,7 @@ function get_solver_comparison(seed)
     return err, (ti, tm)
 end
 
-wins = Dict(:ipopt => 0, :madnlp => 0,)
+wins = Dict(:ipopt => 0, :madnlp => 0)
 for seed = 0:99
     err, (ti, tm) = get_solver_comparison(seed)
     (err < 1e-3) || exit(1)
