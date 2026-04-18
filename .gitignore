@@ -33,9 +33,12 @@ Manifest.toml
 docs/Manifest.toml
 
 # Project specific ignores below
-# generated example artifacts 
+# generated example artifacts
 /examples/**/plots/
 /examples/**/trajectories/
+
+# benchmark output artifacts
+/benchmark/results/
 
 # external pkgs and configs
 pardiso.lic
