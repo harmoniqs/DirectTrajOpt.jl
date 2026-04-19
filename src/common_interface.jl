@@ -17,6 +17,7 @@ export eval_jacobian
 export eval_hessian_of_lagrangian
 
 export _solve
+export _solve_with_kwargs
 export solve!
 export set_options!
 

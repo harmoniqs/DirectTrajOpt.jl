@@ -80,6 +80,20 @@ function DirectTrajOpt._solve(prob::DirectTrajOptProblem, options::Any; kwargs..
 end
 
 """
+function _solve_with_kwargs(
+    prob::DirectTrajOptProblem,
+    options::Any;
+    kwargs...
+)
+
+Stub
+"""
+function DirectTrajOpt._solve_with_kwargs(prob::DirectTrajOptProblem, options::Any; kwargs...)
+    @error "Invalid options argument (an instance of $(typeof(options)), not a subtype of $(AbstractSolverOptions))"
+    return nothing
+end
+
+"""
 function _solve(
     prob::DirectTrajOptProblem,
     options::AbstractSolverOptions;
@@ -97,6 +111,32 @@ Generic interface for adding support for a new solver in DirectTrajOpt.jl
     - `Any`: The solver interface may return `nothing`, or else it may return statistics pertaining to the success/failure of the solve
 """
 function DirectTrajOpt._solve(
+    prob::DirectTrajOptProblem,
+    options::AbstractSolverOptions;
+    kwargs...,
+)
+    @error "No solver backend with matching options argument type (an instance of $(typeof(options)))"
+    return nothing
+end
+
+"""
+function _solve_with_kwargs(
+    prob::DirectTrajOptProblem,
+    options::AbstractSolverOptions;
+    kwargs...
+)
+
+Specialized interface for adding support for a new solver in DirectTrajOpt.jl
+
+    # Arguments
+    - `prob::DirectTrajOptProblem`: The trajectory optimization problem to solve.
+    - `options::AbstractSolverOptions`: The solver-specific options struct accompanying the problem to solve
+    - `kwargs...`: Additional keyword arguments
+
+    # Returns
+    - `Any`: The solver interface may return `nothing`, or else it may return statistics pertaining to the success/failure of the solve
+"""
+function DirectTrajOpt._solve_with_kwargs(
     prob::DirectTrajOptProblem,
     options::AbstractSolverOptions;
     kwargs...,

@@ -3,6 +3,7 @@ module Solvers
 export AbstractOptimizer
 export AbstractSolverOptions, DefaultSolverOptions, _DefaultSolverOptions
 export _solve
+export _solve_with_kwargs
 export solve!
 
 import MathOptInterface as MOI
