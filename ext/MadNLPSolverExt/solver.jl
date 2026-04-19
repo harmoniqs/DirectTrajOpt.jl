@@ -19,7 +19,7 @@ function DirectTrajOpt._solve(
 )
     # Apply kwargs to matching MadNLPOptions fields
     madnlp_fields = fieldnames(MadNLPOptions)
-    madnlp_kwargs = Dict{Symbol, Any}()
+    madnlp_kwargs = Dict{Symbol,Any}()
     for (k, v) in kwargs
         if k in madnlp_fields
             setfield!(options, k, v)
@@ -32,7 +32,11 @@ function DirectTrajOpt._solve(
     # Sync derived fields that depend on other fields.
     if haskey(madnlp_kwargs, :eval_hessian)
         # @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
-        setfield!(options, :hessian_approximation, pop!(madnlp_kwargs, :eval_hessian) ? "exact" : "compact_lbfgs")
+        setfield!(
+            options,
+            :hessian_approximation,
+            pop!(madnlp_kwargs, :eval_hessian) ? "exact" : "compact_lbfgs",
+        )
     end
 
     # Instantiate MadNLP.Optimizer <: MOI.AbstractOptimizer
@@ -209,7 +213,8 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
             optimizer.options[name] = MadNLP.LogLevels(value)
         elseif name == :hessian_approximation
             hessian_approximation = MadNLP.ExactHessian
-            hessian_approximation = ((value == "compact_lbfgs") ? MadNLP.CompactLBFGS : hessian_approximation)
+            hessian_approximation =
+                ((value == "compact_lbfgs") ? MadNLP.CompactLBFGS : hessian_approximation)
             optimizer.options[name] = hessian_approximation
         else
             optimizer.options[name] = value

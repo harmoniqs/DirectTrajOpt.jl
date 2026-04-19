@@ -88,7 +88,11 @@ function _solve_with_kwargs(
 
 Stub
 """
-function DirectTrajOpt._solve_with_kwargs(prob::DirectTrajOptProblem, options::Any; kwargs...)
+function DirectTrajOpt._solve_with_kwargs(
+    prob::DirectTrajOptProblem,
+    options::Any;
+    kwargs...,
+)
     @error "Invalid options argument (an instance of $(typeof(options)), not a subtype of $(AbstractSolverOptions))"
     return nothing
 end
