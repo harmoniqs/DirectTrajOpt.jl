@@ -55,14 +55,14 @@ end
 
 function DirectTrajOpt._solve_with_kwargs(
     prob::DirectTrajOptProblem,
-    options::MadNLPOptions;
+    options::MadNLPOptionsStub;
     verbose::Bool = true,
     callback = nothing,
     array_type = nothing,
     kwargs...,
 )
-    # Apply kwargs to matching MadNLPOptions fields
-    madnlp_fields = fieldnames(MadNLPOptions)
+    # Apply kwargs to matching MadNLPOptionsStub fields
+    madnlp_fields = fieldnames(MadNLPOptionsStub)
     madnlp_kwargs = Dict{Symbol,Any}()
     for (k, v) in kwargs
         if k in madnlp_fields
@@ -143,7 +143,7 @@ end
 
     DirectTrajOpt._solve_with_kwargs(
         prob,
-        MadNLPSolverExt.MadNLPOptions(max_iter = 100);
+        MadNLPOptionsStub(max_iter = 100);
         kkt_system = MadNLP.SparseUnreducedKKTSystem,
         linear_solver = MadNLP.LapackCPUSolver,
     )

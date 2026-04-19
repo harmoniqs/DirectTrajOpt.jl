@@ -12,13 +12,13 @@ using TestItemRunner
 
 function DirectTrajOpt._solve(
     prob::DirectTrajOptProblem,
-    options::MadNLPOptions;
+    options::MadNLPOptionsStub;
     verbose::Bool = true,
     callback = nothing,
     kwargs...,
 )
-    # Apply kwargs to matching MadNLPOptions fields
-    madnlp_fields = fieldnames(MadNLPOptions)
+    # Apply kwargs to matching MadNLPOptionsStub fields
+    madnlp_fields = fieldnames(MadNLPOptionsStub)
     madnlp_kwargs = Dict{Symbol,Any}()
     for (k, v) in kwargs
         if k in madnlp_fields
@@ -67,7 +67,7 @@ end
 
 function get_optimizer_and_variables(
     prob::DirectTrajOptProblem,
-    options::MadNLPOptions,
+    options::MadNLPOptionsStub,
     callback::Union{Nothing,Function};
     verbose::Bool = true,
 )
@@ -200,7 +200,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptions)
+function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptionsStub)
     ignored_options = [:eval_hessian]
 
     for name in fieldnames(typeof(options))
@@ -262,7 +262,7 @@ end
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    solve!(prob; options = MadNLPSolverExt.MadNLPOptions(max_iter = 100))
+    solve!(prob; options = MadNLPOptionsStub(max_iter = 100))
 end
 
 @testitem "testing MadNLP.jl solver with NonlinearGlobalKnotPointConstraint" begin
@@ -304,7 +304,7 @@ end
     prob =
         DirectTrajOptProblem(traj, J, integrators; constraints = AbstractConstraint[g_ug])
 
-    solve!(prob; options = MadNLPSolverExt.MadNLPOptions(max_iter = 100))
+    solve!(prob; options = MadNLPOptionsStub(max_iter = 100))
 
     # Verify constraint is satisfied at each timestep
     for k = 2:(traj.N-1)
@@ -324,7 +324,7 @@ end
 
     prob_ipopt = get_seeded_prob_solved(seed, IpoptSolverExt.IpoptOptions(; max_iter = 100))
     prob_madnlp =
-        get_seeded_prob_solved(seed, MadNLPSolverExt.MadNLPOptions(; max_iter = 100))
+        get_seeded_prob_solved(seed, MadNLPOptionsStub(; max_iter = 100))
 
     traj_ipopt = prob_ipopt.trajectory
     traj_madnlp = prob_madnlp.trajectory

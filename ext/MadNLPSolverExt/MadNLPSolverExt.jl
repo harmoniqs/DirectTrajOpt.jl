@@ -16,7 +16,7 @@ using DirectTrajOpt.Objectives
 using DirectTrajOpt.Solvers
 
 
-include("options.jl")
+# include("options.jl") # moved to solvers/madnlp_solver/options.jl
 include("solver.jl")
 include("utils.jl")
 
