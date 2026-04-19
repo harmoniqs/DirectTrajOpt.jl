@@ -17,30 +17,39 @@ function DirectTrajOpt._solve(
     callback = nothing,
     kwargs...,
 )
-    # Apply kwargs to matching IpoptOptions fields
+    # Apply kwargs to matching MadNLPOptions fields
     madnlp_fields = fieldnames(MadNLPOptions)
+    madnlp_kwargs = Dict{Symbol, Any}()
     for (k, v) in kwargs
         if k in madnlp_fields
             setfield!(options, k, v)
         else
-            @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
+            # @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
+            push!(madnlp_kwargs, Pair(k, v))
         end
     end
 
     # Sync derived fields that depend on other fields.
-    # These are computed at IpoptOptions construction time, so kwarg overrides
-    # of the source field don't automatically propagate.
-    if haskey(kwargs, :eval_hessian)
-        # options.hessian_approximation = options.eval_hessian ? "exact" : "limited-memory"
-        # TODO: either implement this manually, or allow users to pass native MadNLP types as option values, or take the middle ground and do conversions from String/Symbol to Union{MadNLP.AbstractHessian, MadNLP.AbstractQuasiNewton}
-        @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
+    if haskey(madnlp_kwargs, :eval_hessian)
+        # @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
+        setfield!(options, :hessian_approximation, pop!(madnlp_kwargs, :eval_hessian) ? "exact" : "compact_lbfgs")
     end
+
+    # Instantiate MadNLP.Optimizer <: MOI.AbsNLPBlockDatatractOptimizer
+    #   1. Set MOI.NLPBlock()
+    #   2. Set MOI.ObjectiveSense()
+    #   3. Set MOI.VariablePrimal()
+    #   4. TODO: Set MOI.NLPBlockDualStart() (optional)
+    #   5. TODO: Set callbacks (optional)
+    #   6. Add linear constraints
+    #   7. Set optimizer options (involves conversions of the form convert(k::Symbol, v_in::Union{Real, String}, v_out::Any), where some of the v_out types are internal to MadNLP)
 
     optimizer, variables =
         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
     MOI.optimize!(optimizer)
 
+    # TODO: Verify this is working as expected
     update_trajectory!(prob, optimizer, variables)
 
     return nothing
@@ -96,7 +105,7 @@ function get_optimizer_and_variables(
     # set objective sense: minimize
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     if verbose
-        println("    Ipopt optimizer configured ($(round(time() - t_opt, digits=3))s)")
+        println("    MadNLP optimizer configured ($(round(time() - t_opt, digits=3))s)")
     end
 
     # initialize problem variables 
@@ -195,15 +204,16 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
         if name in ignored_options
             continue
         end
-        # # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
-        # if !isnothing(value)
-        #     if name == :print_level
-        #         optimizer.options[name] = MadNLP.LogLevels(value)
-        #     else
-        #         optimizer.options[name] = value
-        #     end
-        # end
-        optimizer.options[name] = value
+        # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
+        if name == :print_level
+            optimizer.options[name] = MadNLP.LogLevels(value)
+        elseif name == :hessian_approximation
+            hessian_approximation = MadNLP.ExactHessian
+            hessian_approximation = ((value == "compact_lbfgs") ? MadNLP.CompactLBFGS : hessian_approximation)
+            optimizer.options[name] = hessian_approximation
+        else
+            optimizer.options[name] = value
+        end
     end
     return nothing
 end
