@@ -35,7 +35,7 @@ function DirectTrajOpt._solve(
         setfield!(options, :hessian_approximation, pop!(madnlp_kwargs, :eval_hessian) ? "exact" : "compact_lbfgs")
     end
 
-    # Instantiate MadNLP.Optimizer <: MOI.AbsNLPBlockDatatractOptimizer
+    # Instantiate MadNLP.Optimizer <: MOI.AbstractOptimizer
     #   1. Set MOI.NLPBlock()
     #   2. Set MOI.ObjectiveSense()
     #   3. Set MOI.VariablePrimal()
