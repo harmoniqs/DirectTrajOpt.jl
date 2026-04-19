@@ -117,7 +117,7 @@ function main(; N = 10, sample_rate = 0.01)
 
     madnlp_profile, madnlp_path = profile_solver(;
         solver_name   = "MadNLP",
-        options_ctor  = () -> MadNLPSolverExt.MadNLPOptions(max_iter = 50, print_level = MadNLP.ERROR),
+        options_ctor  = () -> MadNLPSolverExt.MadNLPOptions(max_iter = 50, print_level = Int(MadNLP.ERROR)),
         N             = N,
         sample_rate   = sample_rate,
     )
