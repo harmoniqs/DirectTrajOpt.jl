@@ -149,6 +149,7 @@ function eval_hessian_of_lagrangian end
 ## Begin Solvers Interface
 
 function _solve end
+function _solve_with_kwargs end
 function solve! end
 function set_options! end
 
