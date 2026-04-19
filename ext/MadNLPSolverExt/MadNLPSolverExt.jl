@@ -18,5 +18,6 @@ using DirectTrajOpt.Solvers
 
 include("options.jl")
 include("solver.jl")
+include("utils.jl")
 
 end
