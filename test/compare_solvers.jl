@@ -127,7 +127,7 @@ function get_madnlp_traj(seed)
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    solve!(prob; options = MadNLPOptionsStub(; max_iter = 100))
+    solve!(prob; options = MadNLPOptions(; max_iter = 100))
 
     return prob.trajectory
 end

@@ -1,6 +1,6 @@
-export MadNLPOptionsStub
+export MadNLPOptions
 
-@kwdef mutable struct MadNLPOptionsStub <: Solvers.AbstractSolverOptions
+@kwdef mutable struct MadNLPOptions <: Solvers.AbstractSolverOptions
     # Primary options
     tol::Float64 = 1e-8
     max_iter::Int = 3000
