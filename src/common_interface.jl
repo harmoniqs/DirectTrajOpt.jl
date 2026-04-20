@@ -16,6 +16,11 @@ export hessian_of_lagrangian!
 export eval_jacobian
 export eval_hessian_of_lagrangian
 
+export _solve
+export _solve_with_kwargs
+export solve!
+export set_options!
+
 using NamedTrajectories
 using SparseArrays
 
@@ -141,5 +146,14 @@ For constraints: Calls hessian_of_lagrangian to fill compact storage, then assem
 - A sparse matrix representing the full Hessian μ'∇²f
 """
 function eval_hessian_of_lagrangian end
+
+## Begin Solvers Interface
+
+function _solve end
+function _solve_with_kwargs end
+function solve! end
+function set_options! end
+
+## End Solvers Interface
 
 end
