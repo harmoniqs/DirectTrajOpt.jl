@@ -323,8 +323,7 @@ end
     seed = rand(UInt64)
 
     prob_ipopt = get_seeded_prob_solved(seed, IpoptSolverExt.IpoptOptions(; max_iter = 100))
-    prob_madnlp =
-        get_seeded_prob_solved(seed, MadNLPOptions(; max_iter = 100))
+    prob_madnlp = get_seeded_prob_solved(seed, MadNLPOptions(; max_iter = 100))
 
     traj_ipopt = prob_ipopt.trajectory
     traj_madnlp = prob_madnlp.trajectory
