@@ -22,7 +22,7 @@ hold, 1 = linear interpolation). Integration over each time step is performed wi
 ODE solver (Tsit5) on the normalized interval `[0, 1]`.
 
 # Fields
-- `f::Function`: Compiled residual function `(x_{k+1}, x_k, p_k, t_k, Δt_k) -> residual`
+- `f::Function`: Compiled residual function `(x_{k+1}, x_k, p_k, Δt_k, t_k) -> residual`
 - `x_name::Symbol`: Name of the state variable in the trajectory
 - `u_name::Symbol`: Name of the control variable in the trajectory
 - `t_name::Symbol`: Name of the time variable in the trajectory
@@ -164,7 +164,7 @@ function evaluate!(
             error("Unsupported spline order: $(B.spline_order)")
         end
 
-        δ[slice(k, B.x_dim)] = B.f(xₖ₊₁, xₖ, pₖ, tₖ, Δtₖ)
+        δ[slice(k, B.x_dim)] = B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
     end
     return nothing
 end
@@ -194,7 +194,7 @@ end
                     error("Unsupported spline order: $(B.spline_order)")
                 end
 
-                return B.f(xₖ₊₁, xₖ, pₖ, tₖ, Δtₖ)
+                return B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
             end,
             [traj[k].data; traj[k+1].data],
         )
@@ -233,7 +233,7 @@ function eval_hessian_of_lagrangian(
                     error("Unsupported spline order: $(B.spline_order)")
                 end
 
-                return μₖ'B.f(xₖ₊₁, xₖ, pₖ, tₖ, Δtₖ)
+                return μₖ'B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
             end,
             [traj[k].data; traj[k+1].data],
         )
@@ -252,6 +252,18 @@ end
 
     # zero order hold
     B = TimeDependentBilinearIntegrator((a, t) -> G(a), :x, :u, :t, traj)
+
+    test_integrator(B, traj, test_equality = false, atol = 1e-3)
+end
+
+@testitem "testing TimeDependentBilinearIntegrator with explicit time dependence" begin
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_time = true)
+
+    G_td = (a, t) -> G(a) + 0.1 * cos(t) * I(size(G(a), 1))
+
+    B = TimeDependentBilinearIntegrator(G_td, :x, :u, :t, traj)
 
     test_integrator(B, traj, test_equality = false, atol = 1e-3)
 end

@@ -1,5 +1,12 @@
+using DirectTrajOpt
+using NamedTrajectories
+using TrajectoryIndexingUtils
+
+using DirectTrajOpt.Constraints
+
+
 function constrain!(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     cons::Vector{<:AbstractLinearConstraint},
     traj::NamedTrajectory;
@@ -16,7 +23,7 @@ function constrain!(
 end
 
 function (con::EqualityConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -37,26 +44,38 @@ function (con::EqualityConstraint)(
         @assert name ∈ traj.names "Variable $name not found in trajectory"
         ts = con.times
 
-        # Handle scalar value - repeat for variable dimension
-        if length(con.values) == 1
-            val_per_time = fill(con.values[1], traj.dims[name])
+        if con.values isa Matrix{Float64}
+            # Per-timestep values: column k → timestep ts[k]
+            @assert size(con.values, 1) == traj.dims[name] (
+                "Matrix row dimension ($(size(con.values, 1))) must match variable dimension ($(traj.dims[name])) for $name"
+            )
+            for (k, t) ∈ enumerate(ts)
+                indices = slice(t, traj.components[name], traj.dim)
+                for (i, val) ∈ zip(indices, @view con.values[:, k])
+                    MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
+                end
+            end
         else
-            @assert length(con.values) == traj.dims[name] "Value dimension mismatch for variable $name"
-            val_per_time = con.values
-        end
+            # Uniform values (existing behavior)
+            if length(con.values) == 1
+                val_per_time = fill(con.values[1], traj.dims[name])
+            else
+                @assert length(con.values) == traj.dims[name] "Value dimension mismatch for variable $name"
+                val_per_time = con.values
+            end
 
-        # Apply constraint at each time step
-        for t ∈ ts
-            indices = slice(t, traj.components[name], traj.dim)
-            for (i, val) ∈ zip(indices, val_per_time)
-                MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
+            for t ∈ ts
+                indices = slice(t, traj.components[name], traj.dim)
+                for (i, val) ∈ zip(indices, val_per_time)
+                    MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
+                end
             end
         end
     end
 end
 
 function (con::BoundsConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -127,7 +146,7 @@ function (con::BoundsConstraint)(
 end
 
 function (con::AllEqualConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -155,7 +174,7 @@ function (con::AllEqualConstraint)(
 end
 
 function (con::L1SlackConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -196,7 +215,7 @@ function (con::L1SlackConstraint)(
 end
 
 function (con::TotalConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -224,7 +243,7 @@ function (con::TotalConstraint)(
 end
 
 function (con::SymmetryConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -299,7 +318,7 @@ function (con::SymmetryConstraint)(
 end
 
 function (con::TimeConsistencyConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
