@@ -203,3 +203,108 @@ function DirectTrajOpt.solve!(
 
     return nothing
 end
+
+
+# Coverage targets: src/solvers/solve.jl (35% → ~80%)
+
+@testitem "get_num_variables without globals" setup=[DTOTestHelpers] begin
+    G, traj = bilinear_dynamics_and_trajectory()
+    integrators = [BilinearIntegrator(G, :x, :u, traj)]
+    J = QuadraticRegularizer(:u, traj, 1.0)
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    @test traj.global_dim == 0
+    @test Solvers.get_num_variables(prob) == traj.dim * traj.N
+end
+
+@testitem "get_num_variables with globals" setup=[DTOTestHelpers] begin
+    G, traj = bilinear_dynamics_and_trajectory(add_global=true)
+    integrators = [BilinearIntegrator(G, :x, :u, traj)]
+    J = QuadraticRegularizer(:u, traj, 1.0)
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    @test traj.global_dim > 0
+    @test Solvers.get_num_variables(prob) == traj.dim * traj.N + traj.global_dim
+end
+
+@testitem "get_nonlinear_constraints — dynamics only" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    # Remove the nonlinear constraint to test dynamics-only path
+    G, traj = bilinear_dynamics_and_trajectory()
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+    J = QuadraticRegularizer(:u, traj, 1.0)
+    prob_dyn = DirectTrajOptProblem(traj, J, integrators)
+    nl_cons = Solvers.get_nonlinear_constraints(prob_dyn)
+
+    # All dynamics → equality bounds (0, 0)
+    @test all(c -> c.lower == 0.0 && c.upper == 0.0, nl_cons)
+end
+
+@testitem "get_nonlinear_constraints — inequality" setup=[DTOTestHelpers] begin
+    G, traj = bilinear_dynamics_and_trajectory()
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+    J = QuadraticRegularizer(:u, traj, 1.0)
+    g_ineq = NonlinearKnotPointConstraint(
+        u -> [norm(u) - 1.0], :u, traj;
+        times=2:(traj.N-1), equality=false,
+    )
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_ineq])
+    nl_cons = Solvers.get_nonlinear_constraints(prob)
+
+    dynamics_dim = sum(i.dim for i in integrators)
+    ineq_cons = nl_cons[(dynamics_dim+1):end]
+    @test all(c -> c.lower == -Inf && c.upper == 0.0, ineq_cons)
+end
+
+@testitem "get_nonlinear_constraints — equality" setup=[DTOTestHelpers] begin
+    G, traj = bilinear_dynamics_and_trajectory()
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+    J = QuadraticRegularizer(:u, traj, 1.0)
+    g_eq = NonlinearKnotPointConstraint(
+        u -> [norm(u) - 0.5], :u, traj;
+        times=2:(traj.N-1), equality=true,
+    )
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_eq])
+    nl_cons = Solvers.get_nonlinear_constraints(prob)
+
+    dynamics_dim = sum(i.dim for i in integrators)
+    eq_cons = nl_cons[(dynamics_dim+1):end]
+    @test all(c -> c.lower == 0.0 && c.upper == 0.0, eq_cons)
+end
+
+@testitem "_solve error stubs" setup=[DTOTestHelpers] begin
+    G, traj = bilinear_dynamics_and_trajectory()
+    integrators = [BilinearIntegrator(G, :x, :u, traj)]
+    J = QuadraticRegularizer(:u, traj, 1.0)
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    # Ensure CI knows these are meant to error; maybe wrap in a try block?
+
+    # Non-AbstractSolverOptions type
+    @test DirectTrajOpt._solve(prob, "not_options") === nothing
+
+    # AbstractSolverOptions subtype with no backend
+    struct _FakeSolverOptions <: Solvers.AbstractSolverOptions end
+    @test DirectTrajOpt._solve(prob, _FakeSolverOptions()) === nothing
+end
+
+@testitem "solve! default dispatch uses Ipopt" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    @test Solvers._get_DefaultSolverOptions() == IpoptSolverExt.IpoptOptions
+    traj_before = deepcopy(prob.trajectory.data)
+    solve!(prob; max_iter=2, print_level=0, verbose=false)
+    @test prob.trajectory.data != traj_before
+end
+

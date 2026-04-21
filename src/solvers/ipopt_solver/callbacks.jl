@@ -530,4 +530,127 @@ end
     @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 25) # [50 < 100] < 25
 end
 
+
+# Coverage targets: src/solvers/ipopt_solver/callbacks.jl (59% → ~85%)
+
+@testitem "Callback trajectory update" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    @test Callbacks.test_update_trajectory(deepcopy(prob), true)
+    @test Callbacks.test_update_trajectory(deepcopy(prob), false)
+end
+
+@testitem "Callback early stop" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 25)   # stop < min < max
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 75)   # min < stop < max
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 125)  # min < max < stop
+end
+
+@testitem "Callback trajectory history" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    @test Callbacks.test_update_trajectory_history(deepcopy(prob); n_iters=10)
+end
+
+@testitem "callback_rollout_fidelity_factory" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+
+    call_count = Ref(0)
+    mock_fid_fn = (traj, sys) -> begin
+        call_count[] += 1
+        return 0.5 + 0.01 * call_count[]
+    end
+
+    fidelities = Dict{Int32, Float64}()
+    callback = Callbacks.callback_factory(
+        Callbacks.callback_update_trajectory_factory(prob),
+        Callbacks.callback_rollout_fidelity_factory(
+            prob, nothing, mock_fid_fn, fidelities;
+            freq=2, fid_thresh=nothing,
+        ),
+        Callbacks.callback_stop_iteration_factory(10),
+    )
+
+    optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
+        prob,
+        IpoptOptions(; max_iter=20, print_level=0),
+        callback,
+    )
+    IpoptSolverExt.MOI.optimize!(optimizer)
+
+    @test length(fidelities) > 0
+end
+
+@testitem "callback_best_rollout_fidelity_factory" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+
+    call_count = Ref(0)
+    mock_fid_fn = (traj, sys) -> begin
+        call_count[] += 1
+        return 0.1 * call_count[]
+    end
+
+    trajectories = Dict{Int32, Any}()
+    callback = Callbacks.callback_factory(
+        Callbacks.callback_update_trajectory_factory(prob),
+        Callbacks.callback_best_rollout_fidelity_factory(
+            prob, nothing, mock_fid_fn, trajectories;
+            max_trajectories=3, freq=1, fid_thresh=nothing,
+        ),
+        Callbacks.callback_stop_iteration_factory(8),
+    )
+
+    optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
+        prob,
+        IpoptOptions(; max_iter=20, print_level=0),
+        callback,
+    )
+    IpoptSolverExt.MOI.optimize!(optimizer)
+
+    @test 0 < length(trajectories) <= 3
+    for (k, (fid, t)) in trajectories
+        @test fid isa Number
+        @test t isa NamedTrajectory
+    end
+end
+
+@testitem "callback_say_hello_factory" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+
+    output = capture_stdout() do
+        callback = Callbacks.callback_factory(
+            Callbacks.callback_say_hello_factory("TEST_MSG_12345"),
+            Callbacks.callback_stop_iteration_factory(2),
+        )
+        optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
+            prob,
+            IpoptOptions(; max_iter=5, print_level=0),
+            callback,
+        )
+        IpoptSolverExt.MOI.optimize!(optimizer)
+    end
+    @test contains(output, "TEST_MSG_12345")
+end
+
+@testitem "callback_update_optimizer_state_history" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    stats = Callbacks.IpoptOptimizerState[]
+
+    callback = Callbacks.callback_factory(
+        Callbacks.callback_update_optimizer_state_history_factory(stats),
+        Callbacks.callback_stop_iteration_factory(5),
+    )
+
+    optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
+        prob,
+        IpoptOptions(; max_iter=20, print_level=0),
+        callback,
+    )
+    IpoptSolverExt.MOI.optimize!(optimizer)
+
+    @test length(stats) > 0
+    @test haskey(stats[1], :iter_count)
+    @test haskey(stats[1], :obj_value)
+end
+
+
 end
