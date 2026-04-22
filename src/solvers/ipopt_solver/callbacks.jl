@@ -548,7 +548,7 @@ end
 
 @testitem "Callback trajectory history" setup=[DTOTestHelpers] begin
     prob, _ = make_standard_prob()
-    @test Callbacks.test_update_trajectory_history(deepcopy(prob); n_iters=10)
+    @test Callbacks.test_update_trajectory_history(deepcopy(prob); n_iters = 10)
 end
 
 @testitem "callback_rollout_fidelity_factory" setup=[DTOTestHelpers] begin
@@ -560,19 +560,23 @@ end
         return 0.5 + 0.01 * call_count[]
     end
 
-    fidelities = Dict{Int32, Float64}()
+    fidelities = Dict{Int32,Float64}()
     callback = Callbacks.callback_factory(
         Callbacks.callback_update_trajectory_factory(prob),
         Callbacks.callback_rollout_fidelity_factory(
-            prob, nothing, mock_fid_fn, fidelities;
-            freq=2, fid_thresh=nothing,
+            prob,
+            nothing,
+            mock_fid_fn,
+            fidelities;
+            freq = 2,
+            fid_thresh = nothing,
         ),
         Callbacks.callback_stop_iteration_factory(10),
     )
 
     optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
         prob,
-        IpoptOptions(; max_iter=20, print_level=0),
+        IpoptOptions(; max_iter = 20, print_level = 0),
         callback,
     )
     IpoptSolverExt.MOI.optimize!(optimizer)
@@ -589,19 +593,24 @@ end
         return 0.1 * call_count[]
     end
 
-    trajectories = Dict{Int32, Any}()
+    trajectories = Dict{Int32,Any}()
     callback = Callbacks.callback_factory(
         Callbacks.callback_update_trajectory_factory(prob),
         Callbacks.callback_best_rollout_fidelity_factory(
-            prob, nothing, mock_fid_fn, trajectories;
-            max_trajectories=3, freq=1, fid_thresh=nothing,
+            prob,
+            nothing,
+            mock_fid_fn,
+            trajectories;
+            max_trajectories = 3,
+            freq = 1,
+            fid_thresh = nothing,
         ),
         Callbacks.callback_stop_iteration_factory(8),
     )
 
     optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
         prob,
-        IpoptOptions(; max_iter=20, print_level=0),
+        IpoptOptions(; max_iter = 20, print_level = 0),
         callback,
     )
     IpoptSolverExt.MOI.optimize!(optimizer)
@@ -623,7 +632,7 @@ end
         )
         optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
             prob,
-            IpoptOptions(; max_iter=5, print_level=0),
+            IpoptOptions(; max_iter = 5, print_level = 0),
             callback,
         )
         IpoptSolverExt.MOI.optimize!(optimizer)
@@ -642,7 +651,7 @@ end
 
     optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
         prob,
-        IpoptOptions(; max_iter=20, print_level=0),
+        IpoptOptions(; max_iter = 20, print_level = 0),
         callback,
     )
     IpoptSolverExt.MOI.optimize!(optimizer)

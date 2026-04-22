@@ -24,8 +24,8 @@ using TestItems
     include(joinpath(dirname(dirname(pathof(DirectTrajOpt))), "test", "test_utils.jl"))
 
     # Standard problem builder used by most tests
-    function make_standard_prob(; add_global=false)
-        G, traj = bilinear_dynamics_and_trajectory(; add_global=add_global)
+    function make_standard_prob(; add_global = false)
+        G, traj = bilinear_dynamics_and_trajectory(; add_global = add_global)
         integrators = [
             BilinearIntegrator(G, :x, :u, traj),
             DerivativeIntegrator(:u, :du, traj),
@@ -40,21 +40,23 @@ using TestItems
             u -> [norm(u) - 1.0],
             :u,
             traj;
-            times=2:(traj.N-1),
-            equality=false,
+            times = 2:(traj.N-1),
+            equality = false,
         )
 
         prob = DirectTrajOptProblem(
-            traj, J, integrators;
-            constraints=AbstractConstraint[g_u_norm],
+            traj,
+            J,
+            integrators;
+            constraints = AbstractConstraint[g_u_norm],
         )
         return prob, traj
     end
 
     # Standard problem + evaluator builder
-    function make_evaluator(; eval_hessian=true)
+    function make_evaluator(; eval_hessian = true)
         prob, traj = make_standard_prob()
-        evaluator = Solvers.Evaluator(prob; eval_hessian=eval_hessian, verbose=false)
+        evaluator = Solvers.Evaluator(prob; eval_hessian = eval_hessian, verbose = false)
         return prob, traj, evaluator
     end
 

@@ -365,7 +365,7 @@ end
     J = QuadraticRegularizer(:u, traj, 1.0)
     prob = DirectTrajOptProblem(traj, J, integrators)
 
-    evaluator = Solvers.Evaluator(prob; eval_hessian=true, verbose=false)
+    evaluator = Solvers.Evaluator(prob; eval_hessian = true, verbose = false)
     nl_cons = Solvers.get_nonlinear_constraints(prob)
     block_data = MOI.NLPBlockData(nl_cons, evaluator, true)
 
@@ -375,16 +375,25 @@ end
 
     data_dim = traj.dim * traj.N
     variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
-    MOI.set(optimizer, MOI.VariablePrimalStart(), variables[1:data_dim], collect(traj.datavec))
+    MOI.set(
+        optimizer,
+        MOI.VariablePrimalStart(),
+        variables[1:data_dim],
+        collect(traj.datavec),
+    )
 
-    linear_constraints = AbstractLinearConstraint[
-        filter(c -> c isa AbstractLinearConstraint, prob.constraints)...
-    ]
+    linear_constraints = AbstractLinearConstraint[filter(
+        c->c isa AbstractLinearConstraint,
+        prob.constraints,
+    )...]
 
     output = capture_stdout() do
         Solvers.constrain!(
-            optimizer, variables, linear_constraints, prob.trajectory;
-            verbose=true,
+            optimizer,
+            variables,
+            linear_constraints,
+            prob.trajectory;
+            verbose = true,
         )
     end
     @test contains(output, "applying constraint")
@@ -393,12 +402,18 @@ end
 @testitem "Cross-solver agreement (Ipopt vs MadNLP)" setup=[DTOTestHelpers] begin
     using Random
 
-    include(joinpath(dirname(dirname(pathof(DirectTrajOpt))), "test", "solver_test_utils.jl"))
+    include(
+        joinpath(dirname(dirname(pathof(DirectTrajOpt))), "test", "solver_test_utils.jl"),
+    )
 
     seed = UInt64(42)
 
-    prob_ipopt = get_seeded_prob_solved(seed, IpoptSolverExt.IpoptOptions(; max_iter=100, print_level=0))
-    prob_madnlp = get_seeded_prob_solved(seed, DirectTrajOpt.MadNLPOptions(; max_iter=100))
+    prob_ipopt = get_seeded_prob_solved(
+        seed,
+        IpoptSolverExt.IpoptOptions(; max_iter = 100, print_level = 0),
+    )
+    prob_madnlp =
+        get_seeded_prob_solved(seed, DirectTrajOpt.MadNLPOptions(; max_iter = 100))
 
     traj_ipopt = prob_ipopt.trajectory
     traj_madnlp = prob_madnlp.trajectory

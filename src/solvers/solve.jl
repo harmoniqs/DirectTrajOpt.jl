@@ -218,7 +218,7 @@ end
 end
 
 @testitem "get_num_variables with globals" setup=[DTOTestHelpers] begin
-    G, traj = bilinear_dynamics_and_trajectory(add_global=true)
+    G, traj = bilinear_dynamics_and_trajectory(add_global = true)
     integrators = [BilinearIntegrator(G, :x, :u, traj)]
     J = QuadraticRegularizer(:u, traj, 1.0)
     prob = DirectTrajOptProblem(traj, J, integrators)
@@ -253,10 +253,14 @@ end
     ]
     J = QuadraticRegularizer(:u, traj, 1.0)
     g_ineq = NonlinearKnotPointConstraint(
-        u -> [norm(u) - 1.0], :u, traj;
-        times=2:(traj.N-1), equality=false,
+        u -> [norm(u) - 1.0],
+        :u,
+        traj;
+        times = 2:(traj.N-1),
+        equality = false,
     )
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_ineq])
+    prob =
+        DirectTrajOptProblem(traj, J, integrators; constraints = AbstractConstraint[g_ineq])
     nl_cons = Solvers.get_nonlinear_constraints(prob)
 
     dynamics_dim = sum(i.dim for i in integrators)
@@ -273,10 +277,14 @@ end
     ]
     J = QuadraticRegularizer(:u, traj, 1.0)
     g_eq = NonlinearKnotPointConstraint(
-        u -> [norm(u) - 0.5], :u, traj;
-        times=2:(traj.N-1), equality=true,
+        u -> [norm(u) - 0.5],
+        :u,
+        traj;
+        times = 2:(traj.N-1),
+        equality = true,
     )
-    prob = DirectTrajOptProblem(traj, J, integrators; constraints=AbstractConstraint[g_eq])
+    prob =
+        DirectTrajOptProblem(traj, J, integrators; constraints = AbstractConstraint[g_eq])
     nl_cons = Solvers.get_nonlinear_constraints(prob)
 
     dynamics_dim = sum(i.dim for i in integrators)
@@ -304,7 +312,6 @@ end
     prob, _ = make_standard_prob()
     @test Solvers._get_DefaultSolverOptions() == IpoptSolverExt.IpoptOptions
     traj_before = deepcopy(prob.trajectory.data)
-    solve!(prob; max_iter=2, print_level=0, verbose=false)
+    solve!(prob; max_iter = 2, print_level = 0, verbose = false)
     @test prob.trajectory.data != traj_before
 end
-

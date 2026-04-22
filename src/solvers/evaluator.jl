@@ -774,12 +774,12 @@ end
 # Coverage targets: src/solvers/evaluator.jl (61% → ~90%)
 
 @testitem "features_available branches" setup=[DTOTestHelpers] begin
-    prob, _, eval_hess = make_evaluator(eval_hessian=true)
+    prob, _, eval_hess = make_evaluator(eval_hessian = true)
     @test :Grad in MOI.features_available(eval_hess)
     @test :Jac in MOI.features_available(eval_hess)
     @test :Hess in MOI.features_available(eval_hess)
 
-    _, _, eval_no_hess = make_evaluator(eval_hessian=false)
+    _, _, eval_no_hess = make_evaluator(eval_hessian = false)
     @test :Grad in MOI.features_available(eval_no_hess)
     @test :Jac in MOI.features_available(eval_no_hess)
     @test :Hess ∉ MOI.features_available(eval_no_hess)
@@ -806,7 +806,7 @@ end
     y_moi = zeros(n_cons)
     MOI.eval_constraint_jacobian_product(evaluator, y_moi, Z⃗, w)
 
-    @test isapprox(y_moi, J_dense * w, atol=1e-10)
+    @test isapprox(y_moi, J_dense * w, atol = 1e-10)
 end
 
 @testitem "eval_constraint_jacobian_transpose_product" setup=[DTOTestHelpers] begin
@@ -829,13 +829,13 @@ end
     y_moi = zeros(n_vars)
     MOI.eval_constraint_jacobian_transpose_product(evaluator, y_moi, Z⃗, w)
 
-    @test isapprox(y_moi, J_dense' * w, atol=1e-10)
+    @test isapprox(y_moi, J_dense' * w, atol = 1e-10)
 end
 
 @testitem "Evaluator verbose construction" setup=[DTOTestHelpers] begin
     prob, _ = make_standard_prob()
     output = capture_stdout() do
-        Solvers.Evaluator(prob; eval_hessian=true, verbose=true)
+        Solvers.Evaluator(prob; eval_hessian = true, verbose = true)
     end
     @test contains(output, "building evaluator")
     @test contains(output, "evaluator ready")
@@ -846,7 +846,7 @@ end
 @testitem "Evaluator silent construction" setup=[DTOTestHelpers] begin
     prob, _ = make_standard_prob()
     output = capture_stdout() do
-        Solvers.Evaluator(prob; eval_hessian=true, verbose=false)
+        Solvers.Evaluator(prob; eval_hessian = true, verbose = false)
     end
     @test output == ""
 end
