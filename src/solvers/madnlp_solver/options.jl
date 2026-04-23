@@ -9,9 +9,9 @@ export MadNLPOptions
 
     # Pass-throughs consumed by MadNLP's MOI layer (not by MadNLP itself);
     # leave as `nothing` to use MadNLP defaults. Only forwarded when non-nothing.
-    linear_solver::Any  = nothing  # e.g. MadNLPGPU.CUDSSSolver, MadNLP.LapackCPUSolver
-    array_type::Any     = nothing  # e.g. CUDA.CuArray for GPU
-    kkt_system::Any     = nothing  # e.g. MadNLP.SparseUnreducedKKTSystem
+    linear_solver::Any = nothing  # e.g. MadNLPGPU.CUDSSSolver, MadNLP.LapackCPUSolver
+    array_type::Any = nothing  # e.g. CUDA.CuArray for GPU
+    kkt_system::Any = nothing  # e.g. MadNLP.SparseUnreducedKKTSystem
     cudss_ordering::Any = nothing  # e.g. MadNLPGPU.AMD_ORDERING
 
     # # Only supported by DirectTrajOpt._solve, as an optional kwarg override of `hessian_approximation`;
