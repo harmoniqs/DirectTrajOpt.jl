@@ -104,7 +104,9 @@ function DirectTrajOpt._solve_with_kwargs(
     # TODO: Verify this is working as expected
     update_trajectory!(prob, optimizer, variables)
 
-    return nothing
+    # TODO: Make this standard?
+    # return nothing
+    return optimizer
 end
 
 
