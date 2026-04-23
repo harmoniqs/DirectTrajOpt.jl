@@ -208,7 +208,12 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
         if name in ignored_options
             continue
         end
-        # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
+        # `nothing` means "use MadNLP's own default" — don't overwrite the optimizer's
+        # internal dict in that case. Applies to the pass-through fields
+        # (linear_solver, array_type, kkt_system, cudss_ordering).
+        if value === nothing
+            continue
+        end
         if name == :print_level
             optimizer.options[name] = MadNLP.LogLevels(value)
         elseif name == :hessian_approximation
