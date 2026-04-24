@@ -2,6 +2,8 @@
 
 Benchmark suite for DirectTrajOpt.jl comparing Ipopt and MadNLP solver performance.
 
+For results and analysis, see the [Benchmarks page](https://docs.harmoniqs.co/DirectTrajOpt.jl/dev/benchmarks/) in the documentation.
+
 ## Running locally
 
 ```bash
@@ -30,4 +32,14 @@ Load with:
 ```julia
 using HarmoniqsBenchmarks
 results = load_results("benchmark/results/ipopt_vs_madnlp_N51_<sha>.jld2")
+micro   = load_micro_results("benchmark/results/evaluator_micro_bilinear_N51_<sha>.jld2")
+```
+
+## Regression detection
+
+```julia
+using HarmoniqsBenchmarks
+baseline = load_results("benchmark/results/memory_scaling_<old_sha>.jld2")
+current  = load_results("benchmark/results/memory_scaling_<new_sha>.jld2")
+rows = compare_results(baseline, current; regression_threshold=10.0)
 ```

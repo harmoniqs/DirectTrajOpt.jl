@@ -2,41 +2,13 @@ using TestItems
 
 @testitem "Evaluator micro-benchmarks: bilinear N=51" begin
     using HarmoniqsBenchmarks, BenchmarkTools, DirectTrajOpt, NamedTrajectories
-    using SparseArrays, ExponentialAction, MathOptInterface, Random, Dates, Printf
+    using SparseArrays, ExponentialAction, MathOptInterface, Random, Dates, Printf, Pkg
     const MOI = MathOptInterface
 
-    Random.seed!(42)
-    N = 51;
-    Δt = 0.1;
-    u_bound = 0.1;
-    ω = 0.1
-    Gx = sparse(Float64[0 0 0 1; 0 0 1 0; 0 -1 0 0; -1 0 0 0])
-    Gy = sparse(Float64[0 -1 0 0; 1 0 0 0; 0 0 0 -1; 0 0 1 0])
-    Gz = sparse(Float64[0 0 1 0; 0 0 0 -1; -1 0 0 0; 0 1 0 0])
-    G(u) = ω * Gz + u[1] * Gx + u[2] * Gy
+    include("$(joinpath(@__DIR__, "problem_utils.jl"))")
 
-    traj = NamedTrajectory(
-        (
-            x = 2rand(4, N) .- 1,
-            u = u_bound*(2rand(2, N) .- 1),
-            du = randn(2, N),
-            ddu = randn(2, N),
-            Δt = fill(Δt, N),
-        );
-        controls = (:ddu, :Δt),
-        timestep = :Δt,
-        bounds = (u = u_bound, Δt = (0.01, 0.5)),
-        initial = (x = [1.0, 0.0, 0.0, 0.0], u = zeros(2)),
-        final = (u = zeros(2),),
-        goal = (x = [0.0, 1.0, 0.0, 0.0],),
-    )
-    integrators = [
-        BilinearIntegrator(G, :x, :u, traj),
-        DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj),
-    ]
-    J = QuadraticRegularizer(:u, traj, 1.0) + QuadraticRegularizer(:du, traj, 1.0)
-    prob = DirectTrajOptProblem(traj, J, integrators)
+    N = 51
+    prob = make_bilinear_problem(; N=N, seed=42)
 
     evaluator, Z_vec = build_evaluator(prob)
     dims = evaluator_dims(evaluator)
@@ -65,9 +37,22 @@ using TestItems
         ),
     )
 
+    pkg_version = let v = nothing
+        try
+            for (_, info) in Pkg.dependencies()
+                if info.name == "DirectTrajOpt"
+                    v = info.version
+                    break
+                end
+            end
+        catch
+        end
+        isnothing(v) ? "unknown" : string(v)
+    end
+
     result = MicroBenchmarkResult(
         package = "DirectTrajOpt",
-        package_version = "0.8.10",
+        package_version = pkg_version,
         commit = (
             try
                 String(strip(read(`git rev-parse --short HEAD`, String)))
@@ -111,53 +96,24 @@ end
         mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt
     ][1]
 
-    function make_bilinear_problem(; seed = 42)
-        Random.seed!(seed)
-        N = 51;
-        Δt = 0.1;
-        u_bound = 0.1;
-        ω = 0.1
-        Gx = sparse(Float64[0 0 0 1; 0 0 1 0; 0 -1 0 0; -1 0 0 0])
-        Gy = sparse(Float64[0 -1 0 0; 1 0 0 0; 0 0 0 -1; 0 0 1 0])
-        Gz = sparse(Float64[0 0 1 0; 0 0 0 -1; -1 0 0 0; 0 1 0 0])
-        G(u) = ω * Gz + u[1] * Gx + u[2] * Gy
+    include("$(joinpath(@__DIR__, "problem_utils.jl"))")
 
-        traj = NamedTrajectory(
-            (
-                x = 2rand(4, N) .- 1,
-                u = u_bound*(2rand(2, N) .- 1),
-                du = randn(2, N),
-                ddu = randn(2, N),
-                Δt = fill(Δt, N),
-            );
-            controls = (:ddu, :Δt),
-            timestep = :Δt,
-            bounds = (u = u_bound, Δt = (0.01, 0.5)),
-            initial = (x = [1.0, 0.0, 0.0, 0.0], u = zeros(2)),
-            final = (u = zeros(2),),
-            goal = (x = [0.0, 1.0, 0.0, 0.0],),
-        )
-        integrators = [
-            BilinearIntegrator(G, :x, :u, traj),
-            DerivativeIntegrator(:u, :du, traj),
-            DerivativeIntegrator(:du, :ddu, traj),
-        ]
-        J = QuadraticRegularizer(:u, traj, 1.0) + QuadraticRegularizer(:du, traj, 1.0)
-        return DirectTrajOptProblem(traj, J, integrators)
-    end
+    runner = get(ENV, "BENCHMARK_RUNNER", "local")
 
-    prob_ipopt = make_bilinear_problem()
+    prob_ipopt = make_bilinear_problem(; N=51, seed=42)
     result_ipopt = benchmark_solve!(
         prob_ipopt,
         IpoptOptions(max_iter = 200, print_level = 0);
         benchmark_name = "bilinear_N51_ipopt",
+        runner = runner,
     )
 
-    prob_madnlp = make_bilinear_problem()
+    prob_madnlp = make_bilinear_problem(; N=51, seed=42)
     result_madnlp = benchmark_solve!(
         prob_madnlp,
         MadNLPSolverExt.MadNLPOptions(max_iter = 200, print_level = 1);
         benchmark_name = "bilinear_N51_madnlp",
+        runner = runner,
     )
 
     println("\n=== Ipopt vs MadNLP: bilinear N=51 ===")
@@ -181,37 +137,9 @@ end
         mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt
     ][1]
 
-    function make_scaled_problem(; N, state_dim, n_controls = 2, seed = 42)
-        Random.seed!(seed)
-        G_drift = sparse(randn(state_dim, state_dim))
-        G_drives = [sparse(randn(state_dim, state_dim)) for _ = 1:n_controls]
-        G(u) = G_drift + sum(u[i] * G_drives[i] for i = 1:n_controls)
+    include("$(joinpath(@__DIR__, "problem_utils.jl"))")
 
-        x_init = zeros(state_dim);
-        x_init[1] = 1.0
-        x_goal = zeros(state_dim);
-        x_goal[min(2, state_dim)] = 1.0
-
-        traj = NamedTrajectory(
-            (
-                x = randn(state_dim, N),
-                u = 0.1*randn(n_controls, N),
-                du = randn(n_controls, N),
-                Δt = fill(0.1, N),
-            );
-            controls = (:du, :Δt),
-            timestep = :Δt,
-            bounds = (u = 1.0, Δt = (0.01, 0.5)),
-            initial = (x = x_init, u = zeros(n_controls)),
-            final = (u = zeros(n_controls),),
-            goal = (x = x_goal,),
-        )
-        integrators =
-            [BilinearIntegrator(G, :x, :u, traj), DerivativeIntegrator(:u, :du, traj)]
-        J = QuadraticRegularizer(:u, traj, 1.0)
-        return DirectTrajOptProblem(traj, J, integrators)
-    end
-
+    runner = get(ENV, "BENCHMARK_RUNNER", "local")
     N_values = [25, 51, 101]
     dim_values = [4, 8, 16]
     results = BenchmarkResult[]
@@ -243,6 +171,7 @@ end
                 prob,
                 IpoptOptions(max_iter = 50, print_level = 0);
                 benchmark_name = "scaling_N$(N)_d$(dim)_ipopt",
+                runner = runner,
             )
             push!(results, r_ipopt)
 
@@ -251,6 +180,7 @@ end
                 prob,
                 MadNLPSolverExt.MadNLPOptions(max_iter = 50, print_level = 1);
                 benchmark_name = "scaling_N$(N)_d$(dim)_madnlp",
+                runner = runner,
             )
             push!(results, r_madnlp)
 
