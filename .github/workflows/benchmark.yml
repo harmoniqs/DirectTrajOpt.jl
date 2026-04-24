@@ -35,6 +35,8 @@ jobs:
         run: julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
 
       - name: Run benchmarks
+        env:
+          BENCHMARK_RUNNER: github-actions
         run: |
           julia --project=benchmark -t auto -e '
             using TestItemRunner

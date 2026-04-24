@@ -50,6 +50,8 @@ using TestItems
         isnothing(v) ? "unknown" : string(v)
     end
 
+    pdims = problem_dims(prob)
+
     result = MicroBenchmarkResult(
         package = "DirectTrajOpt",
         package_version = pkg_version,
@@ -62,8 +64,8 @@ using TestItems
         ),
         benchmark_name = "evaluator_micro_bilinear_N51",
         N = N,
-        state_dim = 4,
-        control_dim = 2,
+        state_dim = pdims.state_dim,
+        control_dim = pdims.control_dim,
         eval_benchmarks = benchmarks,
         julia_version = string(VERSION),
         timestamp = Dates.now(),
@@ -92,10 +94,6 @@ end
     using SparseArrays, ExponentialAction, Random, Dates
     import MadNLP
 
-    const MadNLPSolverExt = [
-        mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt
-    ][1]
-
     include("$(joinpath(@__DIR__, "problem_utils.jl"))")
 
     runner = get(ENV, "BENCHMARK_RUNNER", "local")
@@ -111,7 +109,7 @@ end
     prob_madnlp = make_bilinear_problem(; N=51, seed=42)
     result_madnlp = benchmark_solve!(
         prob_madnlp,
-        MadNLPSolverExt.MadNLPOptions(max_iter = 200, print_level = 1);
+        MadNLPOptions(max_iter = 200, print_level = 6);
         benchmark_name = "bilinear_N51_madnlp",
         runner = runner,
     )
@@ -132,10 +130,6 @@ end
     using HarmoniqsBenchmarks, DirectTrajOpt, NamedTrajectories
     using SparseArrays, ExponentialAction, Random, Dates, Printf
     import MadNLP
-
-    const MadNLPSolverExt = [
-        mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt
-    ][1]
 
     include("$(joinpath(@__DIR__, "problem_utils.jl"))")
 
@@ -178,7 +172,7 @@ end
             prob = make_scaled_problem(; N = N, state_dim = dim)
             r_madnlp = benchmark_solve!(
                 prob,
-                MadNLPSolverExt.MadNLPOptions(max_iter = 50, print_level = 1);
+                MadNLPOptions(max_iter = 50, print_level = 6);
                 benchmark_name = "scaling_N$(N)_d$(dim)_madnlp",
                 runner = runner,
             )
