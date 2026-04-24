@@ -31,9 +31,9 @@ using Base.Threads
 # 7. Parametric typing - NamedTrajectory uses parametric vector types
 #    enabling specialization on Vector, SubArray, etc.
 # ============================================================================ #
-using MathOptInterface
-const MOI = MathOptInterface
 
+import MathOptInterface as MOI
+using MathOptInterface
 
 using ..Objectives
 using ..Integrators: AbstractIntegrator
@@ -385,13 +385,56 @@ end
     return nothing
 end
 
+function MOI.eval_constraint_jacobian_product(
+    evaluator::Evaluator,
+    y::AbstractVector{T},
+    x::AbstractVector{T},
+    w::AbstractVector{T},
+) where {T}
+    @warn "Constraint jacobian product using stub implementation" # to reviewer(s): feel free to remove this warning if satisfied with the method as-is
+
+    # Temporary workaround
+
+    fill!(y, 0.0)
+
+    _x = _update_trajectory_cache!(evaluator, x)
+
+    jac_structure::Vector{Tuple{Int,Int}} = MOI.jacobian_structure(evaluator)
+    jac::Vector{T} = zeros(length(jac_structure))
+    _fill_jacobian_values!(jac, evaluator, _x)
+
+    for idx in eachindex(jac_structure)
+        row, col = jac_structure[idx]
+        y[row] += w[col] * jac[idx]
+    end
+
+    return nothing
+end
+
 function MOI.eval_constraint_jacobian_transpose_product(
     evaluator::Evaluator,
-    x::Any,
-    y::Any,
-    z::Any,
-)
-    @warn "Constraint jacobian transpose product not implemented"
+    y::AbstractVector{T},
+    x::AbstractVector{T},
+    w::AbstractVector{T},
+) where {T}
+    @warn "Constraint jacobian transpose product using stub implementation"
+
+    # Temporary workaround
+
+    fill!(y, 0.0)
+
+    _x = _update_trajectory_cache!(evaluator, x)
+
+    jac_structure::Vector{Tuple{Int,Int}} = MOI.jacobian_structure(evaluator)
+    jac::Vector{T} = zeros(length(jac_structure))
+    _fill_jacobian_values!(jac, evaluator, _x)
+
+    for idx in eachindex(jac_structure)
+        row, col = jac_structure[idx]
+        y[col] += w[row] * jac[idx]
+    end
+
+    return nothing
 end
 
 # ============================================================================ #

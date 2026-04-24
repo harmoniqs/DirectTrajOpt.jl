@@ -3,12 +3,13 @@ module Solvers
 export AbstractOptimizer
 export AbstractSolverOptions, DefaultSolverOptions, _DefaultSolverOptions
 export _solve
+export _solve_with_kwargs
 export solve!
 
-import DirectTrajOpt
 import MathOptInterface as MOI
 import Ipopt
-import MadNLP
+# import MadNLP
+import DirectTrajOpt
 
 using TestItemRunner
 

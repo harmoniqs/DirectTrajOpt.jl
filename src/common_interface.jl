@@ -17,6 +17,7 @@ export eval_jacobian
 export eval_hessian_of_lagrangian
 
 export _solve
+export _solve_with_kwargs
 export solve!
 export set_options!
 
@@ -149,6 +150,7 @@ function eval_hessian_of_lagrangian end
 ## Begin Solvers Interface
 
 function _solve end
+function _solve_with_kwargs end
 function solve! end
 function set_options! end
 

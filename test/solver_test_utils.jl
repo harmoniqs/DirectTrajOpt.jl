@@ -7,10 +7,11 @@ using SparseArrays
 using NamedTrajectories
 using DirectTrajOpt
 
-const MadNLPSolverExt =
-    [mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt][1]
+include("madnlp_test_utils.jl")
 
-function get_seeded_trajectory(seed; N = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
+# Problem setup (solver-independent)
+
+function get_seeded_trajectory(seed::Integer; N = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
     Random.seed!(seed)
 
     Gx = sparse(Float64[
@@ -64,7 +65,7 @@ function get_seeded_trajectory(seed; N = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
     return G, traj
 end
 
-function get_ipopt_traj(seed)
+function get_seeded_prob(seed::Integer)
     G, traj = get_seeded_trajectory(seed)
 
     integrators = [
@@ -93,58 +94,39 @@ function get_ipopt_traj(seed)
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    solve!(prob; options = IpoptSolverExt.IpoptOptions(; max_iter = 100))
+    # solve!(prob; options = IpoptSolverExt.IpoptOptions(; max_iter = 100))
+    # solve!(prob; options = MadNLPSolverExt.MadNLPOptions(; max_iter = 100))
 
-    return prob.trajectory
+    # return prob.trajectory
+
+    return prob
 end
 
-function get_madnlp_traj(seed)
-    G, traj = get_seeded_trajectory(seed)
+function get_seeded_prob_solved(seed::Integer, options::Solvers.AbstractSolverOptions)
+    prob = get_seeded_prob(seed)
 
-    integrators = [
-        BilinearIntegrator(G, :x, :u, traj),
-        DerivativeIntegrator(:u, :du, traj),
-        DerivativeIntegrator(:du, :ddu, traj),
-    ]
+    solve!(prob; options = options)
 
-    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
-    J += QuadraticRegularizer(:u, traj, 1.0)
-    J += QuadraticRegularizer(:du, traj, 1.0)
-    J += MinimumTimeObjective(traj)
-
-    g_u_norm = NonlinearKnotPointConstraint(
-        u -> [norm(u) - 1.0],
-        :u,
-        traj;
-        times = 2:(traj.N-1),
-        equality = false,
-    )
-
-    prob = DirectTrajOptProblem(
-        traj,
-        J,
-        integrators;
-        constraints = AbstractConstraint[g_u_norm],
-    )
-
-    solve!(prob; options = MadNLPOptions(; max_iter = 100))
-
-    return prob.trajectory
+    return prob
 end
+
+# Benchmarking (solver-dependent)
 
 function get_solver_comparison(seed)
     ti = @elapsed (di = get_ipopt_traj(seed).data[:, :])
     tm = @elapsed (dm = get_madnlp_traj(seed).data[:, :])
     dd = ((dm .- di) .^ 2)
-    err = sqrt(sum(dd) / length(dd))
+    err = sqrt(sum(dd)) / length(dd)
     return err, (ti, tm)
 end
 
-wins = Dict(:ipopt => 0, :madnlp => 0)
-for seed = 0:99
-    err, (ti, tm) = get_solver_comparison(seed)
-    (err < 1e-3) || exit(1)
-    wins[(ti < tm) ? :ipopt : :madnlp] += 1
-end
+function do_solver_comparison()
+    wins = Dict(:ipopt => 0, :madnlp => 0)
+    for seed = 0:99
+        err, (ti, tm) = get_solver_comparison(seed)
+        (err < 1e-4) || exit(1)
+        wins[(ti < tm) ? :ipopt : :madnlp] += 1
+    end
 
-# @info "Wins: $(wins)"
+    @info "Wins: $(wins)"
+end

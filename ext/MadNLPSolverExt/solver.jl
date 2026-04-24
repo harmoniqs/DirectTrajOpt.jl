@@ -1,8 +1,10 @@
 using DirectTrajOpt
 using NamedTrajectories
+using TrajectoryIndexingUtils
 
-using MathOptInterface
-const MOI = MathOptInterface
+# using MathOptInterface
+# const MOI = MathOptInterface
+import MathOptInterface as MOI
 import MadNLP # DO NOT using!
 using TestItemRunner
 # using Libdl  # Added for Pardiso library loading
@@ -15,30 +17,43 @@ function DirectTrajOpt._solve(
     callback = nothing,
     kwargs...,
 )
-    # Apply kwargs to matching IpoptOptions fields
+    # Apply kwargs to matching MadNLPOptions fields
     madnlp_fields = fieldnames(MadNLPOptions)
+    madnlp_kwargs = Dict{Symbol,Any}()
     for (k, v) in kwargs
         if k in madnlp_fields
             setfield!(options, k, v)
         else
-            @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
+            # @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
+            push!(madnlp_kwargs, Pair(k, v))
         end
     end
 
     # Sync derived fields that depend on other fields.
-    # These are computed at IpoptOptions construction time, so kwarg overrides
-    # of the source field don't automatically propagate.
-    if haskey(kwargs, :eval_hessian)
-        # options.hessian_approximation = options.eval_hessian ? "exact" : "limited-memory"
-        # TODO: either implement this manually, or allow users to pass native MadNLP types as option values, or take the middle ground and do conversions from String/Symbol to Union{MadNLP.AbstractHessian, MadNLP.AbstractQuasiNewton}
-        @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
+    if haskey(madnlp_kwargs, :eval_hessian)
+        # @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
+        setfield!(
+            options,
+            :hessian_approximation,
+            pop!(madnlp_kwargs, :eval_hessian) ? "exact" : "compact_lbfgs",
+        )
     end
+
+    # Instantiate MadNLP.Optimizer <: MOI.AbstractOptimizer
+    #   1. Set MOI.NLPBlock()
+    #   2. Set MOI.ObjectiveSense()
+    #   3. Set MOI.VariablePrimal()
+    #   4. TODO: Set MOI.NLPBlockDualStart() (optional)
+    #   5. TODO: Set callbacks (optional)
+    #   6. Add linear constraints
+    #   7. Set optimizer options (involves conversions of the form convert(k::Symbol, v_in::Union{Real, String}, v_out::Any), where some of the v_out types are internal to MadNLP)
 
     optimizer, variables =
         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
     MOI.optimize!(optimizer)
 
+    # TODO: Verify this is working as expected
     update_trajectory!(prob, optimizer, variables)
 
     return nothing
@@ -63,8 +78,7 @@ function get_optimizer_and_variables(
 
     # get evaluator
     t_eval = time()
-    evaluator =
-        Solvers.Evaluator(prob; eval_hessian = options.eval_hessian, verbose = verbose)
+    evaluator = Solvers.Evaluator(prob; eval_hessian = true, verbose = verbose)
     if verbose
         println("    evaluator created ($(round(time() - t_eval, digits=3))s)")
     end
@@ -95,7 +109,7 @@ function get_optimizer_and_variables(
     # set objective sense: minimize
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     if verbose
-        println("    Ipopt optimizer configured ($(round(time() - t_opt, digits=3))s)")
+        println("    MadNLP optimizer configured ($(round(time() - t_opt, digits=3))s)")
     end
 
     # initialize problem variables 
@@ -142,7 +156,7 @@ function get_optimizer_and_variables(
 end
 
 
-function set_variables!(optimizer::MadNLP.Optimizer, traj::NamedTrajectory)
+function set_variables!(optimizer::AbstractOptimizer, traj::NamedTrajectory)
     data_dim = traj.dim * traj.N
 
     # add variables
@@ -169,7 +183,7 @@ end
 
 function update_trajectory!(
     prob::DirectTrajOptProblem,
-    optimizer::MadNLP.Optimizer,
+    optimizer::AbstractOptimizer,
     variables::Vector{MOI.VariableIndex},
 )
     update!(
@@ -186,7 +200,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-function DirectTrajOpt.set_options!(optimizer::MadNLP.Optimizer, options::MadNLPOptions)
+function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
 
     for name in fieldnames(typeof(options))
@@ -194,13 +208,21 @@ function DirectTrajOpt.set_options!(optimizer::MadNLP.Optimizer, options::MadNLP
         if name in ignored_options
             continue
         end
-        # TODO: allow internal defaults, i.e. do not set the internal options dict unless the user actually specified the associated opt
-        if !isnothing(value)
-            if name == :print_level
-                optimizer.options[name] = MadNLP.LogLevels(value)
-            else
-                optimizer.options[name] = value
-            end
+        # `nothing` means "use MadNLP's own default" — don't overwrite the optimizer's
+        # internal dict in that case. Applies to the pass-through fields
+        # (linear_solver, array_type, kkt_system, cudss_ordering).
+        if value === nothing
+            continue
+        end
+        if name == :print_level
+            optimizer.options[name] = MadNLP.LogLevels(value)
+        elseif name == :hessian_approximation
+            hessian_approximation = MadNLP.ExactHessian
+            hessian_approximation =
+                ((value == "compact_lbfgs") ? MadNLP.CompactLBFGS : hessian_approximation)
+            optimizer.options[name] = hessian_approximation
+        else
+            optimizer.options[name] = value
         end
     end
     return nothing
@@ -245,7 +267,7 @@ end
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    solve!(prob; options = MadNLPSolverExt.MadNLPOptions(max_iter = 100))
+    solve!(prob; options = MadNLPOptions(max_iter = 100))
 end
 
 @testitem "testing MadNLP.jl solver with NonlinearGlobalKnotPointConstraint" begin
@@ -287,7 +309,7 @@ end
     prob =
         DirectTrajOptProblem(traj, J, integrators; constraints = AbstractConstraint[g_ug])
 
-    solve!(prob; options = MadNLPSolverExt.MadNLPOptions(max_iter = 100))
+    solve!(prob; options = MadNLPOptions(max_iter = 100))
 
     # Verify constraint is satisfied at each timestep
     for k = 2:(traj.N-1)
@@ -295,4 +317,24 @@ end
         g = traj.global_data[traj.global_components[:g]]
         @test norm(u) * (1.0 + norm(g)) <= 2.0 + 1e-6
     end
+end
+
+@testitem "testing solution trajectory independent of choice of solver" begin
+
+    # include("../../test/test_utils.jl)
+    # include("../../test/madnlp_test_utils.jl")
+    include("../../test/solver_test_utils.jl")
+
+    seed = rand(UInt64)
+
+    prob_ipopt = get_seeded_prob_solved(seed, IpoptSolverExt.IpoptOptions(; max_iter = 100))
+    prob_madnlp = get_seeded_prob_solved(seed, MadNLPOptions(; max_iter = 100))
+
+    traj_ipopt = prob_ipopt.trajectory
+    traj_madnlp = prob_madnlp.trajectory
+
+    traj_dist = (traj_madnlp.data[:, :] .- traj_ipopt.data[:, :]) .^ 2
+    traj_dist = sqrt(sum(traj_dist)) / length(traj_dist)
+
+    @test traj_dist < 1e-4
 end

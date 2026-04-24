@@ -1,9 +1,9 @@
 module Callbacks
 
+using Ipopt
 
 using ..DirectTrajOpt
 using NamedTrajectories
-using Ipopt
 
 using TestItemRunner
 
@@ -47,6 +47,8 @@ using TestItemRunner
 # > solve!(prob; max_iter=100, callback=cb)
 # > final = unitary_rollout_fidelity(prob.trajectory, sys)
 # > @assert (final == initial) == (!do_traj_update)
+# 
+# TODO: The foregoing statement ^^ regarding trajectory update semantics may soon no be longer true, i.e. a callback may no longer required in order not to permanently lose progress after an aborted solve (pending upcoming improvements to `DirectTrajOpt.Solvers` interface); nonetheless, this functionality may still remain useful as a means of solver checkpointing
 # """
 
 
@@ -324,9 +326,50 @@ function callback_best_rollout_fidelity_factory(
 end
 
 
-function test_update_trajectory(problem::DirectTrajOptProblem, update_trajectory::Bool)
-    callbacks =
-        [callback_say_hello_factory("Hello, world!"), callback_stop_iteration_factory(50)]
+## Test suite setup
+
+function test_early_stop(
+    problem::DirectTrajOptProblem,
+    min_iter::Int,
+    max_iter::Int,
+    stop_iter::Int,
+)
+    options = IpoptOptions(acceptable_iter = min_iter, max_iter = max_iter)
+    stats = IpoptOptimizerState[]
+    callbacks = [
+        callback_update_optimizer_state_history_factory(stats),
+        callback_stop_iteration_factory(stop_iter),
+    ]
+
+    optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
+        problem,
+        IpoptOptions(; acceptable_iter = min_iter, max_iter = max_iter),
+        callback_factory(callbacks...),
+    )
+    IpoptSolverExt.MOI.optimize!(optimizer) # let's not rely on this being "exported" like this going forward
+
+    final_iter = stats[end].iter_count
+
+    return (
+        final_iter <= max_iter # sanity check
+        &&
+        final_iter == (length(stats) - 1) # tests callback_update_optimizer_state_history (accounts for additoinal pre-solve callback)
+        &&
+        final_iter <= stop_iter # tests callback_update_stop_iteration
+        &&
+        ((final_iter < min_iter) || (!(stop_iter < min_iter))) # sanity check (equivalent to stop_iter < min_iter ==> final_iter < min_iter; this follows immediately from the foregoing statement)
+    )
+end
+
+function test_update_trajectory(
+    problem::DirectTrajOptProblem,
+    update_trajectory::Bool;
+    n_iters = 50,
+)
+    callbacks = [
+        callback_say_hello_factory("Hello, world!"),
+        callback_stop_iteration_factory(n_iters),
+    ]
     if update_trajectory
         pushfirst!(callbacks, callback_update_trajectory_factory(problem))
     end
@@ -335,22 +378,43 @@ function test_update_trajectory(problem::DirectTrajOptProblem, update_trajectory
     traj_init = deepcopy(problem.trajectory)
     trajs = NamedTrajectory[]
 
+    # cannot test solve! here as it updates trajectories before returning to the caller, hence we do so in `test_update_trajectory_history`
     optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
         problem,
         IpoptOptions(; max_iter = 100),
         callback,
     )
-    IpoptSolverExt.MOI.optimize!(optimizer)
+    IpoptSolverExt.MOI.optimize!(optimizer) # let's not rely on this being "exported" like this going forward
 
     traj_final = deepcopy(problem.trajectory)
 
     return (traj_final == traj_init) == !update_trajectory
-
-    # solve!(prob; max_iter=100)
 end
 
+function test_update_trajectory_history(problem::DirectTrajOptProblem; n_iters = 50)
+    trajectories = NamedTrajectory[]
+
+    callbacks = [
+        callback_update_trajectory_factory(problem),
+        callback_update_trajectory_history_factory(problem, trajectories),
+        callback_stop_iteration_factory(n_iters),
+    ]
+    callback = callback_factory(callbacks...)
+
+    solve!(problem; options = IpoptOptions(; max_iter = 100), callback = callback)
+
+    return length(trajectories) == (n_iters + 1) # might be flaky if solve takes l.t. n_iters iters
 end
 
+
+
+# Test suite
+
+# TODO: improve first test so that it actually does something useful (e.g. check that the # of stored trajectories matches expectations)
+# TODO: add test showing callback order is irrelevant insofar as all callbacks are called once per iteration, even if one of them (say, the first one) kills the solve (e.g. callback_stop_iteration)
+# TODO: add tests for rollout/fidelity callbacks making use of the updated rollout/fidelity interface
+
+# TODO: fix flaky callback test
 
 # @testitem "Callback tests" begin
 #     using DirectTrajOpt
@@ -385,6 +449,85 @@ end
 #         constraints = AbstractConstraint[g_u_norm],
 #     )
 
-#     @test Callbacks.test_update_trajectory(prob, false)
-#     @test Callbacks.test_update_trajectory(prob, true)
+#     # @test Callbacks.test_update_trajectory(prob, true)
+#     # @test Callbacks.test_update_trajectory(prob, false)
+#     @test Callbacks.test_update_trajectory_history(deepcopy(prob))
 # end
+
+@testitem "Callback trajectory update tests" begin
+    using DirectTrajOpt
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    g_u_norm = NonlinearKnotPointConstraint(
+        u -> [norm(u) - 1.0],
+        :u,
+        traj;
+        times = 2:(traj.N-1),
+        equality = false,
+    )
+
+    prob = DirectTrajOptProblem(
+        traj,
+        J,
+        integrators;
+        constraints = AbstractConstraint[g_u_norm],
+    )
+
+    @test Callbacks.test_update_trajectory(deepcopy(prob), true)
+    @test Callbacks.test_update_trajectory(deepcopy(prob), false)
+    # @test Callbacks.test_update_trajectory_history(deepcopy(prob))
+end
+
+@testitem "Callback stopping criterion tests" begin
+    using DirectTrajOpt
+
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += QuadraticRegularizer(:du, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    g_u_norm = NonlinearKnotPointConstraint(
+        u -> [norm(u) - 1.0],
+        :u,
+        traj;
+        times = 2:(traj.N-1),
+        equality = false,
+    )
+
+    prob = DirectTrajOptProblem(
+        traj,
+        J,
+        integrators;
+        constraints = AbstractConstraint[g_u_norm],
+    )
+
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 25) # 25 < [50 < 100]
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 75) # [50 < 75 < 100]
+    @test Callbacks.test_early_stop(deepcopy(prob), 50, 100, 25) # [50 < 100] < 25
+end
+
+end
