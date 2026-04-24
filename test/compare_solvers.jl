@@ -7,8 +7,8 @@ using SparseArrays
 using NamedTrajectories
 using DirectTrajOpt
 
-# const MadNLPSolverExt =
-#     [mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt][1]
+const MadNLPSolverExt =
+    [mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt][1]
 
 function get_seeded_trajectory(seed; N = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
     Random.seed!(seed)
@@ -140,11 +140,11 @@ function get_solver_comparison(seed)
     return err, (ti, tm)
 end
 
-# wins = Dict(:ipopt => 0, :madnlp => 0)
-# for seed = 0:99
-#     err, (ti, tm) = get_solver_comparison(seed)
-#     (err < 1e-3) || exit(1)
-#     wins[(ti < tm) ? :ipopt : :madnlp] += 1
-# end
+wins = Dict(:ipopt => 0, :madnlp => 0)
+for seed = 0:99
+    err, (ti, tm) = get_solver_comparison(seed)
+    (err < 1e-3) || exit(1)
+    wins[(ti < tm) ? :ipopt : :madnlp] += 1
+end
 
 # @info "Wins: $(wins)"

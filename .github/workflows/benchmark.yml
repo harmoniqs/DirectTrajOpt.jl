@@ -1,0 +1,50 @@
+name: Benchmarks
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'benchmark/**'
+      - '.github/workflows/benchmark.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  benchmark:
+    name: Benchmark suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+          arch: x64
+
+      - uses: julia-actions/cache@v2
+
+      - name: Instantiate benchmark environment
+        run: julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run benchmarks
+        run: |
+          julia --project=benchmark -t auto -e '
+            using TestItemRunner
+            TestItemRunner.run_tests("benchmark/")
+          '
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
+          path: benchmark/results/
+          retention-days: 90
