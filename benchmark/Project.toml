@@ -1,0 +1,19 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+DirectTrajOpt = "c823fa1f-8872-4af5-b810-2b9b72bbbf56"
+ExponentialAction = "e24c0720-ea99-47e8-929e-571b494574d3"
+HarmoniqsBenchmarks = "f45d0b76-2d23-4568-9599-481e0da131db"
+MadNLP = "2621e9c9-9eb4-46b1-8089-e8c72242dfb6"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+NamedTrajectories = "538bc3a1-5ab9-4fc3-b776-35ca1e893e08"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+
+[sources]
+DirectTrajOpt = {path = ".."}
+# TODO: remove rev pin once HarmoniqsBenchmarks.jl#2 merges to main
+HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "fix/widen-dto-compat"}
