@@ -71,8 +71,7 @@ function make_scaled_problem(; N::Int, state_dim::Int, n_controls::Int = 2, seed
         final = (u = zeros(n_controls),),
         goal = (x = x_goal,),
     )
-    integrators =
-        [BilinearIntegrator(G, :x, :u, traj), DerivativeIntegrator(:u, :du, traj)]
+    integrators = [BilinearIntegrator(G, :x, :u, traj), DerivativeIntegrator(:u, :du, traj)]
     J = QuadraticRegularizer(:u, traj, 1.0)
     return DirectTrajOptProblem(traj, J, integrators)
 end
