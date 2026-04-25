@@ -8,7 +8,7 @@ using TestItems
     include("$(joinpath(@__DIR__, "problem_utils.jl"))")
 
     N = 51
-    prob = make_bilinear_problem(; N=N, seed=42)
+    prob = make_bilinear_problem(; N = N, seed = 42)
 
     evaluator, Z_vec = build_evaluator(prob)
     dims = evaluator_dims(evaluator)
@@ -59,7 +59,8 @@ using TestItems
             try
                 String(strip(read(`git rev-parse --short HEAD`, String)))
             catch
-                ; "unknown"
+                ;
+                "unknown"
             end
         ),
         benchmark_name = "evaluator_micro_bilinear_N51",
@@ -98,7 +99,7 @@ end
 
     runner = get(ENV, "BENCHMARK_RUNNER", "local")
 
-    prob_ipopt = make_bilinear_problem(; N=51, seed=42)
+    prob_ipopt = make_bilinear_problem(; N = 51, seed = 42)
     result_ipopt = benchmark_solve!(
         prob_ipopt,
         IpoptOptions(max_iter = 200, print_level = 0);
@@ -106,7 +107,7 @@ end
         runner = runner,
     )
 
-    prob_madnlp = make_bilinear_problem(; N=51, seed=42)
+    prob_madnlp = make_bilinear_problem(; N = 51, seed = 42)
     result_madnlp = benchmark_solve!(
         prob_madnlp,
         MadNLPOptions(max_iter = 200, print_level = 6);
