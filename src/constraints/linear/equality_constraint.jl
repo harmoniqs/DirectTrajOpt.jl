@@ -143,6 +143,47 @@ function fix_trajectory_variable!(
     return constraints
 end
 
+export fix_global_variable!
+
+"""
+    fix_global_variable!(constraints, name, value)
+
+Pin a global (time-invariant) variable to `value` using a `GlobalEqualityConstraint`.
+Removes any existing `BoundsConstraint` or `EqualityConstraint` on the same global
+variable to avoid MOI conflicts. Companion to [`fix_trajectory_variable!`](@ref) for
+the global-variable case.
+
+This is the integrator-agnostic mechanism for pinning a calibrated parameter
+(e.g. learned `θ` in QILC alternating calibration) into the control NLP — any
+globals-aware integrator (`HermitianExponentialIntegrator`, `SplineIntegrator`,
+`NonHermitianExponentialIntegrator`, ...) will read the pinned value through the
+NLP variable rather than requiring an integrator rebuild.
+
+# Arguments
+- `constraints::Vector{<:AbstractConstraint}`: mutable constraint list
+- `name::Symbol`: global variable name to pin
+- `value::AbstractVector{Float64}`: pin value (length must equal the global variable dim)
+"""
+function fix_global_variable!(
+    constraints::Vector{<:AbstractConstraint},
+    name::Symbol,
+    value::AbstractVector{Float64},
+)
+    # Remove any existing BoundsConstraint and EqualityConstraint on this global variable
+    # (per-timestep dedup at line ~134 only filters non-global constraints; this is the
+    # globals counterpart). Pinning supersedes any prior bounds or pin on the same global.
+    filter!(constraints) do c
+        if c isa BoundsConstraint && c.var_names == name && c.is_global
+            return false
+        elseif c isa EqualityConstraint && c.var_names == name && c.is_global
+            return false
+        end
+        return true
+    end
+    push!(constraints, GlobalEqualityConstraint(name, collect(Float64, value)))
+    return constraints
+end
+
 function Base.show(io::IO, c::EqualityConstraint)
     print(io, "EqualityConstraint: \"$(c.label)\"")
 end
@@ -299,4 +340,55 @@ end
     for t = 1:traj.N
         @test prob.trajectory[t][:u] ≈ u_ref[:, t] atol=1e-10
     end
+end
+
+@testitem "fix_global_variable! pins global to supplied value" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_global = true)
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    # Build a normal problem first (so bounds/equality on globals may exist)
+    prob_orig = DirectTrajOptProblem(traj, J, integrators)
+
+    # Pin global :g to a specific value via fix_global_variable!
+    g_dim = length(traj.global_components[:g])
+    g_value = fill(0.42, g_dim)
+    constraints = deepcopy(prob_orig.constraints)
+    fix_global_variable!(constraints, :g, g_value)
+
+    # After fixing, no remaining BoundsConstraint or EqualityConstraint on :g
+    # other than our new GlobalEqualityConstraint
+    g_eq_cons = filter(
+        c -> c isa EqualityConstraint && c.var_names == :g && c.is_global,
+        constraints,
+    )
+    @test length(g_eq_cons) == 1
+    @test !any(c -> c isa BoundsConstraint && c.var_names == :g && c.is_global, constraints)
+
+    # Re-applying should still leave exactly one equality constraint (dedup works)
+    fix_global_variable!(constraints, :g, fill(0.5, g_dim))
+    g_eq_cons2 = filter(
+        c -> c isa EqualityConstraint && c.var_names == :g && c.is_global,
+        constraints,
+    )
+    @test length(g_eq_cons2) == 1
+    @test g_eq_cons2[1].values ≈ fill(0.5, g_dim)
+
+    # Solve and confirm the global is pinned at the supplied value
+    fix_global_variable!(constraints, :g, g_value)  # pin at 0.42 again
+    prob = DirectTrajOptProblem(traj, J, integrators, constraints)
+    solve!(prob; max_iter = 100)
+
+    g_components = traj.global_components[:g]
+    @test prob.trajectory.global_data[g_components] ≈ g_value atol=1e-6
 end
