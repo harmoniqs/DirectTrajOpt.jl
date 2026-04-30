@@ -1,4 +1,4 @@
-export IpoptEvaluator
+export Evaluator
 
 using LinearAlgebra
 using SparseArrays
@@ -6,7 +6,7 @@ using NamedTrajectories
 using Base.Threads
 
 # ============================================================================ #
-# Performance optimizations applied to IpoptEvaluator:
+# Performance optimizations applied to Evaluator:
 # 
 # 1. Pre-computed offsets - Constraint evaluation uses pre-computed offsets
 #    instead of runtime arithmetic (eliminates ~O(n_constraints) additions)
@@ -31,9 +31,9 @@ using Base.Threads
 # 7. Parametric typing - NamedTrajectory uses parametric vector types
 #    enabling specialization on Vector, SubArray, etc.
 # ============================================================================ #
-using MathOptInterface
-const MOI = MathOptInterface
 
+import MathOptInterface as MOI
+using MathOptInterface
 
 using ..Objectives
 using ..Integrators: AbstractIntegrator
@@ -49,7 +49,7 @@ function sparse_to_moi(A::SparseMatrixCSC)
 end
 
 """
-    IpoptEvaluator <: MOI.AbstractNLPEvaluator
+    Evaluator <: MOI.AbstractNLPEvaluator
 
 MathOptInterface NLP evaluator that bridges a [`DirectTrajOptProblem`](@ref) to Ipopt.
 
@@ -60,10 +60,10 @@ and constraints.
 
 # Constructor
 ```julia
-IpoptEvaluator(prob::DirectTrajOptProblem; eval_hessian=true, verbose=false)
+Evaluator(prob::DirectTrajOptProblem; eval_hessian=true, verbose=false)
 ```
 """
-mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
+mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     trajectory::NamedTrajectory
     objective::AbstractObjective
     integrators::Vector{<:AbstractIntegrator}
@@ -90,11 +90,7 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     _jacobian_ncols::Int
     _hessian_ncols::Int
 
-    function IpoptEvaluator(
-        prob::DirectTrajOptProblem;
-        eval_hessian = true,
-        verbose = false,
-    )
+    function Evaluator(prob::DirectTrajOptProblem; eval_hessian = true, verbose = false)
         t_start = time()
 
         # Calculate total dynamics constraint dimension
@@ -274,9 +270,9 @@ mutable struct IpoptEvaluator <: MOI.AbstractNLPEvaluator
     end
 end
 
-MOI.initialize(::IpoptEvaluator, features) = nothing
+MOI.initialize(::Evaluator, features) = nothing
 
-function MOI.features_available(evaluator::IpoptEvaluator)
+function MOI.features_available(evaluator::Evaluator)
     if evaluator.eval_hessian
         return [:Grad, :Jac, :Hess]
     else
@@ -287,14 +283,14 @@ end
 
 # objective and gradient
 
-@views function MOI.eval_objective(evaluator::IpoptEvaluator, Z⃗::AbstractVector)
+@views function MOI.eval_objective(evaluator::Evaluator, Z⃗::AbstractVector)
     # Update cached trajectory in-place
     traj = _update_trajectory_cache!(evaluator, Z⃗)
     return Objectives.objective_value(evaluator.objective, traj)
 end
 
 @views function MOI.eval_objective_gradient(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     ∇::AbstractVector,
     Z⃗::AbstractVector,
 )
@@ -307,7 +303,7 @@ end
 # constraints and Jacobian
 
 @views function MOI.eval_constraint(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     g::AbstractVector,
     Z⃗::AbstractVector,
 )
@@ -347,12 +343,12 @@ end
     return nothing
 end
 
-function MOI.jacobian_structure(evaluator::IpoptEvaluator)
+function MOI.jacobian_structure(evaluator::Evaluator)
     return evaluator.jacobian_structure
 end
 
 @views function MOI.eval_constraint_jacobian(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     ∂::AbstractVector,
     Z⃗::AbstractVector,
 )
@@ -368,12 +364,12 @@ end
 
 # Hessian of the Lagrangian
 
-function MOI.hessian_lagrangian_structure(evaluator::IpoptEvaluator)
+function MOI.hessian_lagrangian_structure(evaluator::Evaluator)
     return evaluator.hessian_structure
 end
 
 @views function MOI.eval_hessian_lagrangian(
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     H::AbstractVector{T},
     Z⃗::AbstractVector{T},
     σ::T,
@@ -389,6 +385,58 @@ end
     return nothing
 end
 
+function MOI.eval_constraint_jacobian_product(
+    evaluator::Evaluator,
+    y::AbstractVector{T},
+    x::AbstractVector{T},
+    w::AbstractVector{T},
+) where {T}
+    @warn "Constraint jacobian product using stub implementation" # to reviewer(s): feel free to remove this warning if satisfied with the method as-is
+
+    # Temporary workaround
+
+    fill!(y, 0.0)
+
+    _x = _update_trajectory_cache!(evaluator, x)
+
+    jac_structure::Vector{Tuple{Int,Int}} = MOI.jacobian_structure(evaluator)
+    jac::Vector{T} = zeros(length(jac_structure))
+    _fill_jacobian_values!(jac, evaluator, _x)
+
+    for idx in eachindex(jac_structure)
+        row, col = jac_structure[idx]
+        y[row] += w[col] * jac[idx]
+    end
+
+    return nothing
+end
+
+function MOI.eval_constraint_jacobian_transpose_product(
+    evaluator::Evaluator,
+    y::AbstractVector{T},
+    x::AbstractVector{T},
+    w::AbstractVector{T},
+) where {T}
+    @warn "Constraint jacobian transpose product using stub implementation"
+
+    # Temporary workaround
+
+    fill!(y, 0.0)
+
+    _x = _update_trajectory_cache!(evaluator, x)
+
+    jac_structure::Vector{Tuple{Int,Int}} = MOI.jacobian_structure(evaluator)
+    jac::Vector{T} = zeros(length(jac_structure))
+    _fill_jacobian_values!(jac, evaluator, _x)
+
+    for idx in eachindex(jac_structure)
+        row, col = jac_structure[idx]
+        y[col] += w[row] * jac[idx]
+    end
+
+    return nothing
+end
+
 # ============================================================================ #
 # Helper functions for efficient value filling
 # ============================================================================ #
@@ -399,10 +447,7 @@ end
 Update the cached trajectory in-place with new data from Z⃗.
 Avoids repeated allocation of NamedTrajectory wrappers.
 """
-@inline @views function _update_trajectory_cache!(
-    evaluator::IpoptEvaluator,
-    Z⃗::AbstractVector,
-)
+@inline @views function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
     n_traj = evaluator.trajectory.dim * evaluator.trajectory.N
 
     # Create trajectory wrapper with views (minimal allocation)
@@ -425,7 +470,7 @@ direct SparseArrays access to eliminate allocations.
 """
 @inline function _fill_jacobian_values!(
     ∂::AbstractVector,
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     Z::NamedTrajectory,
 )
     # Zero out output first
@@ -494,7 +539,7 @@ direct SparseArrays access to eliminate allocations.
 """
 @inline function _fill_hessian_values!(
     H::AbstractVector{T},
-    evaluator::IpoptEvaluator,
+    evaluator::Evaluator,
     Z::NamedTrajectory,
     σ::T,
     μ::AbstractVector{T},
@@ -586,7 +631,7 @@ end
     using TrajectoryIndexingUtils
     import MathOptInterface as MOI
 
-    include("../../../test/test_utils.jl")
+    include("../../test/test_utils.jl")
 
     G, traj = bilinear_dynamics_and_trajectory()
 
@@ -617,7 +662,7 @@ end
         constraints = AbstractConstraint[g_u_norm],
     )
 
-    evaluator = IpoptEvaluator(prob)
+    evaluator = Evaluator(prob)
 
     J_val = Objectives.objective_value(J, traj)
     @test MOI.eval_objective(evaluator, traj.datavec) ≈ J_val
@@ -723,4 +768,85 @@ end
         atol = 1e-2,
     )
     @test all(isapprox.(triu(∂²ℒ), triu(sparse(∂²ℒ_finitediff)), atol = 1e-2))
+end
+
+
+# Coverage targets: src/solvers/evaluator.jl (61% → ~90%)
+
+@testitem "features_available branches" setup=[DTOTestHelpers] begin
+    prob, _, eval_hess = make_evaluator(eval_hessian = true)
+    @test :Grad in MOI.features_available(eval_hess)
+    @test :Jac in MOI.features_available(eval_hess)
+    @test :Hess in MOI.features_available(eval_hess)
+
+    _, _, eval_no_hess = make_evaluator(eval_hessian = false)
+    @test :Grad in MOI.features_available(eval_no_hess)
+    @test :Jac in MOI.features_available(eval_no_hess)
+    @test :Hess ∉ MOI.features_available(eval_no_hess)
+end
+
+@testitem "eval_constraint_jacobian_product" setup=[DTOTestHelpers] begin
+    _, traj, evaluator = make_evaluator()
+
+    Z⃗ = collect(traj.datavec)
+    n_vars = length(Z⃗)
+    n_cons = evaluator.n_constraints
+
+    # Build dense Jacobian from sparse structure
+    jac_structure = MOI.jacobian_structure(evaluator)
+    jac_values = zeros(length(jac_structure))
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+
+    J_dense = zeros(n_cons, n_vars)
+    for (idx, (row, col)) in enumerate(jac_structure)
+        J_dense[row, col] += jac_values[idx]
+    end
+
+    w = randn(n_vars)
+    y_moi = zeros(n_cons)
+    MOI.eval_constraint_jacobian_product(evaluator, y_moi, Z⃗, w)
+
+    @test isapprox(y_moi, J_dense * w, atol = 1e-10)
+end
+
+@testitem "eval_constraint_jacobian_transpose_product" setup=[DTOTestHelpers] begin
+    _, traj, evaluator = make_evaluator()
+
+    Z⃗ = collect(traj.datavec)
+    n_vars = length(Z⃗)
+    n_cons = evaluator.n_constraints
+
+    jac_structure = MOI.jacobian_structure(evaluator)
+    jac_values = zeros(length(jac_structure))
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+
+    J_dense = zeros(n_cons, n_vars)
+    for (idx, (row, col)) in enumerate(jac_structure)
+        J_dense[row, col] += jac_values[idx]
+    end
+
+    w = randn(n_cons)
+    y_moi = zeros(n_vars)
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y_moi, Z⃗, w)
+
+    @test isapprox(y_moi, J_dense' * w, atol = 1e-10)
+end
+
+@testitem "Evaluator verbose construction" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    output = capture_stdout() do
+        Solvers.Evaluator(prob; eval_hessian = true, verbose = true)
+    end
+    @test contains(output, "building evaluator")
+    @test contains(output, "evaluator ready")
+    @test contains(output, "jacobian structure")
+    @test contains(output, "hessian structure")
+end
+
+@testitem "Evaluator silent construction" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    output = capture_stdout() do
+        Solvers.Evaluator(prob; eval_hessian = true, verbose = false)
+    end
+    @test output == ""
 end

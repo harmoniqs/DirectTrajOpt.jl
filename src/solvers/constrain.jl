@@ -1,5 +1,12 @@
+using DirectTrajOpt
+using NamedTrajectories
+using TrajectoryIndexingUtils
+
+using DirectTrajOpt.Constraints
+
+
 function constrain!(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     cons::Vector{<:AbstractLinearConstraint},
     traj::NamedTrajectory;
@@ -16,7 +23,7 @@ function constrain!(
 end
 
 function (con::EqualityConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -68,7 +75,7 @@ function (con::EqualityConstraint)(
 end
 
 function (con::BoundsConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -139,7 +146,7 @@ function (con::BoundsConstraint)(
 end
 
 function (con::AllEqualConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -167,7 +174,7 @@ function (con::AllEqualConstraint)(
 end
 
 function (con::L1SlackConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -208,7 +215,7 @@ function (con::L1SlackConstraint)(
 end
 
 function (con::TotalConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -236,7 +243,7 @@ function (con::TotalConstraint)(
 end
 
 function (con::SymmetryConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -311,7 +318,7 @@ function (con::SymmetryConstraint)(
 end
 
 function (con::TimeConsistencyConstraint)(
-    opt::Ipopt.Optimizer,
+    opt::AbstractOptimizer,
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
@@ -343,4 +350,76 @@ function (con::TimeConsistencyConstraint)(
             MOI.EqualTo(0.0),
         )
     end
+end
+
+
+# Coverage targets: src/solvers/constrain.jl (92% → ~95%) + cross-solver agreement
+
+@testitem "constrain! verbose output" setup=[DTOTestHelpers] begin
+    G, traj = bilinear_dynamics_and_trajectory()
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+    J = QuadraticRegularizer(:u, traj, 1.0)
+    prob = DirectTrajOptProblem(traj, J, integrators)
+
+    evaluator = Solvers.Evaluator(prob; eval_hessian = true, verbose = false)
+    nl_cons = Solvers.get_nonlinear_constraints(prob)
+    block_data = MOI.NLPBlockData(nl_cons, evaluator, true)
+
+    optimizer = Ipopt.Optimizer()
+    MOI.set(optimizer, MOI.NLPBlock(), block_data)
+    MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
+    data_dim = traj.dim * traj.N
+    variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
+    MOI.set(
+        optimizer,
+        MOI.VariablePrimalStart(),
+        variables[1:data_dim],
+        collect(traj.datavec),
+    )
+
+    linear_constraints = AbstractLinearConstraint[filter(
+        c->c isa AbstractLinearConstraint,
+        prob.constraints,
+    )...]
+
+    output = capture_stdout() do
+        Solvers.constrain!(
+            optimizer,
+            variables,
+            linear_constraints,
+            prob.trajectory;
+            verbose = true,
+        )
+    end
+    @test contains(output, "applying constraint")
+end
+
+@testitem "Cross-solver agreement (Ipopt vs MadNLP)" setup=[DTOTestHelpers] begin
+    using Random
+
+    include(
+        joinpath(dirname(dirname(pathof(DirectTrajOpt))), "test", "solver_test_utils.jl"),
+    )
+
+    seed = UInt64(42)
+
+    prob_ipopt = get_seeded_prob_solved(
+        seed,
+        IpoptSolverExt.IpoptOptions(; max_iter = 100, print_level = 0),
+    )
+    prob_madnlp =
+        get_seeded_prob_solved(seed, DirectTrajOpt.MadNLPOptions(; max_iter = 100))
+
+    traj_ipopt = prob_ipopt.trajectory
+    traj_madnlp = prob_madnlp.trajectory
+
+    traj_dist = (traj_madnlp.data[:, :] .- traj_ipopt.data[:, :]) .^ 2
+    traj_dist = sqrt(sum(traj_dist)) / length(traj_dist)
+
+    @test traj_dist < 1e-4
 end
