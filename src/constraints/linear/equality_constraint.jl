@@ -143,6 +143,40 @@ function fix_trajectory_variable!(
     return constraints
 end
 
+export fix_global_variable!
+
+"""
+    fix_global_variable!(constraints, name, value)
+
+Pin a global variable to `value` using a `GlobalEqualityConstraint`. Removes
+any existing `BoundsConstraint` or `EqualityConstraint` on the same global
+to avoid MOI conflicts (an `EqualTo` set and a `GreaterThan`/`LessThan` set
+cannot coexist on the same variable).
+
+Companion to [`fix_trajectory_variable!`](@ref) for time-invariant globals.
+
+# Arguments
+- `constraints::Vector{<:AbstractConstraint}`: mutable constraint list
+- `name::Symbol`: global variable name to pin
+- `value::AbstractVector{<:Real}`: pinned value (length matches the global's dim)
+"""
+function fix_global_variable!(
+    constraints::Vector{<:AbstractConstraint},
+    name::Symbol,
+    value::AbstractVector{<:Real},
+)
+    filter!(constraints) do c
+        if c isa BoundsConstraint && c.var_names == name && c.is_global
+            return false
+        elseif c isa EqualityConstraint && c.var_names == name && c.is_global
+            return false
+        end
+        return true
+    end
+    push!(constraints, GlobalEqualityConstraint(name, collect(Float64.(value))))
+    return constraints
+end
+
 function Base.show(io::IO, c::EqualityConstraint)
     print(io, "EqualityConstraint: \"$(c.label)\"")
 end
@@ -299,4 +333,48 @@ end
     for t = 1:traj.N
         @test prob.trajectory[t][:u] ≈ u_ref[:, t] atol=1e-10
     end
+end
+
+@testitem "fix_global_variable! removes bounds and pins value" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_global = true)
+
+    integrators = [
+        BilinearIntegrator(G, :x, :u, traj),
+        DerivativeIntegrator(:u, :du, traj),
+        DerivativeIntegrator(:du, :ddu, traj),
+    ]
+
+    J = TerminalObjective(x -> norm(x - traj.goal.x)^2, :x, traj)
+    J += QuadraticRegularizer(:u, traj, 1.0)
+    J += MinimumTimeObjective(traj)
+
+    # Pre-populate the constraints with a GlobalBoundsConstraint on :g — this
+    # is what `fix_global_variable!` must remove before installing the equality
+    # (otherwise MOI rejects the conflicting EqualTo + GreaterThan/LessThan).
+    g_dim = length(traj.global_components[:g])
+    bounds_con = GlobalBoundsConstraint(:g, (fill(-1.0, g_dim), fill(1.0, g_dim)))
+    constraints = AbstractConstraint[bounds_con]
+
+    # Pin :g at a specific value
+    g_pinned = fill(0.25, g_dim)
+    fix_global_variable!(constraints, :g, g_pinned)
+
+    # Old bounds removed; exactly one global equality on :g remains
+    @test !any(c -> c isa BoundsConstraint && c.var_names == :g && c.is_global, constraints)
+    g_eq_cons = filter(c -> c isa EqualityConstraint && c.var_names == :g && c.is_global, constraints)
+    @test length(g_eq_cons) == 1
+    @test g_eq_cons[1].values ≈ g_pinned
+
+    # Solve and verify global is pinned at the requested value
+    prob = DirectTrajOptProblem(traj, J, integrators; constraints = constraints)
+    solve!(prob; max_iter = 100)
+    @test prob.trajectory.global_data[traj.global_components[:g]] ≈ g_pinned atol=1e-8
+
+    # Calling fix_global_variable! a second time should replace, not duplicate
+    fix_global_variable!(constraints, :g, fill(0.5, g_dim))
+    g_eq_cons_after = filter(c -> c isa EqualityConstraint && c.var_names == :g && c.is_global, constraints)
+    @test length(g_eq_cons_after) == 1
+    @test g_eq_cons_after[1].values ≈ fill(0.5, g_dim)
 end
