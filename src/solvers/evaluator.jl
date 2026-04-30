@@ -769,3 +769,84 @@ end
     )
     @test all(isapprox.(triu(∂²ℒ), triu(sparse(∂²ℒ_finitediff)), atol = 1e-2))
 end
+
+
+# Coverage targets: src/solvers/evaluator.jl (61% → ~90%)
+
+@testitem "features_available branches" setup=[DTOTestHelpers] begin
+    prob, _, eval_hess = make_evaluator(eval_hessian = true)
+    @test :Grad in MOI.features_available(eval_hess)
+    @test :Jac in MOI.features_available(eval_hess)
+    @test :Hess in MOI.features_available(eval_hess)
+
+    _, _, eval_no_hess = make_evaluator(eval_hessian = false)
+    @test :Grad in MOI.features_available(eval_no_hess)
+    @test :Jac in MOI.features_available(eval_no_hess)
+    @test :Hess ∉ MOI.features_available(eval_no_hess)
+end
+
+@testitem "eval_constraint_jacobian_product" setup=[DTOTestHelpers] begin
+    _, traj, evaluator = make_evaluator()
+
+    Z⃗ = collect(traj.datavec)
+    n_vars = length(Z⃗)
+    n_cons = evaluator.n_constraints
+
+    # Build dense Jacobian from sparse structure
+    jac_structure = MOI.jacobian_structure(evaluator)
+    jac_values = zeros(length(jac_structure))
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+
+    J_dense = zeros(n_cons, n_vars)
+    for (idx, (row, col)) in enumerate(jac_structure)
+        J_dense[row, col] += jac_values[idx]
+    end
+
+    w = randn(n_vars)
+    y_moi = zeros(n_cons)
+    MOI.eval_constraint_jacobian_product(evaluator, y_moi, Z⃗, w)
+
+    @test isapprox(y_moi, J_dense * w, atol = 1e-10)
+end
+
+@testitem "eval_constraint_jacobian_transpose_product" setup=[DTOTestHelpers] begin
+    _, traj, evaluator = make_evaluator()
+
+    Z⃗ = collect(traj.datavec)
+    n_vars = length(Z⃗)
+    n_cons = evaluator.n_constraints
+
+    jac_structure = MOI.jacobian_structure(evaluator)
+    jac_values = zeros(length(jac_structure))
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+
+    J_dense = zeros(n_cons, n_vars)
+    for (idx, (row, col)) in enumerate(jac_structure)
+        J_dense[row, col] += jac_values[idx]
+    end
+
+    w = randn(n_cons)
+    y_moi = zeros(n_vars)
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y_moi, Z⃗, w)
+
+    @test isapprox(y_moi, J_dense' * w, atol = 1e-10)
+end
+
+@testitem "Evaluator verbose construction" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    output = capture_stdout() do
+        Solvers.Evaluator(prob; eval_hessian = true, verbose = true)
+    end
+    @test contains(output, "building evaluator")
+    @test contains(output, "evaluator ready")
+    @test contains(output, "jacobian structure")
+    @test contains(output, "hessian structure")
+end
+
+@testitem "Evaluator silent construction" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    output = capture_stdout() do
+        Solvers.Evaluator(prob; eval_hessian = true, verbose = false)
+    end
+    @test output == ""
+end
