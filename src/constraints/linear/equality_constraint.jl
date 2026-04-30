@@ -363,7 +363,10 @@ end
 
     # Old bounds removed; exactly one global equality on :g remains
     @test !any(c -> c isa BoundsConstraint && c.var_names == :g && c.is_global, constraints)
-    g_eq_cons = filter(c -> c isa EqualityConstraint && c.var_names == :g && c.is_global, constraints)
+    g_eq_cons = filter(
+        c -> c isa EqualityConstraint && c.var_names == :g && c.is_global,
+        constraints,
+    )
     @test length(g_eq_cons) == 1
     @test g_eq_cons[1].values ≈ g_pinned
 
@@ -374,7 +377,10 @@ end
 
     # Calling fix_global_variable! a second time should replace, not duplicate
     fix_global_variable!(constraints, :g, fill(0.5, g_dim))
-    g_eq_cons_after = filter(c -> c isa EqualityConstraint && c.var_names == :g && c.is_global, constraints)
+    g_eq_cons_after = filter(
+        c -> c isa EqualityConstraint && c.var_names == :g && c.is_global,
+        constraints,
+    )
     @test length(g_eq_cons_after) == 1
     @test g_eq_cons_after[1].values ≈ fill(0.5, g_dim)
 end
