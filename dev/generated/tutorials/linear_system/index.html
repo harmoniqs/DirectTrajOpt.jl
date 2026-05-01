@@ -79,7 +79,7 @@ iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
    0  0.0000000e+00 9.68e-02 1.00e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
    1  4.4571464e-05 3.38e-02 1.68e+00  -4.0 3.37e-01   0.0 9.90e-01 1.00e+00h  1
    2  3.4481712e-04 3.31e-02 7.62e+00  -0.7 4.91e+00  -0.5 9.43e-01 4.11e-02f  1
-   3  9.7296878e-03 3.79e-02 9.30e+01  -0.6 3.07e+00   0.9 1.00e+00 9.19e-02h  1
+   3  9.7296874e-03 3.79e-02 9.30e+01  -0.6 3.07e+00   0.9 1.00e+00 9.19e-02h  1
 
 Number of Iterations....: 4
 
@@ -90,7 +90,7 @@ Number of inequality constraint evaluations          = 0
 Number of equality constraint Jacobian evaluations   = 4
 Number of inequality constraint Jacobian evaluations = 0
 Number of Lagrangian Hessian evaluations             = 4
-Total seconds in IPOPT                               = 6.886
+Total seconds in IPOPT                               = 6.345
 
 EXIT: Invalid number in NLP function or derivative detected.
 ==================================================
@@ -115,9 +115,9 @@ println(&quot;  Total norm: &quot;, u_norm)
 println(&quot;  Max magnitude: &quot;, u_max)
 println(&quot;  Mean magnitude: &quot;, u_mean)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 Control statistics:
-  Total norm: 2.382933164781872
-  Max magnitude: 0.9477912067893901
-  Mean magnitude: 0.24978012134298433</code></pre><h2 id="Step-7:-Verify-Dynamics"><a class="docs-heading-anchor" href="#Step-7:-Verify-Dynamics">Step 7: Verify Dynamics</a><a id="Step-7:-Verify-Dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Step-7:-Verify-Dynamics" title="Permalink"></a></h2><p>Check that the solution satisfies the dynamics at a few points:</p><pre><code class="language-julia hljs">function verify_dynamics(x, u, Δt, G, k)
+  Total norm: 2.3829332128321608
+  Max magnitude: 0.9477913563690697
+  Mean magnitude: 0.24978012551424641</code></pre><h2 id="Step-7:-Verify-Dynamics"><a class="docs-heading-anchor" href="#Step-7:-Verify-Dynamics">Step 7: Verify Dynamics</a><a id="Step-7:-Verify-Dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Step-7:-Verify-Dynamics" title="Permalink"></a></h2><p>Check that the solution satisfies the dynamics at a few points:</p><pre><code class="language-julia hljs">function verify_dynamics(x, u, Δt, G, k)
     # Compute x[k+1] using the dynamics
     x_k = x[:, k]
     u_k = u[:, k]
@@ -136,11 +136,11 @@ for k in [1, 10, 25, 40, N-1]
     println(&quot;  k=$k: error = &quot;, error)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 Dynamics verification (error at selected time steps):
-  k=1: error = 7.2502287029084e-29
-  k=10: error = 0.007994638298534269
-  k=25: error = 0.02373241623245982
-  k=40: error = 0.027767248178224832
-  k=49: error = 0.0018214269174045186</code></pre><h2 id="Visualization-(Conceptual)"><a class="docs-heading-anchor" href="#Visualization-(Conceptual)">Visualization (Conceptual)</a><a id="Visualization-(Conceptual)-1"></a><a class="docs-heading-anchor-permalink" href="#Visualization-(Conceptual)" title="Permalink"></a></h2><p>In a Jupyter notebook or with plotting packages, you could visualize:</p><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
+  k=1: error = 4.662680916145134e-28
+  k=10: error = 0.007994638209817367
+  k=25: error = 0.02373241598453975
+  k=40: error = 0.027767247894461056
+  k=49: error = 0.0018214268992966566</code></pre><h2 id="Visualization-(Conceptual)"><a class="docs-heading-anchor" href="#Visualization-(Conceptual)">Visualization (Conceptual)</a><a id="Visualization-(Conceptual)-1"></a><a class="docs-heading-anchor-permalink" href="#Visualization-(Conceptual)" title="Permalink"></a></h2><p>In a Jupyter notebook or with plotting packages, you could visualize:</p><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
 println(&quot;SOLUTION SUMMARY&quot;)
 println(&quot;=&quot;^50)
 
@@ -167,7 +167,7 @@ State trajectory (first 10 and last 10 time steps):
 Time | x₁      | x₂
 -------------------------
 0.00 |  0.0000 |  0.0000
-0.33 | -0.0000 |  0.0000
+0.33 |  0.0000 |  0.0000
 0.54 |  0.0000 |  0.0002
 0.72 |  0.0002 |  0.0007
 0.89 |  0.0005 |  0.0019
@@ -223,4 +223,4 @@ Time | u
     initial=(x = x_init,)  # No final constraint
 )
 obj_soft = QuadraticRegularizer(:u, traj_soft, 1.0) +
-           TerminalObjective(x -&gt; 100.0 * norm(x - x_goal)^2, :x, traj_soft)</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Bilinear Control Tutorial</strong>: Multiple drives and bounds</li><li><strong>Minimum Time Tutorial</strong>: Optimize trajectory duration</li><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../concepts/constraints/">« Constraints</a><a class="docs-footer-nextpage" href="../bilinear_control/">Bilinear Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 29 April 2026 17:01">Wednesday 29 April 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+           TerminalObjective(x -&gt; 100.0 * norm(x - x_goal)^2, :x, traj_soft)</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Bilinear Control Tutorial</strong>: Multiple drives and bounds</li><li><strong>Minimum Time Tutorial</strong>: Optimize trajectory duration</li><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../concepts/constraints/">« Constraints</a><a class="docs-footer-nextpage" href="../bilinear_control/">Bilinear Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 1 May 2026 01:19">Friday 1 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
