@@ -23,19 +23,19 @@
 
 # ## Decision Variables
 
-# ### States: `x₁, x₂, ..., xₖ`
+# ### States: `x₁, x₂, ..., xₙ`
 # The **state** represents the configuration of your system at each time step.
 # - For a robot arm: joint angles and velocities
 # - For a spacecraft: position and velocity
 # - For a quantum system: state vector or unitary operator
 
-# ### Controls: `u₁, u₂, ..., uₖ`
+# ### Controls: `u₁, u₂, ..., uₙ`
 # The **control** (or input) represents what you can actuate.
 # - For a robot: motor torques
 # - For a spacecraft: thruster forces
 # - For quantum systems: electromagnetic field amplitudes
 
-# ### Time Steps: `Δt₁, Δt₂, ..., Δtₖ`
+# ### Time Steps: `Δt₁, Δt₂, ..., Δtₙ`
 # The **time step** can be:
 # - **Fixed**: All Δt are equal and constant
 # - **Free**: Each Δt is a decision variable (for minimum time problems)
@@ -59,7 +59,8 @@ using LinearAlgebra
 N = 10
 traj = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt, controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 obj_effort = QuadraticRegularizer(:u, traj, 1.0)
@@ -120,7 +121,7 @@ G_drift = [-0.1 1.0; -1.0 -0.1]
 G_drives = [[0.0 1.0; 1.0 0.0]]
 G = u -> G_drift + sum(u .* G_drives)
 
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 # ## Path Constraints: `c(x, u) ≥ 0`
 
@@ -134,9 +135,9 @@ integrator = BilinearIntegrator(G, traj, :x, :u)
 
 traj_bounded = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    bounds=(u = (-1.0, 1.0),)  # -1 ≤ u ≤ 1
+    timestep = :Δt,
+    controls = :u,
+    bounds = (u = (-1.0, 1.0),),  # -1 ≤ u ≤ 1
 )
 
 # ### Nonlinear Constraints
@@ -147,7 +148,7 @@ constraint = NonlinearKnotPointConstraint(
     u -> [1.0 - norm(u)],  # 1 - ||u|| ≥ 0  →  ||u|| ≤ 1
     :u,
     traj;
-    equality=false
+    equality = false,
 )
 
 # ## Boundary Conditions
@@ -155,15 +156,15 @@ constraint = NonlinearKnotPointConstraint(
 # ### Initial Condition: `x₁ = x_init`
 # Fixes the starting state.
 
-# ### Final Condition: `xₖ = x_goal`
+# ### Final Condition: `xₙ = x_goal`
 # Fixes the ending state (or penalizes deviation via terminal cost).
 
 traj_bc = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [0.0, 0.0],),  # Fixed initial state
-    final=(x = [1.0, 0.0],)     # Fixed final state
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0],),  # Fixed initial state
+    final = (x = [1.0, 0.0],),     # Fixed final state
 )
 
 # ## Direct Transcription
@@ -206,7 +207,7 @@ traj_bc = NamedTrajectory(
 # | Objective | `J(x, u)` | `Objective` (sum of terms) |
 # | Dynamics | `f(xₖ₊₁, xₖ, uₖ) = 0` | `AbstractIntegrator` |
 # | Path Constraints | `c(x, u) ≥ 0` | `AbstractConstraint` |
-# | Boundary Conditions | `x₁ = x_init, xₖ = x_goal` | `initial`, `final` in trajectory |
+# | Boundary Conditions | `x₁ = x_init, xₙ = x_goal` | `initial`, `final` in trajectory |
 
 # ## Next Steps
 

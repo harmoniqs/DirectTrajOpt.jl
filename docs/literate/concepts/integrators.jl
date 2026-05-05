@@ -40,10 +40,10 @@ using LinearAlgebra
 N = 50
 traj = NamedTrajectory(
     (x = randn(2, N), u = randn(1, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [1.0, 0.0],),
-    final=(x = [0.0, 1.0],)
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [1.0, 0.0],),
+    final = (x = [0.0, 1.0],),
 )
 
 # Define drift (natural dynamics) and drives (control terms)
@@ -54,30 +54,30 @@ G_drives = [[0.0 1.0; 1.0 0.0]]     # Symmetric control coupling
 G = u -> G_drift + sum(u .* G_drives)
 
 # Create integrator
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 # ### Multiple Drives Example
 
 traj_multi = NamedTrajectory(
     (x = randn(3, N), u = randn(2, N), Δt = fill(0.1, N));
-    timestep=:Δt,
-    controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 G_drift_3d = [
-    0.0  1.0  0.0;
-   -1.0  0.0  0.0;
-    0.0  0.0 -0.1
+    0.0 1.0 0.0;
+    -1.0 0.0 0.0;
+    0.0 0.0 -0.1
 ]
 
 G_drives_3d = [
     [1.0 0.0 0.0; 0.0 0.0 0.0; 0.0 0.0 0.0],  # Drive 1
-    [0.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 0.0]   # Drive 2
+    [0.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 0.0],   # Drive 2
 ]
 
 G_multi = u -> G_drift_3d + sum(u .* G_drives_3d)
 
-integrator_multi = BilinearIntegrator(G_multi, traj_multi, :x, :u)
+integrator_multi = BilinearIntegrator(G_multi, :x, :u, traj_multi)
 
 # ### When to Use BilinearIntegrator
 # ✓ Quantum systems (Hamiltonian evolution)
@@ -102,16 +102,16 @@ traj_td = NamedTrajectory(
         x = randn(2, N),
         u = randn(1, N),
         t = collect(range(0, 5, N)),  # time variable
-        Δt = fill(0.1, N)
+        Δt = fill(0.1, N),
     );
-    timestep=:Δt,
-    controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 # Time-dependent generator
-G_td = (u, t) -> [-0.1 + 0.5*sin(t)  1.0; -1.0  -0.1] + u[1] * [0.0 1.0; 1.0 0.0]
+G_td = (u, t) -> [-0.1 + 0.5*sin(t) 1.0; -1.0 -0.1] + u[1] * [0.0 1.0; 1.0 0.0]
 
-integrator_td = TimeDependentBilinearIntegrator(G_td, traj_td, :x, :u, :t)
+integrator_td = TimeDependentBilinearIntegrator(G_td, :x, :u, :t, traj_td)
 
 # ### When to Use TimeDependentBilinearIntegrator
 # ✓ Time-varying Hamiltonians
@@ -135,16 +135,16 @@ traj_smooth = NamedTrajectory(
         x = randn(2, N),
         u = randn(2, N),
         du = zeros(2, N),   # control derivative
-        Δt = fill(0.1, N)
+        Δt = fill(0.1, N),
     );
-    timestep=:Δt,
-    controls=:u,
-    initial=(u = [0.0, 0.0],),
-    final=(u = [0.0, 0.0],)
+    timestep = :Δt,
+    controls = :u,
+    initial = (u = [0.0, 0.0],),
+    final = (u = [0.0, 0.0],),
 )
 
 # Enforce du/dt = du
-deriv_integrator = DerivativeIntegrator(traj_smooth, :u, :du)
+deriv_integrator = DerivativeIntegrator(:u, :du, traj_smooth)
 
 # Now you can penalize `du` to get smooth controls:
 # obj = QuadraticRegularizer(:u, traj_smooth, 1e-2)
@@ -158,91 +158,47 @@ traj_smooth2 = NamedTrajectory(
         u = randn(1, N),
         du = zeros(1, N),
         ddu = zeros(1, N),
-        Δt = fill(0.1, N)
+        Δt = fill(0.1, N),
     );
-    timestep=:Δt,
-    controls=:u
+    timestep = :Δt,
+    controls = :u,
 )
 
 # Chain derivatives: d(u)/dt = du, d(du)/dt = ddu
-deriv_u = DerivativeIntegrator(traj_smooth2, :u, :du)
-deriv_du = DerivativeIntegrator(traj_smooth2, :du, :ddu)
+deriv_u = DerivativeIntegrator(:u, :du, traj_smooth2)
+deriv_du = DerivativeIntegrator(:du, :ddu, traj_smooth2)
 
 # ### When to Use DerivativeIntegrator
 # ✓ Enforce smooth, implementable controls
 # ✓ Acceleration limits (when control is jerk)
 # ✓ Tracking derivative information
 
-# ## TimeIntegrator
-
-# ### Overview
-# Manages **time evolution** for the time variable itself:
-# ```math
-# t_{k+1} = t_k + \Delta t_k
-# ```
-
-# Usually only needed when you explicitly track time as a state.
-
-traj_time = NamedTrajectory(
-    (
-        x = randn(2, N),
-        u = randn(1, N),
-        t = zeros(1, N),
-        Δt = fill(0.1, N)
-    );
-    timestep=:Δt,
-    controls=:u
-)
-
-time_integrator = TimeIntegrator(traj_time, :t)
-
-# ### When to Use TimeIntegrator
-# ✓ Time-dependent dynamics need explicit time
-# ✓ Time-dependent cost functions
-# ✓ Tracking total elapsed time
-
 # ## Combining Multiple Integrators
 
 # You can use multiple integrators simultaneously:
 
 traj_combined = NamedTrajectory(
-    (
-        x = randn(2, N),
-        u = randn(2, N),
-        du = zeros(2, N),
-        t = collect(range(0, 5, N)),
-        Δt = fill(0.1, N)
-    );
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = [0.0, 0.0], u = [0.0, 0.0]),
-    final=(u = [0.0, 0.0],)
+    (x = randn(2, N), u = randn(2, N), du = zeros(2, N), Δt = fill(0.1, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = [0.0, 0.0], u = [0.0, 0.0]),
+    final = (u = [0.0, 0.0],),
 )
-
-# Time-varying dynamics
-G_combined = (u, t) -> [-0.1 1.0; -1.0 -0.1] + sum(u .* [[0.0 1.0; 1.0 0.0], [1.0 0.0; 0.0 1.0]])
-
-integrators = [
-    TimeDependentBilinearIntegrator(G_combined, traj_combined, :x, :u, :t),
-    DerivativeIntegrator(traj_combined, :u, :du),
-    TimeIntegrator(traj_combined, :t)
-]
 
 # Create problem with multiple integrators
 G_drift_simple = [-0.1 1.0; -1.0 -0.1]
-G_drives_simple = [[0.0 1.0; 1.0 0.0]]
+G_drives_simple = [[0.0 1.0; 1.0 0.0], [1.0 0.0; 0.0 1.0]]
 G_simple = u -> G_drift_simple + sum(u .* G_drives_simple)
 
 obj = QuadraticRegularizer(:u, traj_combined, 1e-2)
 obj += QuadraticRegularizer(:du, traj_combined, 1e-1)
 
-# Note: Using simpler BilinearIntegrator for this example
-integrators_simple = [
-    BilinearIntegrator(G_simple, traj_combined, :x, :u),
-    DerivativeIntegrator(traj_combined, :u, :du)
+integrators_combined = [
+    BilinearIntegrator(G_simple, :x, :u, traj_combined),
+    DerivativeIntegrator(:u, :du, traj_combined),
 ]
 
-prob = DirectTrajOptProblem(traj_combined, obj, integrators_simple)
+prob = DirectTrajOptProblem(traj_combined, obj, integrators_combined)
 
 # ## Integration Methods Comparison
 
@@ -251,7 +207,6 @@ prob = DirectTrajOptProblem(traj_combined, obj, integrators_simple)
 # | `BilinearIntegrator` | Control-linear | Exact | Quantum, rotation |
 # | `TimeDependentBilinearIntegrator` | Time-varying control-linear | Exact | Modulated systems |
 # | `DerivativeIntegrator` | Derivative relation | Exact | Smoothness |
-# | `TimeIntegrator` | Time evolution | Exact | Time tracking |
 
 # ## Custom Integrators
 
@@ -292,19 +247,18 @@ prob = DirectTrajOptProblem(traj_combined, obj, integrators_simple)
 
 # ### Pattern 1: Basic Bilinear Problem
 G_basic = u -> [-0.1 1.0; -1.0 -0.1] + u[1] * [0.0 1.0; 1.0 0.0]
-# integrator = BilinearIntegrator(G_basic, traj, :x, :u)
+# integrator = BilinearIntegrator(G_basic, :x, :u, traj)
 
-# ### Pattern 2: Smooth Control Problem  
+# ### Pattern 2: Smooth Control Problem
 # integrators = [
-#     BilinearIntegrator(G, traj, :x, :u),
-#     DerivativeIntegrator(traj, :u, :du)
+#     BilinearIntegrator(G, :x, :u, traj),
+#     DerivativeIntegrator(:u, :du, traj)
 # ]
 
 # ### Pattern 3: Time-Dependent with Smoothness
 # integrators = [
-#     TimeDependentBilinearIntegrator(G_td, traj, :x, :u, :t),
-#     DerivativeIntegrator(traj, :u, :du),
-#     TimeIntegrator(traj, :t)
+#     TimeDependentBilinearIntegrator(G_td, :x, :u, :t, traj),
+#     DerivativeIntegrator(:u, :du, traj)
 # ]
 
 # ## Summary

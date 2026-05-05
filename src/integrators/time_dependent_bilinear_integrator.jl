@@ -7,6 +7,56 @@ using TrajectoryIndexingUtils
 # Time-Dependent Bilinear Integrator
 # -------------------------------------------------------------------------------- #
 
+"""
+    TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
+
+Integrator for time-dependent bilinear dynamics of the form:
+
+```math
+\\dot{x} = G(u(t), t) \\, x
+```
+
+where `G` is a matrix-valued function of both the control `u` and time `t`. The control
+is interpolated between knot points using a spline of the specified order (0 = zero-order
+hold, 1 = linear interpolation). Integration over each time step is performed with an
+ODE solver (Tsit5) on the normalized interval `[0, 1]`.
+
+# Fields
+- `f::Function`: Compiled residual function `(x_{k+1}, x_k, p_k, Δt_k, t_k) -> residual`
+- `x_name::Symbol`: Name of the state variable in the trajectory
+- `u_name::Symbol`: Name of the control variable in the trajectory
+- `t_name::Symbol`: Name of the time variable in the trajectory
+- `spline_order::Int`: Control interpolation order (0 or 1)
+- `x_dim::Int`: Dimension of the state vector
+- `u_dim::Int`: Dimension of the control vector
+- `dim::Int`: Total constraint dimension `x_dim * (N - 1)`
+
+# Constructor
+```julia
+TimeDependentBilinearIntegrator(
+    G::Function, x::Symbol, u::Symbol, t::Symbol,
+    traj::NamedTrajectory;
+    spline_order::Int=1, solve_kwargs=(;)
+)
+```
+
+# Arguments
+- `G`: Function `(u, t) -> Matrix` returning the generator at control value `u` and time `t`
+- `x`: State variable name
+- `u`: Control variable name
+- `t`: Time variable name
+- `traj`: Trajectory providing dimensions and structure
+
+# Keyword Arguments
+- `spline_order=1`: Order of control interpolation (0 for piecewise constant, 1 for linear)
+- `solve_kwargs=(;)`: Additional keyword arguments passed to `OrdinaryDiffEq.solve`
+
+# Example
+```julia
+G(u, t) = [-0.1 1.0; -1.0 -0.1] + u[1] * [0.0 cos(t); cos(t) 0.0]
+integrator = TimeDependentBilinearIntegrator(G, :x, :u, :t, traj)
+```
+"""
 struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     f::F
     x_name::Symbol
@@ -23,9 +73,9 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         u::Symbol,
         t::Symbol,
         traj::NamedTrajectory;
-        spline_order::Int=1,
-        solve_kwargs = (;)
-    ) where F <: Function
+        spline_order::Int = 1,
+        solve_kwargs = (;),
+    ) where {F<:Function}
 
         N = traj.N
         @assert N > 1 "Trajectory must have at least two timesteps."
@@ -40,8 +90,8 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
             u_fn = (τ, pₖ) -> pₖ
         elseif spline_order == 1
             u_fn = (τ, pₖ) -> begin
-                uₖ = pₖ[1:u_dim] 
-                uₖ₊₁ = pₖ[u_dim+1:2u_dim] 
+                uₖ = pₖ[1:u_dim]
+                uₖ₊₁ = pₖ[(u_dim+1):2u_dim]
                 return uₖ + τ * (uₖ₊₁ - uₖ)
             end
         else
@@ -49,18 +99,18 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         end
 
         function f!(dx, x_, p, τ)
-            pₖ, Δtₖ, tₖ = p[1:end-2], p[end-1], p[end]
+            pₖ, Δtₖ, tₖ = p[1:(end-2)], p[end-1], p[end]
             mul!(dx, G(u_fn(τ, pₖ), tₖ + τ * Δtₖ), x_ * Δtₖ)
             return nothing
         end
 
-        u_template = if spline_order == 0 
+        u_template = if spline_order == 0
             zeros(u_dim)
         elseif spline_order == 1
             zeros(2u_dim)
         else
             error("Unsupported spline order: $spline_order")
-        end 
+        end
 
         p_template = vcat(u_template, 1.0, 0.0) # [controls..., Δt, t]
 
@@ -70,23 +120,22 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
 
         solve_kwargs_nt = (; solve_kwargs...)
 
-        f = (xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ) -> begin
-            prob = remake(prob_template, u0 = xₖ, p = [pₖ; Δtₖ; tₖ])
-            sol = solve(prob, Tsit5(); solve_kwargs_nt...)
-            return xₖ₊₁ - sol[:, end]
-        end
+        f =
+            (xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ) -> begin
+                prob = remake(prob_template, u0 = xₖ, p = [pₖ; Δtₖ; tₖ])
+                sol = solve(prob, Tsit5(); solve_kwargs_nt...)
+                return xₖ₊₁ - sol[:, end]
+            end
 
-        return new{typeof(f)}(
-            f,
-            x,
-            u,
-            t,
-            spline_order,
-            x_dim,
-            u_dim,
-            dim
-        )
+        return new{typeof(f)}(f, x, u, t, spline_order, x_dim, u_dim, dim)
     end
+end
+
+function Base.show(io::IO, B::TimeDependentBilinearIntegrator)
+    print(
+        io,
+        "TimeDependentBilinearIntegrator: :$(B.x_name) via G(:$(B.u_name), t)  (dim = $(B.x_dim), order = $(B.spline_order))",
+    )
 end
 
 # -------------------------------------------------------------------------------- #
@@ -97,9 +146,9 @@ function evaluate!(
     δ::AbstractVector,
     B::TimeDependentBilinearIntegrator,
     traj::NamedTrajectory;
-    kwargs...
+    kwargs...,
 )
-    for k = 1:traj.N-1
+    for k = 1:(traj.N-1)
         xₖ = traj[k][B.x_name]
         xₖ₊₁ = traj[k+1][B.x_name]
         uₖ = traj[k][B.u_name]
@@ -115,30 +164,27 @@ function evaluate!(
             error("Unsupported spline order: $(B.spline_order)")
         end
 
-        δ[slice(k, B.x_dim)] = B.f(xₖ₊₁, xₖ, pₖ, tₖ, Δtₖ)
+        δ[slice(k, B.x_dim)] = B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
     end
     return nothing
 end
 
 # Jacobian methods
 
-@views function eval_jacobian(
-    B::TimeDependentBilinearIntegrator,
-    traj::NamedTrajectory
-)
+@views function eval_jacobian(B::TimeDependentBilinearIntegrator, traj::NamedTrajectory)
     ∂B = spzeros(B.dim, traj.dim * traj.N + traj.global_dim)
-    for k = 1:traj.N-1
+    for k = 1:(traj.N-1)
         ForwardDiff.jacobian!(
             ∂B[slice(k, B.x_dim), slice(k, 1:2traj.dim, traj.dim)],
-            zz -> begin 
+            zz -> begin
                 zₖ = zz[1:traj.dim]
-                zₖ₊₁ = zz[traj.dim+1:end]
+                zₖ₊₁ = zz[(traj.dim+1):end]
                 xₖ = zₖ[traj.components[B.x_name]]
                 uₖ = zₖ[traj.components[B.u_name]]
                 tₖ = zₖ[traj.components[B.t_name]][1]
                 Δtₖ = zₖ[traj.components[traj.timestep]][1]
                 xₖ₊₁ = zₖ₊₁[traj.components[B.x_name]]
-                
+
                 if B.spline_order == 0
                     pₖ = uₖ
                 elseif B.spline_order == 1
@@ -148,12 +194,12 @@ end
                     error("Unsupported spline order: $(B.spline_order)")
                 end
 
-                return B.f(xₖ₊₁, xₖ, pₖ, tₖ, Δtₖ)
+                return B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
             end,
             [traj[k].data; traj[k+1].data],
         )
     end
-    return ∂B 
+    return ∂B
 end
 
 # Hessian methods
@@ -161,20 +207,17 @@ end
 function eval_hessian_of_lagrangian(
     B::TimeDependentBilinearIntegrator,
     traj::NamedTrajectory,
-    μ::AbstractVector
+    μ::AbstractVector,
 )
-    μ∂²B = spzeros(
-        traj.dim * traj.N + traj.global_dim,
-        traj.dim * traj.N + traj.global_dim,
-    )
+    μ∂²B = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
 
-    for k = 1:traj.N-1
+    for k = 1:(traj.N-1)
         μₖ = μ[slice(k, B.x_dim)]
-       
+
         μ∂²Bₖ = ForwardDiff.hessian(
             zz -> begin
                 zₖ = zz[1:traj.dim]
-                zₖ₊₁ = zz[traj.dim+1:end]
+                zₖ₊₁ = zz[(traj.dim+1):end]
                 xₖ = zₖ[traj.components[B.x_name]]
                 uₖ = zₖ[traj.components[B.u_name]]
                 tₖ = zₖ[traj.components[B.t_name]][1]
@@ -190,14 +233,14 @@ function eval_hessian_of_lagrangian(
                     error("Unsupported spline order: $(B.spline_order)")
                 end
 
-                return μₖ'B.f(xₖ₊₁, xₖ, pₖ, tₖ, Δtₖ)
+                return μₖ'B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
             end,
             [traj[k].data; traj[k+1].data],
         )
 
         μ∂²B[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= μ∂²Bₖ
     end
-    return μ∂²B 
+    return μ∂²B
 end
 
 # ============================================================================ #
@@ -205,16 +248,22 @@ end
 @testitem "testing TimeDependentBilinearIntegrator" begin
     include("../../test/test_utils.jl")
 
-    G, traj = bilinear_dynamics_and_trajectory(add_time=true)
+    G, traj = bilinear_dynamics_and_trajectory(add_time = true)
 
     # zero order hold
-    B = TimeDependentBilinearIntegrator(
-        (a, t) -> G(a), 
-        :x, :u, :t, 
-        traj
-    )
+    B = TimeDependentBilinearIntegrator((a, t) -> G(a), :x, :u, :t, traj)
 
-    test_integrator(
-        B, traj, test_equality=false, atol=1e-3
-    )
+    test_integrator(B, traj, test_equality = false, atol = 1e-3)
+end
+
+@testitem "testing TimeDependentBilinearIntegrator with explicit time dependence" begin
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_time = true)
+
+    G_td = (a, t) -> G(a) + 0.1 * cos(t) * I(size(G(a), 1))
+
+    B = TimeDependentBilinearIntegrator(G_td, :x, :u, :t, traj)
+
+    test_integrator(B, traj, test_equality = false, atol = 1e-3)
 end

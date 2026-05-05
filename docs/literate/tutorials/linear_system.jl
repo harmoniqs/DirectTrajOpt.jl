@@ -19,16 +19,22 @@
 using DirectTrajOpt
 using NamedTrajectories
 using LinearAlgebra
+using Statistics
+using Printf
 
 # ## Step 1: Define the System Dynamics
 
 # The drift matrix (natural dynamics):
-G_drift = [-0.1  1.0;
-           -1.0 -0.1]
+G_drift = [
+    -0.1 1.0;
+    -1.0 -0.1
+]
 
 # The drive matrix (control influence):
-G_drives = [[0.0  1.0;
-             1.0  0.0]]
+G_drives = [[
+    0.0 1.0;
+    1.0 0.0
+]]
 
 # Generator function:
 G = u -> G_drift + sum(u .* G_drives)
@@ -52,20 +58,16 @@ x_init = [0.0, 0.0]
 x_goal = [1.0, 0.0]
 
 # Create initial guess with linear interpolation
-x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t in 0:N-1]...)
+x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t = 0:(N-1)]...)
 u_guess = zeros(1, N)
 
 # Create the trajectory
 traj = NamedTrajectory(
-    (
-        x = x_guess,
-        u = u_guess,
-        Δt = fill(Δt, N)
-    );
-    timestep=:Δt,
-    controls=:u,
-    initial=(x = x_init,),
-    final=(x = x_goal,)
+    (x = x_guess, u = u_guess, Δt = fill(Δt, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = x_init,),
+    final = (x = x_goal,),
 )
 
 println("Trajectory dimensions:")
@@ -76,7 +78,7 @@ println("  Time steps: ", traj.N)
 # ## Step 3: Define the Dynamics Constraint
 
 # Use BilinearIntegrator for our control-linear system:
-integrator = BilinearIntegrator(G, traj, :x, :u)
+integrator = BilinearIntegrator(G, :x, :u, traj)
 
 println("Integrator created for bilinear dynamics")
 
@@ -92,11 +94,15 @@ println("Objective: minimize ∫ ||u||² dt")
 # Assemble the optimization problem:
 prob = DirectTrajOptProblem(traj, obj, integrator)
 
-println("\nSolving optimization problem...")
+prob
+
+#-
+
+println("Solving optimization problem...")
 println("="^50)
 
 # Solve with Ipopt:
-solve!(prob; max_iter=100, verbose=false)
+solve!(prob; max_iter = 100, verbose = false)
 
 println("="^50)
 println("Optimization complete!\n")
@@ -129,15 +135,14 @@ println("  Mean magnitude: ", u_mean)
 # Check that the solution satisfies the dynamics at a few points:
 
 function verify_dynamics(x, u, Δt, G, k)
-    # Compute x[k+1] using the dynamics
+    ## Compute x[k+1] using the dynamics
     x_k = x[:, k]
     u_k = u[:, k]
     Δt_k = Δt[k]
-    
-    # Matrix exponential integration
+    ## Matrix exponential integration
     x_k1_predicted = exp(Δt_k * G(u_k)) * x_k
     x_k1_actual = x[:, k+1]
-    
+
     error = norm(x_k1_predicted - x_k1_actual)
     return error
 end
@@ -161,7 +166,7 @@ println("Time | x₁      | x₂")
 println("-"^25)
 for k in [1:10; (N-9):N]
     t = times[k]
-    println(@sprintf("%.2f | %7.4f | %7.4f", t, x_sol[1,k], x_sol[2,k]))
+    println(@sprintf("%.2f | %7.4f | %7.4f", t, x_sol[1, k], x_sol[2, k]))
 end
 
 println("\nControl trajectory (first 10 and last 10 time steps):")
@@ -169,7 +174,7 @@ println("Time | u")
 println("-"^15)
 for k in [1:10; (N-9):N]
     t = times[k]
-    println(@sprintf("%.2f | %7.4f", t, u_sol[1,k]))
+    println(@sprintf("%.2f | %7.4f", t, u_sol[1, k]))
 end
 
 # ## Key Takeaways
@@ -222,5 +227,3 @@ end
 # - **Bilinear Control Tutorial**: Multiple drives and bounds
 # - **Minimum Time Tutorial**: Optimize trajectory duration
 # - **Smooth Controls Tutorial**: Add derivative penalties
-
-using Printf  # For @sprintf
