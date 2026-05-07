@@ -12,14 +12,14 @@ Represents a linear equality constraint defined by variable names.
 Indices are computed when constraint is applied in constrain!.
 
 # Fields
-- `var_names::Union{Symbol, Vector{Symbol}}`: Variable name(s) to constrain
+- `var_names::Symbol`: Variable name to constrain
 - `times::Union{Nothing, Vector{Int}}`: Time indices (nothing for global variables)
 - `values::Union{Vector{Float64}, Matrix{Float64}}`: Constraint values (Vector for uniform, Matrix for per-timestep)
 - `is_global::Bool`: Whether this is a global variable constraint
 - `label::String`: Constraint label
 """
 struct EqualityConstraint <: AbstractLinearConstraint
-    var_names::Union{Symbol,Vector{Symbol}}
+    var_names::Symbol
     times::Union{Nothing,Vector{Int}}
     values::Union{Vector{Float64},Matrix{Float64}}
     is_global::Bool

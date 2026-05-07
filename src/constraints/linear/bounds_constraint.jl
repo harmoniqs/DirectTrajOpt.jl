@@ -12,7 +12,7 @@ Represents a box constraint defined by variable names.
 Indices and concrete bounds are computed in constrain!.
 
 # Fields
-- `var_names::Union{Symbol, Vector{Symbol}}`: Variable name(s) to constrain
+- `var_names::Symbol`: Variable name to constrain
 - `times::Union{Nothing, Vector{Int}}`: Time indices (nothing for global variables)
 - `bounds_values::Union{Float64, Vector{Float64}, Tuple{Vector{Float64}, Vector{Float64}}}`: Bound specification
 - `is_global::Bool`: Whether this is a global variable constraint
@@ -20,7 +20,7 @@ Indices and concrete bounds are computed in constrain!.
 - `label::String`: Constraint label
 """
 struct BoundsConstraint <: AbstractLinearConstraint
-    var_names::Union{Symbol,Vector{Symbol}}
+    var_names::Symbol
     times::Union{Nothing,Vector{Int}}
     bounds_values::Union{Float64,Vector{Float64},Tuple{Vector{Float64},Vector{Float64}}}
     is_global::Bool

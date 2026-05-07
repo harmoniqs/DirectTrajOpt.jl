@@ -30,13 +30,13 @@ function dense(vals, structure, shape)
 end
 
 """
-    show_diffs(A::Matrix, B::Matrix)
+    show_diffs(A, B)
 
-Show differences between matrices.
+Show differences between two arrays of the same shape (matrix or vector).
 """
-function show_diffs(A::AbstractMatrix, B::AbstractMatrix; kwargs...)
+function show_diffs(A::AbstractVecOrMat, B::AbstractVecOrMat; kwargs...)
     @assert size(A) == size(B)
-    matrix_is_square = size(A, 1) == size(A, 2)
+    matrix_is_square = ndims(A) == 2 && size(A, 1) == size(A, 2)
     for (i, (a, b)) in enumerate(zip(A, B))
         inds = Tuple(CartesianIndices(A)[i])
         if matrix_is_square
@@ -115,12 +115,12 @@ function named_trajectory_type_1(; free_time = true)
 end
 
 function bilinear_dynamics_and_trajectory(;
-    N = 10,
-    Δt = 0.1,
-    u_bound = 0.1,
-    ω = 0.1,
-    add_time = false,
-    add_global = false,
+    N::Int = 10,
+    Δt::Float64 = 0.1,
+    u_bound::Float64 = 0.1,
+    ω::Float64 = 0.1,
+    add_time::Bool = false,
+    add_global::Bool = false,
 )
     Gx = sparse(Float64[
         0 0 0 1;

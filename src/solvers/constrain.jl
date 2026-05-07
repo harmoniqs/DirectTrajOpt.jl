@@ -42,7 +42,14 @@ function (con::EqualityConstraint)(
     else
         # Trajectory variable constraint
         @assert name ∈ traj.names "Variable $name not found in trajectory"
+        # Narrow `ts` from Union{Nothing, Vector{Int}}. In the not-global branch
+        # `times` is always a Vector{Int} (set by the trajectory-variable
+        # constructors); the explicit `=== nothing` branch lets JET prove that
+        # the surviving binding is `Vector{Int}` without flagging the impossible
+        # `convert(Vector{Int}, Nothing)` path that a bare type assert produces.
         ts = con.times
+        ts === nothing &&
+            error("EqualityConstraint: times must be set for a non-global variable")
 
         if con.values isa Matrix{Float64}
             # Per-timestep values: column k → timestep ts[k]
@@ -113,6 +120,8 @@ function (con::BoundsConstraint)(
         # Trajectory variable constraint
         @assert name ∈ traj.names "Variable $name not found in trajectory"
         ts = con.times
+        ts === nothing &&
+            error("BoundsConstraint: times must be set for a non-global variable")
         var_dim = traj.dims[name]
 
         # Determine subcomponents to constrain

@@ -8,14 +8,7 @@
 @testitem "JET correctness analysis" tags=[:jet] begin
     if VERSION >= v"1.12"
         using JET, DirectTrajOpt
-        # Findings as of initial wiring (DirectTrajOpt v0.9.3, JET 0.11):
-        # 18 findings dominated by:
-        #   - `show_diffs(::SparseVector, ::Any)` no-matching-method when the
-        #     sparse-Jacobian union-split lands on the SparseVector branch.
-        #   - `randn(::Int64, ::NTuple{N,Int64})` test-utility helper that
-        #     forwards a tuple as the trailing dim argument.
-        # TODO: address in a follow-up PR; drop `broken = true` once clean.
-        JET.test_package(DirectTrajOpt; target_modules = (DirectTrajOpt,), broken = true)
+        JET.test_package(DirectTrajOpt; target_modules = (DirectTrajOpt,))
     else
         @info "Skipping JET correctness analysis on Julia $VERSION (requires >= 1.12)"
         @test true
