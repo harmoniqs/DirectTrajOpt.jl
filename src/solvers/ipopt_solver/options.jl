@@ -54,6 +54,17 @@ Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     refine = true
     adaptive_mu_globalization = refine ? "obj-constr-filter" : "never-monotone-mode"
     mu_target::Float64 = 1.0e-4
+    mu_init::Float64 = 0.1
+    bound_push::Float64 = 0.01
+    bound_frac::Float64 = 0.01
+    slack_bound_push::Float64 = 0.01
+    slack_bound_frac::Float64 = 0.01
+    warm_start_init_point = "no"
+    warm_start_bound_push::Float64 = 1.0e-3
+    warm_start_bound_frac::Float64 = 1.0e-3
+    warm_start_slack_bound_push::Float64 = 1.0e-3
+    warm_start_slack_bound_frac::Float64 = 1.0e-3
+    warm_start_mult_bound_push::Float64 = 1.0e-3
     nlp_scaling_method = "gradient-based"
     output_file = nothing
     print_level::Int = 5
