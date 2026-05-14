@@ -3,7 +3,6 @@
 
     Aqua.test_all(
         DirectTrajOpt;
-        deps_compat = (check_extras = false,),
         # `hessian_structure` is exported by three different DirectTrajOpt
         # submodules (CommonInterface, Constraints, Integrators); the conflict
         # makes it appear undefined at DirectTrajOpt's surface even though all
