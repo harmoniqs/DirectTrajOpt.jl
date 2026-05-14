@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Minimum Time · DirectTrajOpt.jl</title><meta name="title" content="Minimum Time · DirectTrajOpt.jl"/><meta property="og:title" content="Minimum Time · DirectTrajOpt.jl"/><meta property="twitter:title" content="Minimum Time · DirectTrajOpt.jl"/><meta name="description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:description" content="Documentation for DirectTrajOpt.jl."/><meta property="twitter:description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/minimum_time/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/minimum_time/"/><link rel="canonical" href="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/minimum_time/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.svg" alt="DirectTrajOpt.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">DirectTrajOpt.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><span class="tocitem">Getting Started</span><ul><li><a class="tocitem" href="../../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../example/">Complete Example</a></li></ul></li><li><span class="tocitem">Core Concepts</span><ul><li><a class="tocitem" href="../../concepts/problem_formulation/">Problem Formulation</a></li><li><a class="tocitem" href="../../concepts/trajectories/">Trajectories</a></li><li><a class="tocitem" href="../../concepts/integrators/">Integrators</a></li><li><a class="tocitem" href="../../concepts/objectives/">Objectives</a></li><li><a class="tocitem" href="../../concepts/constraints/">Constraints</a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../linear_system/">Linear System</a></li><li><a class="tocitem" href="../bilinear_control/">Bilinear Control</a></li><li class="is-active"><a class="tocitem" href>Minimum Time</a><ul class="internal"><li><a class="tocitem" href="#Problem-Description"><span>Problem Description</span></a></li><li><a class="tocitem" href="#Fixed-Time-vs-Free-Time"><span>Fixed Time vs Free Time</span></a></li><li><a class="tocitem" href="#Step-1:-System-Definition"><span>Step 1: System Definition</span></a></li><li><a class="tocitem" href="#Step-2:-Trajectory-Setup"><span>Step 2: Trajectory Setup</span></a></li><li><a class="tocitem" href="#Step-3:-Create-Free-Time-Trajectory"><span>Step 3: Create Free-Time Trajectory</span></a></li><li><a class="tocitem" href="#Step-4:-Define-Objectives"><span>Step 4: Define Objectives</span></a></li><li><a class="tocitem" href="#Step-5:-Solve-Minimum-Time-Problem"><span>Step 5: Solve Minimum Time Problem</span></a></li><li><a class="tocitem" href="#Step-6:-Analyze-Time-Optimal-Solution"><span>Step 6: Analyze Time-Optimal Solution</span></a></li><li><a class="tocitem" href="#Step-7:-Comparison-with-Fixed-Time-Solution"><span>Step 7: Comparison with Fixed-Time Solution</span></a></li><li><a class="tocitem" href="#Step-8:-Effect-of-Time-Weight"><span>Step 8: Effect of Time Weight</span></a></li><li><a class="tocitem" href="#Step-9:-Time-Step-Adaptation"><span>Step 9: Time Step Adaptation</span></a></li><li><a class="tocitem" href="#Key-Insights"><span>Key Insights</span></a></li><li><a class="tocitem" href="#Best-Practices"><span>Best Practices</span></a></li><li><a class="tocitem" href="#Exercises"><span>Exercises</span></a></li><li><a class="tocitem" href="#Next-Steps"><span>Next Steps</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../../lib/">Library</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Minimum Time</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Minimum Time</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl/blob/main/docs/literate/tutorials/minimum_time.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Tutorial:-Minimum-Time-Problems"><a class="docs-heading-anchor" href="#Tutorial:-Minimum-Time-Problems">Tutorial: Minimum Time Problems</a><a id="Tutorial:-Minimum-Time-Problems-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial:-Minimum-Time-Problems" title="Permalink"></a></h1><p>This tutorial shows how to solve <strong>time-optimal</strong> problems where trajectory duration is minimized alongside other objectives.</p><h2 id="Problem-Description"><a class="docs-heading-anchor" href="#Problem-Description">Problem Description</a><a id="Problem-Description-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-Description" title="Permalink"></a></h2><p>Find the <strong>fastest trajectory</strong> from start to goal with bounded controls.</p><p><strong>Dynamics:</strong></p><p class="math-container">\[\dot{x} = (G_0 + u_1 G_1) x\]</p><p><strong>Objective:</strong> Minimize total time + control effort</p><p><strong>Constraints:</strong> |u| ≤ 1</p><pre><code class="language-julia hljs">using DirectTrajOpt
+using NamedTrajectories
+using LinearAlgebra
+using Statistics
+using Printf</code></pre><h2 id="Fixed-Time-vs-Free-Time"><a class="docs-heading-anchor" href="#Fixed-Time-vs-Free-Time">Fixed Time vs Free Time</a><a id="Fixed-Time-vs-Free-Time-1"></a><a class="docs-heading-anchor-permalink" href="#Fixed-Time-vs-Free-Time" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;=&quot;^50)
+println(&quot;MINIMUM TIME TRAJECTORY OPTIMIZATION&quot;)
+println(&quot;=&quot;^50)
+
+println(&quot;&quot;&quot;
+Two approaches:
+1. **Fixed time**: All Δt equal and constant
+2. **Free time**: Each Δt is a variable (what we&#39;ll use)
+
+Free time allows the optimizer to adjust trajectory duration.
+&quot;&quot;&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">==================================================
+MINIMUM TIME TRAJECTORY OPTIMIZATION
+==================================================
+Two approaches:
+1. **Fixed time**: All Δt equal and constant
+2. **Free time**: Each Δt is a variable (what we&#39;ll use)
+
+Free time allows the optimizer to adjust trajectory duration.</code></pre><h2 id="Step-1:-System-Definition"><a class="docs-heading-anchor" href="#Step-1:-System-Definition">Step 1: System Definition</a><a id="Step-1:-System-Definition-1"></a><a class="docs-heading-anchor-permalink" href="#Step-1:-System-Definition" title="Permalink"></a></h2><pre><code class="language-julia hljs">G_drift = [
+    -0.1 1.0;
+    -1.0 -0.1
+]
+
+G_drives = [[
+    0.0 1.0;
+    1.0 0.0
+]]
+
+G = u -&gt; G_drift + sum(u .* G_drives)
+
+println(&quot;System: 2D damped oscillator with symmetric control coupling&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">System: 2D damped oscillator with symmetric control coupling</code></pre><h2 id="Step-2:-Trajectory-Setup"><a class="docs-heading-anchor" href="#Step-2:-Trajectory-Setup">Step 2: Trajectory Setup</a><a id="Step-2:-Trajectory-Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Step-2:-Trajectory-Setup" title="Permalink"></a></h2><pre><code class="language-julia hljs">N = 40# Number of time steps (fewer than before)
+Δt_init = 0.15  # Initial guess for time step
+
+x_init = [0.0, 0.0]
+x_goal = [1.0, 0.0]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Float64}:
+ 1.0
+ 0.0</code></pre><p>Initial guess</p><pre><code class="language-julia hljs">x_guess = hcat([x_init + (x_goal - x_init) * (t/(N-1)) for t = 0:(N-1)]...)
+u_guess = 0.1 * randn(1, N)
+Δt_guess = fill(Δt_init, N)
+
+println(&quot;\nProblem setup:&quot;)
+println(&quot;  Time steps: $N&quot;)
+println(&quot;  Initial guess for Δt: $Δt_init&quot;)
+println(&quot;  Initial total time: &quot;, sum(Δt_guess))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+Problem setup:
+  Time steps: 40
+  Initial guess for Δt: 0.15
+  Initial total time: 6.000000000000002</code></pre><h2 id="Step-3:-Create-Free-Time-Trajectory"><a class="docs-heading-anchor" href="#Step-3:-Create-Free-Time-Trajectory">Step 3: Create Free-Time Trajectory</a><a id="Step-3:-Create-Free-Time-Trajectory-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Create-Free-Time-Trajectory" title="Permalink"></a></h2><p>Key: timestep=:Δt makes time steps decision variables</p><pre><code class="language-julia hljs">traj_mintime = NamedTrajectory(
+    (x = x_guess, u = u_guess, Δt = Δt_guess);
+    timestep = :Δt,  # Time is a variable!
+    controls = :u,
+    initial = (x = x_init,),
+    final = (x = x_goal,),
+    bounds = (
+        u = 1.0,            # -1 ≤ u ≤ 1
+        Δt = (0.01, 0.5),    # 0.01 ≤ Δt ≤ 0.5
+    ),
+)
+
+println(&quot;\nTrajectory bounds:&quot;)
+println(&quot;  Control: &quot;, traj_mintime.bounds.u)
+println(&quot;  Time step: &quot;, traj_mintime.bounds.Δt)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+Trajectory bounds:
+  Control: ([-1.0], [1.0])
+  Time step: ([0.01], [0.5])</code></pre><h2 id="Step-4:-Define-Objectives"><a class="docs-heading-anchor" href="#Step-4:-Define-Objectives">Step 4: Define Objectives</a><a id="Step-4:-Define-Objectives-1"></a><a class="docs-heading-anchor-permalink" href="#Step-4:-Define-Objectives" title="Permalink"></a></h2><h3 id="Time-Minimization-Weight"><a class="docs-heading-anchor" href="#Time-Minimization-Weight">Time Minimization Weight</a><a id="Time-Minimization-Weight-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Minimization-Weight" title="Permalink"></a></h3><p>The key parameter: balance speed vs control effort</p><pre><code class="language-julia hljs">w_time = 1.0   # Weight on total time
+w_control = 1e-2  # Weight on control effort
+
+obj_mintime = (
+    w_control * QuadraticRegularizer(:u, traj_mintime, 1.0) +
+    w_time * MinimumTimeObjective(traj_mintime, 1.0)
+)
+
+println(&quot;\nObjective weights:&quot;)
+println(&quot;  Control effort: $w_control&quot;)
+println(&quot;  Time: $w_time&quot;)
+println(&quot;  → Emphasizes minimizing time&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+Objective weights:
+  Control effort: 0.01
+  Time: 1.0
+  → Emphasizes minimizing time</code></pre><h2 id="Step-5:-Solve-Minimum-Time-Problem"><a class="docs-heading-anchor" href="#Step-5:-Solve-Minimum-Time-Problem">Step 5: Solve Minimum Time Problem</a><a id="Step-5:-Solve-Minimum-Time-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Step-5:-Solve-Minimum-Time-Problem" title="Permalink"></a></h2><pre><code class="language-julia hljs">integrator_mintime = BilinearIntegrator(G, :x, :u, traj_mintime)
+prob_mintime = DirectTrajOptProblem(traj_mintime, obj_mintime, integrator_mintime)
+
+prob_mintime</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DirectTrajOptProblem
+  Trajectory
+    Timesteps: 40
+    Duration:  5.85
+    Knot dim:  4
+    Variables: x (2), u (1), Δt (1)
+    Controls:  u, Δt
+  Objective (2 terms)
+        0.01 * QuadraticRegularizer on :u (R = [1.0], all)
+         1.0 * MinimumTimeObjective (D = 1.0)
+  Dynamics (1 integrators)
+    BilinearIntegrator: :x = exp(Δt G(:u)) :x  (dim = 2)
+  Constraints (4 total: 2 equality, 2 bounds)
+    EqualityConstraint: &quot;initial value of x&quot;
+    EqualityConstraint: &quot;final value of x&quot;
+    BoundsConstraint: &quot;bounds on u&quot;
+    BoundsConstraint: &quot;bounds on Δt&quot;</code></pre><pre><code class="language-julia hljs">println(&quot;Solving minimum time problem...&quot;)
+println(&quot;=&quot;^50)
+
+solve!(prob_mintime; max_iter = 200, verbose = false)
+
+println(&quot;=&quot;^50)
+println(&quot;Minimum time solution found!&quot;)
+println(&quot;=&quot;^50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Solving minimum time problem...
+==================================================
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.8.2.
+
+Number of nonzeros in equality constraint Jacobian...:      616
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:      994
+
+Total number of variables............................:      156
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:       80
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:       78
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  5.8500322e+00 1.48e-01 1.00e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  3.4748274e+00 7.10e-02 1.09e+00  -0.8 5.06e-01    -  1.00e+00 8.49e-01h  1
+   2  2.2130852e+00 5.08e-02 2.54e+00  -4.0 1.93e+00    -  3.34e-01 2.82e-01f  1
+   3  3.5124253e+00 8.41e-02 7.52e+00  -0.3 2.17e+00   0.0 5.64e-01 2.16e-01f  1
+   4  3.9042233e+00 7.94e-02 7.42e+00  -0.6 4.79e+00    -  6.41e-02 5.73e-02h  1
+   5  3.9771397e+00 1.01e-01 4.96e+00  -1.4 3.33e+00    -  3.10e-01 1.65e-01h  1
+   6  4.7233048e+00 8.52e-02 7.61e+00  -0.1 2.52e+00    -  1.65e-01 1.78e-01h  1
+   7  4.7150610e+00 7.33e-02 5.34e+00  -4.0 9.34e-01    -  2.44e-01 1.40e-01h  1
+   8  4.7959943e+00 6.95e-02 5.15e+00  -4.0 2.23e+00    -  4.26e-02 5.14e-02h  1
+   9  5.1321349e+00 6.12e-02 2.96e+01  -0.7 2.24e+00    -  4.10e-01 1.22e-01h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10  5.3881169e+00 5.61e-02 2.48e+01  -1.8 2.35e+00   0.4 7.04e-02 8.39e-02h  1
+  11  5.4322952e+00 5.56e-02 2.40e+01  -1.0 1.64e+01  -0.1 1.84e-02 8.48e-03h  1
+  12  5.6081690e+00 5.16e-02 4.83e+01  -0.2 3.57e+00   1.3 1.27e-01 7.35e-02H  1
+  13  5.8533285e+00 4.96e-02 4.63e+01  -4.0 3.98e+00    -  3.89e-02 3.83e-02h  1
+  14  6.0849990e+00 4.85e-02 7.77e+02  -0.2 8.68e+00    -  9.47e-01 2.22e-02h  1
+  15  6.4975637e+00 4.73e-02 4.75e+03   0.6 1.48e+01   0.8 1.00e+00 2.43e-02h  1
+  16  6.9205017e+00 4.75e-02 7.17e+04   2.7 2.96e+01    -  2.21e-01 8.59e-03f  1
+  17  6.7392697e+00 4.39e-02 1.11e+06   2.7 7.06e+00    -  1.00e+00 6.03e-02h  1
+  18  6.5956176e+00 4.28e-02 7.30e+05  -3.3 1.57e+01    -  1.83e-02 2.61e-02f  1
+  19  6.6744306e+00 4.26e-02 7.22e+05   2.8 2.62e+01    -  2.75e-03 3.03e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  20  7.0126891e+00 4.21e-02 4.66e+06   2.8 2.71e+01    -  2.13e-01 1.26e-02h  1
+  21  7.1747646e+00 4.19e-02 4.57e+06   2.8 3.88e+01    -  8.62e-04 4.31e-03h  1
+  22  7.4241741e+00 4.16e-02 1.14e+07   2.8 3.78e+01    -  2.00e-01 6.71e-03h  1
+  23  7.6385317e+00 4.15e-02 1.13e+07   2.8 5.81e+01    -  3.81e-04 3.84e-03h  1
+  24  7.8189585e+00 4.13e-02 4.92e+07   2.8 5.20e+01    -  5.62e-01 3.52e-03h  1
+  25  8.2869770e+00 4.11e-02 4.75e+07   2.8 8.85e+01    -  1.67e-04 5.32e-03h  1
+  26  8.2919662e+00 4.11e-02 5.73e+07  -2.8 4.25e+01    -  6.45e-03 1.11e-04h  1
+  27  8.6110192e+00 4.10e-02 5.50e+07   2.8 1.56e+02    -  8.81e-05 2.11e-03h  1
+  28  8.7362753e+00 4.10e-02 6.59e+08   2.7 1.09e+02    -  1.00e+00 1.18e-03h  1
+  29  8.7339376e+00 4.08e-02 8.85e+08   2.8 7.10e+01    -  4.82e-03 2.12e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  30  8.7295732e+00 4.08e-02 1.01e+09  -1.8 2.70e+02   4.8 1.33e-03 9.45e-04h  2
+  31  8.7849846e+00 4.08e-02 9.65e+08   2.8 1.48e+02   7.1 1.28e-04 3.82e-04h  1
+  32  8.8428218e+00 4.08e-02 1.01e+09   2.8 1.16e+02   6.6 6.84e-04 4.55e-04h  1
+  33  8.9373741e+00 4.07e-02 9.00e+08   2.8 7.12e+01   7.0 3.37e-04 7.15e-04h  1
+  34  9.0368176e+00 4.07e-02 9.66e+08   2.8 7.98e+01   6.5 9.68e-04 6.50e-04h  1
+  35  9.2408522e+00 4.07e-02 1.22e+09   2.8 9.56e+01   6.1 2.38e-03 1.18e-03h  1
+  36  9.3642019e+00 4.06e-02 4.80e+09   2.8 1.26e+02   5.6 1.11e-02 5.92e-04h  2
+  37  9.4587755e+00 4.06e-02 4.75e+09   2.8 2.14e+03   5.1 4.12e-04 5.37e-04h  1
+  38r 9.4587755e+00 4.06e-02 1.00e+03   2.8 0.00e+00    -  0.00e+00 2.87e-07R  6
+  39r 9.4809883e+00 3.15e-02 3.92e+00   1.1 6.49e-01    -  9.96e-01 9.82e-01f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  40  9.4115758e+00 2.92e-02 2.23e+01  -0.5 9.10e-01    -  6.65e-01 7.30e-02f  1
+  41  7.2873335e+00 2.63e-02 7.69e+01  -0.6 4.16e+00    -  4.75e-01 1.09e-01f  1
+  42  7.8038735e+00 2.46e-02 1.51e+02  -4.0 1.64e+00    -  1.58e-01 6.35e-02h  1
+  43  8.6660479e+00 2.37e-02 5.50e+01  -4.0 6.34e+00    -  2.11e-02 3.66e-02h  1
+  44  8.6698096e+00 2.36e-02 8.57e+04  -0.7 4.02e-01   4.6 9.72e-01 2.46e-03h  1
+  45  8.6925854e+00 2.36e-02 6.03e+06   1.3 4.83e+00   4.2 1.00e+00 2.09e-03h  1
+  46  9.1467215e+00 2.35e-02 5.51e+06   2.5 8.98e+01    -  9.44e-02 5.26e-03f  1
+  47  9.5071537e+00 2.33e-02 5.49e+06   1.8 2.15e+02    -  2.72e-03 4.83e-03h  1
+  48  9.4942695e+00 2.32e-02 5.46e+06   1.5 1.88e+02    -  4.91e-03 2.88e-03h  1
+  49  9.4208350e+00 2.28e-02 2.81e+06   2.1 1.37e+01    -  4.94e-01 1.44e-02f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  50  9.9427177e+00 2.19e-02 4.56e+05   2.4 8.07e+00    -  1.00e+00 3.93e-02f  1
+  51  9.9725274e+00 2.33e-02 1.40e+06   2.2 5.51e+01    -  2.42e-02 4.36e-03h  2
+  52  9.9738186e+00 2.33e-02 2.36e+06   2.8 4.42e+02    -  5.76e-03 2.55e-05h  8
+  53  9.9842744e+00 2.34e-02 3.27e+06   2.3 1.97e+02    -  3.29e-03 2.27e-04h  6
+  54  9.9934340e+00 2.34e-02 6.86e+06   2.8 1.99e+02    -  8.82e-03 2.17e-04h  6
+  55  1.0001034e+01 2.35e-02 1.19e+07   2.8 1.71e+02    -  6.19e-03 2.45e-04h  6
+  56  1.0007178e+01 2.36e-02 8.28e+07   2.8 1.73e+02    -  4.87e-02 2.35e-04h  6
+  57  1.0011379e+01 2.36e-02 1.32e+08   2.8 1.51e+02    -  5.22e-03 2.57e-04h  6
+  58  1.0019439e+01 2.37e-02 1.85e+08   2.8 1.67e+02    -  3.42e-03 2.28e-04h  6
+  59  1.0032689e+01 2.38e-02 3.73e+08   2.8 1.76e+02    -  8.07e-03 1.99e-04h  6
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  60  1.0044335e+01 2.38e-02 3.38e+09   2.8 1.68e+02    -  6.13e-02 2.08e-04h  6
+  61  1.0056319e+01 2.39e-02 4.29e+09   2.8 1.52e+02    -  2.27e-03 2.29e-04h  6
+  62  1.0064322e+01 2.39e-02 1.72e+10   2.8 1.67e+02    -  2.19e-02 2.02e-04h  6
+  63  1.0073652e+01 2.40e-02 2.66e+10   2.8 1.56e+02    -  4.14e-03 2.10e-04h  6
+  64  1.0082650e+01 2.41e-02 8.84e+10   2.8 1.65e+02    -  1.62e-02 1.92e-04h  6
+  65  1.0091706e+01 2.41e-02 1.50e+11   2.8 1.55e+02    -  4.98e-03 1.98e-04h  6
+  66  1.0100328e+01 2.42e-02 1.04e+12   2.8 1.61e+02    -  3.95e-02 1.85e-04h  6
+  67  1.0109215e+01 2.43e-02 1.77e+12   2.8 1.47e+02    -  4.79e-03 1.96e-04h  6
+  68  1.0117374e+01 2.43e-02 9.07e+12   2.8 1.55e+02    -  2.67e-02 1.80e-04h  6
+  69  1.0125919e+01 2.44e-02 1.72e+13   2.8 1.46e+02    -  5.87e-03 1.86e-04h  6
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  70  1.0129875e+01 2.44e-02 1.96e+14   2.8 1.51e+02    -  6.47e-02 8.71e-05h  7
+  71  1.0137900e+01 2.45e-02 3.90e+14   2.8 1.37e+02    -  6.26e-03 1.89e-04h  6
+  72  1.0142048e+01 2.45e-02 1.83e+15   2.8 1.45e+02    -  2.25e-02 8.64e-05h  7
+  73  1.0150294e+01 2.45e-02 4.12e+15   2.8 1.37e+02    -  7.68e-03 1.81e-04h  6
+  74  1.0154034e+01 2.45e-02 1.31e+16   2.8 1.42e+02    -  1.30e-02 8.45e-05h  7
+  75  1.0156025e+01 2.46e-02 3.27e+16   2.8 2.25e+02    -  1.40e-02 5.23e-05h  7
+  76  1.0156811e+01 2.46e-02 4.09e+16   2.8 2.58e+02    -  3.20e-03 2.25e-05h  8
+  77  1.0239589e+01 9.34e-02 4.08e+16   2.1 2.93e+02    -  2.51e-03 2.51e-03s 14
+  78  1.0306545e+01 9.33e-02 3.25e+16   1.4 1.12e+01    -  4.12e-02 7.55e-03h  1
+  79  1.0297241e+01 9.32e-02 3.25e+16   1.4 1.04e+01  14.0 1.71e-02 8.14e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  80  1.0093500e+01 9.26e-02 3.21e+16   1.4 1.81e+01  13.5 2.58e-03 5.90e-03h  1
+  81r 1.0093500e+01 9.26e-02 9.98e+02   1.4 0.00e+00  14.0 0.00e+00 2.94e-07R  6
+  82r 1.0106616e+01 2.67e-02 7.89e+01   1.7 5.33e-01    -  9.26e-01 8.52e-01f  1
+  83  9.3130845e+00 5.07e-02 1.46e+02   0.7 1.83e+01    -  1.00e+00 4.17e-02f  1
+  84  7.6743096e+00 5.68e-02 6.38e+01   0.7 9.17e-01    -  1.00e+00 8.26e-01f  1
+  85  9.4073940e+00 7.24e-02 2.71e+02   0.7 1.08e+00    -  4.98e-01 1.00e+00f  1
+  86  9.2663353e+00 5.32e-02 4.97e+12   0.7 4.29e-01  13.5 7.97e-01 3.04e-01h  1
+  87  9.2694257e+00 5.31e-02 4.96e+12   0.7 3.27e-01  13.0 1.00e+00 2.55e-03h  1
+  88  9.2694454e+00 5.31e-02 4.96e+12   0.7 2.47e-01  13.4 1.00e+00 2.50e-05h  1
+  89  9.2740664e+00 5.29e-02 4.94e+12   0.7 3.84e-01  12.9 8.56e-01 3.58e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  90  9.2835043e+00 5.23e-02 4.88e+12   0.7 2.76e-01  13.4 1.00e+00 1.14e-02h  1
+  91  9.2886180e+00 5.21e-02 4.86e+12   0.7 5.76e-01  12.9 4.30e-01 3.62e-03h  1
+  92  9.3237289e+00 5.01e-02 4.68e+12   0.7 3.36e-01  13.3 1.00e+00 3.90e-02h  1
+  93  9.3240988e+00 5.00e-02 1.47e+13   0.7 2.98e-01  13.7 1.00e+00 5.05e-04h  1
+  94  9.3605948e+00 4.83e-02 4.52e+12   0.7 3.88e-01  13.3 1.00e+00 3.50e-02h  1
+  95  9.3635296e+00 4.81e-02 1.74e+13   0.7 3.47e-01  13.7 1.00e+00 3.51e-03h  1
+  96  9.3923567e+00 4.70e-02 5.00e+12   0.7 4.94e-01  13.2 1.00e+00 2.40e-02h  1
+  97  9.4070255e+00 4.62e-02 1.80e+13   0.7 4.06e-01  13.6 1.00e+00 1.61e-02h  1
+  98  9.4386372e+00 4.52e-02 4.97e+12   0.8 6.48e-01  13.2 1.00e+00 2.28e-02h  1
+  99  9.4469545e+00 4.48e-02 2.49e+13   2.8 4.56e-01  13.6 1.00e+00 8.58e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 100  9.5166054e+00 4.28e-02 2.09e+13   2.1 1.09e+00  13.1 2.10e-01 4.45e-02h  1
+ 101  9.5171571e+00 4.28e-02 2.36e+13   2.7 6.01e-01  13.5 1.00e+00 4.69e-04h  1
+ 102  9.5362583e+00 4.23e-02 1.70e+13   2.8 1.01e+00  13.1 3.75e-01 1.17e-02h  1
+ 103  9.6060092e+00 3.98e-02 3.57e+13   2.8 6.43e-01  13.5 1.00e+00 6.01e-02h  1
+ 104  9.6703760e+00 3.77e-02 9.56e+13   2.8 6.30e-01  13.9 9.45e-01 5.49e-02h  1
+ 105  9.6717670e+00 3.76e-02 4.44e+13   2.8 1.76e+00  13.4 6.27e-01 7.20e-04h  1
+ 106  9.6723264e+00 3.76e-02 1.37e+14   2.8 6.32e-01  13.9 9.33e-01 4.14e-04h  1
+ 107  9.8428594e+00 3.47e-02 1.19e+14   2.8 1.46e+00  13.4 1.88e-01 7.90e-02h  1
+ 108  9.8450364e+00 3.47e-02 1.80e+14   2.8 1.06e+00  13.8 1.00e+00 1.10e-03h  1
+ 109  9.8460660e+00 3.47e-02 1.74e+14   2.8 6.82e+00  13.3 3.44e-02 3.95e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 110  9.8505495e+00 3.46e-02 2.30e+14   2.8 8.49e-01  13.8 8.55e-01 1.82e-03h  1
+ 111  9.9427814e+00 3.31e-02 5.17e+14   2.8 6.80e-01  14.2 9.29e-01 4.40e-02h  1
+ 112  9.9700703e+00 3.29e-02 3.52e+14   2.8 2.59e+00  13.7 5.07e-01 7.87e-03h  1
+ 113  9.9805798e+00 3.28e-02 6.42e+14   2.8 8.68e-01  14.1 5.63e-01 2.54e-03h  1
+ 114  1.0060432e+01 3.23e-02 5.61e+14   2.8 1.74e+00  13.7 2.35e-01 1.55e-02h  1
+ 115  1.0065762e+01 3.22e-02 1.10e+15   2.8 8.69e-01  14.1 1.00e+00 1.16e-03h  1
+ 116  1.0216702e+01 3.13e-02 1.04e+15   2.8 3.03e+00  13.6 7.55e-02 3.17e-02h  1
+ 117  1.0219301e+01 3.12e-02 1.10e+15   2.8 1.68e+00  14.0 5.38e-01 5.70e-04h  1
+ 118  1.0232698e+01 3.12e-02 1.05e+15   2.8 2.30e+00  13.6 1.36e-01 2.31e-03h  1
+ 119  1.0641641e+01 2.92e-02 1.30e+15   2.8 1.14e+00  14.0 8.72e-01 7.07e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 120  1.0646377e+01 2.92e-02 3.82e+15   2.8 1.32e+00  14.4 4.38e-01 6.08e-04h  1
+ 121  1.0743886e+01 2.89e-02 3.73e+15   2.8 3.93e+00  13.9 8.84e-02 1.03e-02h  1
+ 122  1.0746413e+01 2.89e-02 8.02e+15   2.8 1.65e+00  14.4 1.00e+00 2.46e-04h  1
+ 123  1.1103320e+01 2.81e-02 6.90e+15   2.8 2.01e+00  13.9 3.08e-01 2.95e-02h  1
+ 124  1.1203667e+01 2.78e-02 8.71e+15   2.8 3.04e+00  14.3 1.85e-01 7.39e-03h  1
+ 125  1.1292387e+01 2.77e-02 3.37e+16   2.8 2.84e+00  14.7 6.63e-01 6.78e-03h  1
+ 126  1.1293542e+01 2.77e-02 3.31e+16   2.8 3.41e+01  14.3 5.74e-03 6.30e-05h  4
+ 127  1.1341165e+01 2.76e-02 3.44e+16   2.8 4.18e+00  14.7 1.55e-01 3.61e-03h  1
+ 128  1.1408225e+01 2.74e-02 3.41e+16   2.8 2.91e+00  14.2 1.52e-01 4.72e-03h  1
+ 129  1.1554071e+01 2.71e-02 5.31e+16   2.8 3.23e+00  14.6 4.09e-01 1.05e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 130  1.1725931e+01 2.69e-02 5.24e+16   2.8 1.57e+01  14.2 2.55e-02 9.84e-03h  1
+ 131  1.1728339e+01 2.69e-02 5.36e+16   2.8 8.41e+00  14.6 7.71e-02 1.84e-04h  1
+ 132r 1.1728339e+01 2.69e-02 8.97e+02   2.8 0.00e+00  14.1 0.00e+00 4.24e-07R  2
+ 133r 1.1728665e+01 1.37e-02 9.77e+00  -3.3 6.42e-01    -  9.89e-01 9.79e-01f  1
+ 134  1.1664845e+01 1.34e-02 4.20e+00  -0.3 7.67e+00    -  1.88e-02 1.84e-02f  1
+ 135  1.1393815e+01 1.16e-02 3.48e+00  -1.0 2.61e+00    -  5.73e-01 1.82e-01f  1
+ 136  9.3174351e+00 1.76e-02 8.16e+00  -1.1 1.63e+00    -  4.38e-01 2.21e-01f  1
+ 137  9.4074256e+00 1.69e-02 7.85e+00  -4.0 2.01e+00    -  9.15e-02 3.83e-02h  1
+ 138  9.8108831e+00 1.43e-02 1.42e+01  -2.7 1.96e+00    -  2.47e-01 1.54e-01h  1
+ 139  9.8272786e+00 1.41e-02 9.13e+10  -0.8 2.09e-01  13.6 9.48e-01 1.04e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 140  9.8274411e+00 1.41e-02 9.16e+10  -0.2 2.09e-01  13.1 1.00e+00 1.03e-04h  1
+ 141r 9.8274411e+00 1.41e-02 1.00e+03  -0.1 0.00e+00  12.7 0.00e+00 4.58e-07R  5
+ 142r 1.0001837e+01 4.54e-03 7.95e+02   0.4 7.77e-01    -  1.00e+00 7.37e-02f  1
+ 143  9.9855348e+00 4.21e-03 1.02e+01  -1.6 5.88e-01    -  6.14e-01 7.50e-02h  1
+ 144  1.2020224e+01 1.20e-02 6.91e+01  -0.3 1.71e+00    -  1.00e+00 1.50e-01f  1
+ 145  1.1890153e+01 1.10e-02 6.63e+01  -0.5 3.43e+00    -  5.33e-01 1.45e-01h  1
+ 146  1.2440739e+01 9.52e-03 1.35e+02  -0.5 1.29e+00    -  2.86e-01 1.86e-01h  1
+ 147  1.3037556e+01 8.58e-03 2.66e+02  -0.5 3.23e+00    -  1.64e-01 9.59e-02h  1
+ 148  1.3059081e+01 8.51e-03 2.64e+02  -0.8 2.21e+01    -  1.31e-02 7.72e-03h  1
+ 149  1.3088272e+01 8.24e-03 8.35e+09  -0.6 1.71e-01  12.2 1.00e+00 3.16e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 150  1.3088584e+01 8.24e-03 8.37e+09  -1.2 1.67e-01  11.7 1.00e+00 3.25e-04h  1
+ 151  1.3088846e+01 8.24e-03 2.42e+10  -1.2 1.77e-01  11.2 1.00e+00 2.33e-04h  1
+ 152  1.3102792e+01 8.15e-03 7.28e+09   2.8 1.88e-01  10.8 1.00e+00 1.07e-02h  1
+ 153  1.3122572e+01 8.05e-03 5.14e+09   2.8 3.01e-01  10.3 7.32e-01 1.21e-02h  1
+ 154  1.3147352e+01 7.94e-03 5.53e+09   2.8 2.45e-01  10.7 5.09e-01 1.30e-02h  1
+ 155  1.3177071e+01 7.83e-03 4.43e+09   2.7 4.54e-01  10.2 1.00e+00 1.45e-02h  1
+ 156  1.3218111e+01 7.70e-03 2.54e+10   2.7 3.60e-01  10.7 1.00e+00 1.62e-02h  1
+ 157  1.3251117e+01 7.63e-03 1.84e+10   2.8 5.93e-01  10.2 7.36e-01 9.89e-03h  1
+ 158  1.3284718e+01 7.56e-03 7.04e+10   2.7 3.05e-01  10.6 1.00e+00 8.10e-03h  1
+ 159  1.3313593e+01 7.52e-03 4.63e+10   2.8 5.68e-01  10.1 1.00e+00 6.29e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 160  1.3352948e+01 7.45e-03 4.27e+10   2.8 1.12e+00   9.7 1.52e-01 7.47e-03h  1
+ 161  1.3402159e+01 7.39e-03 7.08e+10   2.8 1.23e+00  10.1 5.13e-01 6.86e-03h  1
+ 162  1.3407355e+01 7.39e-03 1.94e+11   2.8 1.50e+00  10.5 3.23e-01 5.21e-04h  1
+ 163  1.3631937e+01 7.16e-03 1.90e+11   2.8 1.77e+00  10.0 3.46e-01 2.02e-02h  1
+ 164  1.3641140e+01 7.16e-03 3.83e+11   2.8 1.99e+00  10.5 4.69e-01 7.58e-04h  1
+ 165  1.4258695e+01 7.02e-03 3.36e+11   2.8 1.99e+00  10.0 2.40e-01 4.92e-02h  1
+ 166  1.4363389e+01 6.97e-03 5.59e+11   2.8 2.62e+00  10.4 4.42e-01 8.03e-03h  1
+ 167  1.4376378e+01 6.93e-03 5.50e+11   2.8 7.53e+00   9.9 1.27e-02 5.45e-03h  1
+ 168  1.4397672e+01 6.92e-03 6.34e+11   2.8 2.83e+00  10.4 1.63e-01 1.33e-03h  1
+ 169  1.4444725e+01 6.90e-03 6.12e+11   2.8 4.27e+00   9.9 1.34e-01 3.13e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 170  1.4956059e+01 6.85e-03 8.04e+11   2.8 3.53e+00  10.3 3.38e-01 3.03e-02h  1
+ 171  1.4733450e+01 6.95e-03 8.29e+11   1.9 8.71e+01   9.8 2.42e-04 1.32e-03f  1
+ 172  1.4734598e+01 6.95e-03 7.63e+11   2.8 5.05e+00  10.3 8.53e-02 2.27e-04h  1
+ 173  1.4762303e+01 6.94e-03 6.89e+11   2.8 3.85e+00   9.8 3.16e-01 1.94e-03h  1
+ 174  1.4875601e+01 6.90e-03 6.67e+11   2.8 6.54e+00   9.3 6.57e-02 7.41e-03h  1
+ 175  1.5072771e+01 6.85e-03 8.03e+11   2.8 5.70e+00   9.7 4.48e-01 1.10e-02h  1
+ 176  1.5515065e+01 6.87e-03 7.98e+11   2.8 3.29e+01   9.2 4.61e-02 1.55e-02h  1
+ 177  1.5510475e+01 6.87e-03 7.14e+11   2.8 2.12e+01   9.7 1.57e-02 2.41e-04h  1
+ 178r 1.5510475e+01 6.87e-03 9.93e+02   2.8 0.00e+00   9.2 0.00e+00 2.87e-07R  4
+ 179r 1.5510539e+01 5.53e-03 1.02e+01  -3.4 6.24e-01    -  9.90e-01 9.85e-01f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 180  1.5528522e+01 5.47e-03 2.23e+01  -4.0 5.27e-01    -  2.48e-01 1.06e-02h  1
+ 181  1.6471708e+01 7.37e-03 3.84e+02  -1.3 5.31e+00    -  1.63e-01 7.68e-02f  1
+ 182  1.6325686e+01 6.56e-03 3.74e+02  -0.5 1.03e+01    -  2.07e-02 4.24e-02f  1
+ 183  1.6425884e+01 6.44e-03 4.53e+02  -4.0 4.61e+00    -  1.26e-01 1.76e-02h  1
+ 184  1.6573434e+01 6.43e-03 2.01e+04   1.2 6.45e+01    -  8.29e-01 2.41e-03f  1
+ 185  1.7343684e+01 1.17e-02 3.05e+05   1.0 9.85e+00    -  6.46e-02 6.51e-02h  1
+ 186  1.7411995e+01 1.16e-02 3.04e+05  -0.7 9.89e+01    -  6.54e-03 4.17e-03h  1
+ 187  1.7743787e+01 1.14e-02 2.97e+05   1.7 3.13e+01    -  1.00e+00 2.09e-02f  1
+ 188  1.8030725e+01 1.18e-02 4.29e+05  -4.0 1.11e+01    -  5.94e-02 1.22e-02h  1
+ 189  1.8045343e+01 1.18e-02 5.81e+05   2.8 3.64e+01    -  7.91e-03 5.74e-04h  5
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 190  1.8066239e+01 1.18e-02 2.72e+07   2.6 2.54e+01    -  1.00e+00 7.71e-04h  5
+ 191  1.8180266e+01 1.17e-02 2.69e+07  -2.8 3.43e+01    -  2.44e-03 2.93e-03h  3
+ 192  1.8076237e+01 1.20e-02 3.16e+07  -2.8 1.73e+01    -  1.72e-02 1.06e-02f  1
+ 193  1.8368765e+01 1.19e-02 2.02e+07   2.8 1.27e+01    -  2.19e-04 1.90e-02h  2
+ 194  1.8520872e+01 1.20e-02 2.19e+07   1.1 2.91e+01    -  1.14e-02 7.51e-03f  1
+ 195  1.8548424e+01 1.19e-02 2.19e+07   2.5 1.49e+01    -  1.63e-01 1.85e-03h  1
+ 196  1.8549995e+01 1.19e-02 6.70e+07   1.8 3.86e+00    -  3.45e-01 4.95e-04h  1
+ 197  1.8590083e+01 1.20e-02 5.17e+08   1.8 4.75e+01    -  5.09e-02 1.24e-03h  3
+ 198  1.8628456e+01 1.20e-02 4.46e+09   1.1 4.49e+01    -  4.50e-02 1.33e-03h  3
+ 199  1.8690287e+01 1.21e-02 1.16e+11   1.1 4.32e+01    -  1.11e-01 2.11e-03h  2
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 200  1.8756260e+01 1.22e-02 3.25e+12   1.1 4.36e+01    -  6.49e-02 2.20e-03h  1
+
+Number of Iterations....: 200
+
+                                   (scaled)                 (unscaled)
+Objective...............:   1.8756259883371239e+01    1.8756259883371239e+01
+Dual infeasibility......:   3.2496146063248760e+12    3.2496146063248760e+12
+Constraint violation....:   1.2224865032347454e-02    1.2224865032347454e-02
+Variable bound violation:   0.0000000000000000e+00    0.0000000000000000e+00
+Complementarity.........:   1.6396741953995086e+07    1.6396741953995086e+07
+Overall NLP error.......:   4.5815933744491497e+02    3.2496146063248760e+12
+
+
+Number of objective function evaluations             = 430
+Number of objective gradient evaluations             = 201
+Number of equality constraint evaluations            = 430
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 206
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 200
+Total seconds in IPOPT                               = 6.437
+
+EXIT: Maximum Number of Iterations Exceeded.
+==================================================
+Minimum time solution found!
+==================================================</code></pre><h2 id="Step-6:-Analyze-Time-Optimal-Solution"><a class="docs-heading-anchor" href="#Step-6:-Analyze-Time-Optimal-Solution">Step 6: Analyze Time-Optimal Solution</a><a id="Step-6:-Analyze-Time-Optimal-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Step-6:-Analyze-Time-Optimal-Solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">x_sol_mintime = prob_mintime.trajectory.x
+u_sol_mintime = prob_mintime.trajectory.u
+Δt_sol_mintime = prob_mintime.trajectory.Δt
+
+total_time_mintime = sum(Δt_sol_mintime)
+
+println(&quot;\nMinimum time solution:&quot;)
+println(&quot;  Total time: $total_time_mintime seconds&quot;)
+println(&quot;  Average Δt: &quot;, mean(Δt_sol_mintime))
+println(&quot;  Min Δt: &quot;, minimum(Δt_sol_mintime))
+println(&quot;  Max Δt: &quot;, maximum(Δt_sol_mintime))
+
+println(&quot;\nControl statistics:&quot;)
+println(&quot;  Max |u|: &quot;, maximum(abs.(u_sol_mintime)))
+println(&quot;  Mean |u|: &quot;, mean(abs.(u_sol_mintime)))
+println(&quot;  ||u||: &quot;, norm(u_sol_mintime))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+Minimum time solution:
+  Total time: 18.965055330766553 seconds
+  Average Δt: 0.47412638326916384
+  Min Δt: 0.021888946707929527
+  Max Δt: 0.4999948583785353
+
+Control statistics:
+  Max |u|: 0.9999996163268332
+  Mean |u|: 0.949535611593682
+  ||u||: 6.161427452062484</code></pre><p>Check if controls saturate</p><pre><code class="language-julia hljs">u_saturated = sum(abs.(u_sol_mintime) .&gt; 0.99)
+println(&quot;  Time steps with |u| &gt; 0.99: $u_saturated / $N&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  Time steps with |u| &gt; 0.99: 37 / 40</code></pre><h2 id="Step-7:-Comparison-with-Fixed-Time-Solution"><a class="docs-heading-anchor" href="#Step-7:-Comparison-with-Fixed-Time-Solution">Step 7: Comparison with Fixed-Time Solution</a><a id="Step-7:-Comparison-with-Fixed-Time-Solution-1"></a><a class="docs-heading-anchor-permalink" href="#Step-7:-Comparison-with-Fixed-Time-Solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
+println(&quot;COMPARISON: MINIMUM TIME vs FIXED TIME&quot;)
+println(&quot;=&quot;^50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==================================================
+COMPARISON: MINIMUM TIME vs FIXED TIME
+==================================================</code></pre><p>Solve fixed-time problem with same total time</p><pre><code class="language-julia hljs">Δt_fixed = total_time_mintime / N
+
+traj_fixed = NamedTrajectory(
+    (x = x_guess, u = u_guess, Δt = fill(Δt_fixed, N));
+    timestep = :Δt,
+    controls = :u,
+    initial = (x = x_init,),
+    final = (x = x_goal,),
+    bounds = (u = 1.0,),
+)
+
+obj_fixed = QuadraticRegularizer(:u, traj_fixed, 1.0)
+integrator_fixed = BilinearIntegrator(G, :x, :u, traj_fixed)
+prob_fixed = DirectTrajOptProblem(traj_fixed, obj_fixed, integrator_fixed)
+
+println(&quot;\nSolving fixed-time problem with T = $total_time_mintime seconds...&quot;)
+solve!(prob_fixed; max_iter = 150, verbose = false)
+
+u_sol_fixed = prob_fixed.trajectory.u
+
+println(&quot;\nComparison:&quot;)
+println(&quot;  Minimum time:&quot;)
+println(&quot;    Total time: $total_time_mintime s&quot;)
+println(&quot;    ||u||: &quot;, norm(u_sol_mintime))
+println(&quot;    Max |u|: &quot;, maximum(abs.(u_sol_mintime)))
+println(&quot;  Fixed time:&quot;)
+println(&quot;    Total time: &quot;, sum(prob_fixed.trajectory.Δt), &quot; s&quot;)
+println(&quot;    ||u||: &quot;, norm(u_sol_fixed))
+println(&quot;    Max |u|: &quot;, maximum(abs.(u_sol_fixed)))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr33"><span class="sgr1">┌ Warning: </span></span>Trajectory has timestep variable :Δt but no bounds on it.
+<span class="sgr33"><span class="sgr1">│ </span></span>Adding default lower bound of 0 to prevent negative timesteps.
+<span class="sgr33"><span class="sgr1">│ </span></span>
+<span class="sgr33"><span class="sgr1">│ </span></span>Recommended: Add explicit bounds when creating the trajectory:
+<span class="sgr33"><span class="sgr1">│ </span></span>  NamedTrajectory(...; Δt_bounds=(min, max))
+<span class="sgr33"><span class="sgr1">│ </span></span>Example:
+<span class="sgr33"><span class="sgr1">│ </span></span>  NamedTrajectory(qtraj, N; Δt_bounds=(1e-3, 0.5))
+<span class="sgr33"><span class="sgr1">│ </span></span>
+<span class="sgr33"><span class="sgr1">│ </span></span>Or use timesteps_all_equal=true in problem options to fix timesteps.
+<span class="sgr33"><span class="sgr1">└ </span></span><span class="sgr90">@ DirectTrajOpt.Problems ~/work/DirectTrajOpt.jl/DirectTrajOpt.jl/src/problems.jl:66</span>
+
+Solving fixed-time problem with T = 18.965055330766553 seconds...
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.8.2.
+
+Number of nonzeros in equality constraint Jacobian...:      616
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:      994
+
+
+Number of Iterations....: 0
+
+Number of objective function evaluations             = 0
+Number of objective gradient evaluations             = 1
+Number of equality constraint evaluations            = 0
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 1
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 0
+Total seconds in IPOPT                               = 0.002
+
+EXIT: Invalid number in NLP function or derivative detected.
+
+Comparison:
+  Minimum time:
+    Total time: 18.965055330766553 s
+    ||u||: 6.161427452062484
+    Max |u|: 0.9999996163268332
+  Fixed time:
+    Total time: 18.965055330766546 s
+    ||u||: 0.5348970846959128
+    Max |u|: 0.22530894943159355</code></pre><h2 id="Step-8:-Effect-of-Time-Weight"><a class="docs-heading-anchor" href="#Step-8:-Effect-of-Time-Weight">Step 8: Effect of Time Weight</a><a id="Step-8:-Effect-of-Time-Weight-1"></a><a class="docs-heading-anchor-permalink" href="#Step-8:-Effect-of-Time-Weight" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
+println(&quot;EXPLORING TIME WEIGHT EFFECTS&quot;)
+println(&quot;=&quot;^50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+==================================================
+EXPLORING TIME WEIGHT EFFECTS
+==================================================</code></pre><p>Try different time weights</p><pre><code class="language-julia hljs">time_weights = [0.1, 1.0, 10.0]
+results = []
+
+for w_t in time_weights
+    traj_test = NamedTrajectory(
+        (x = x_guess, u = u_guess, Δt = Δt_guess);
+        timestep = :Δt,
+        controls = :u,
+        initial = (x = x_init,),
+        final = (x = x_goal,),
+        bounds = (u = 1.0, Δt = (0.01, 0.5)),
+    )
+
+    obj_test = (
+        1e-2 * QuadraticRegularizer(:u, traj_test, 1.0) +
+        w_t * MinimumTimeObjective(traj_test, 1.0)
+    )
+
+    integrator_test = BilinearIntegrator(G, :x, :u, traj_test)
+    prob_test = DirectTrajOptProblem(traj_test, obj_test, integrator_test)
+
+    solve!(prob_test; max_iter = 200, verbose = false)
+
+    push!(
+        results,
+        (
+            weight = w_t,
+            time = sum(prob_test.trajectory.Δt),
+            control_norm = norm(prob_test.trajectory.u),
+            max_control = maximum(abs.(prob_test.trajectory.u)),
+        ),
+    )
+end
+
+println(&quot;\nTime weight effects:&quot;)
+println(&quot;Weight | Total Time | ||u||   | Max |u|&quot;)
+println(&quot;-&quot;^45)
+for r in results
+    println(
+        @sprintf(
+            &quot;%.1f   | %.4f s   | %.4f | %.4f&quot;,
+            r.weight,
+            r.time,
+            r.control_norm,
+            r.max_control
+        )
+    )
+end
+
+println(&quot;\nObservations:&quot;)
+println(&quot;  - Lower weight → slower trajectory, gentler controls&quot;)
+println(&quot;  - Higher weight → faster trajectory, more aggressive controls&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">This is Ipopt version 3.14.19, running with linear solver MUMPS 5.8.2.
+
+Number of nonzeros in equality constraint Jacobian...:      616
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:      994
+
+Total number of variables............................:      156
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:       80
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:       78
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  5.8503219e-01 1.48e-01 1.00e-01   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  5.7621504e-01 8.93e-02 2.24e+00  -0.8 7.62e-01    -  1.00e+00 9.42e-01h  1
+   2  6.8736494e-01 7.04e-02 1.22e+00  -0.6 2.25e+00    -  6.57e-01 4.23e-01f  1
+   3  7.3015429e-01 6.57e-02 1.31e+00  -1.2 8.83e-01    -  5.66e-01 3.81e-01h  1
+   4  7.5555831e-01 5.12e-02 1.01e+00  -4.0 2.65e+00    -  2.18e-01 2.21e-01h  1
+   5  7.6749561e-01 4.67e-02 9.08e-01  -4.0 6.24e+00    -  9.79e-02 8.69e-02h  1
+   6  8.1964630e-01 3.78e-02 1.64e+00  -0.9 2.90e+00  -2.0 7.41e-01 1.75e-01f  1
+   7  9.2818799e-01 2.52e-02 3.60e+00  -4.0 6.46e-01    -  3.14e-01 6.94e-01h  1
+   8  9.7692854e-01 2.27e-02 3.25e+00  -0.9 2.40e+00    -  4.17e-01 9.69e-02f  1
+   9  1.0265577e+00 2.07e-02 1.25e+01  -0.8 3.46e+00    -  1.00e+00 8.93e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10  1.1717818e+00 1.79e-02 6.74e+01  -0.2 1.60e+00    -  8.77e-01 2.22e-01h  1
+  11  1.1946652e+00 1.71e-02 1.24e+02  -0.0 5.44e+00    -  1.00e+00 4.17e-02h  1
+  12  1.2308399e+00 1.43e-02 1.57e+02  -4.0 1.12e+00    -  1.30e-01 1.72e-01h  1
+  13  1.2538809e+00 1.40e-02 6.90e+02   0.7 8.75e+00    -  9.38e-01 2.08e-02f  1
+  14  1.3108333e+00 1.31e-02 4.13e+03   1.2 6.81e+00    -  1.00e+00 5.63e-02h  1
+  15  1.3355121e+00 1.19e-02 1.39e+04   1.2 1.67e+00    -  1.00e+00 9.19e-02h  1
+  16  1.4375802e+00 1.16e-02 3.05e+05   1.6 3.14e+00    -  1.07e-01 1.17e-01h  1
+  17  1.4552790e+00 1.14e-02 3.04e+05   2.0 7.79e+00   2.9 1.00e+00 1.75e-02h  1
+  18  1.4801933e+00 1.12e-02 3.06e+05   0.4 1.71e+00    -  1.40e-01 3.14e-02h  1
+  19  1.5431098e+00 1.07e-02 1.20e+06   2.6 6.04e+00    -  1.00e+00 5.82e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  20  1.5631983e+00 1.03e-02 1.39e+06   2.8 8.87e+00    -  7.37e-02 3.76e-02h  1
+  21  1.6165356e+00 9.99e-03 3.24e+06   2.8 1.97e+01    -  6.25e-02 3.10e-02h  1
+  22  1.6285941e+00 9.89e-03 3.22e+06  -3.3 1.44e+01    -  1.33e-02 9.49e-03h  1
+  23  1.6642007e+00 9.65e-03 3.13e+06   2.8 1.12e+01    -  1.46e-01 2.48e-02h  1
+  24  1.6959096e+00 9.56e-03 3.11e+06   2.8 4.11e+01    -  6.78e-03 8.59e-03h  1
+  25  1.7144956e+00 9.24e-03 7.31e+06   2.8 3.85e+00    -  9.01e-02 3.50e-02h  1
+  26  1.7483630e+00 9.10e-03 1.50e+07   2.8 1.50e+01   4.3 4.05e-02 1.53e-02h  1
+  27  1.7672452e+00 9.09e-03 1.51e+07   2.8 2.17e+02    -  9.47e-04 1.45e-03h  1
+  28  1.7883040e+00 9.01e-03 2.14e+07   2.8 2.17e+01    -  2.32e-02 7.92e-03h  1
+  29  1.8166208e+00 8.90e-03 3.37e+07  -3.1 1.63e+01    -  4.51e-03 1.32e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  30  1.8353915e+00 8.87e-03 3.43e+07  -3.2 4.01e+01    -  6.04e-03 2.76e-03h  1
+  31  1.8609689e+00 8.85e-03 3.45e+07   2.8 1.14e+02    -  2.16e-03 2.17e-03h  1
+  32  1.8759301e+00 8.81e-03 4.19e+07   2.8 3.00e+01    -  4.11e-02 4.37e-03h  1
+  33  1.8991743e+00 8.74e-03 2.68e+08   2.8 3.58e+01    -  8.95e-03 8.62e-03h  1
+  34  1.9089251e+00 8.73e-03 2.69e+08   2.8 1.42e+02    -  3.41e-01 6.53e-04h  1
+  35  1.9230230e+00 8.65e-03 1.57e+09   2.8 1.68e+01    -  4.05e-02 9.26e-03h  1
+  36  1.9245913e+00 8.63e-03 4.54e+11   2.6 7.48e+00    -  1.00e+00 2.49e-03h  1
+  37  1.9246320e+00 8.63e-03 2.28e+14   2.8 3.62e+01    -  5.79e-02 1.13e-04h  1
+  38  1.9246320e+00 8.63e-03 9.73e+13   2.8 1.05e+00  10.1 8.80e-01 2.09e-05h 10
+  39  1.9246320e+00 8.63e-03 1.64e+14   2.8 1.46e+00   9.6 1.00e+00 2.31e-06h 18
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  40  1.9247617e+00 1.17e+00 1.20e+14   2.8 4.38e+00   9.2 2.67e-01 2.67e-01s 21
+  41  1.9247622e+00 1.17e+00 1.39e+18   2.1 1.17e+00    -  7.94e-01 7.35e-05h  1
+  42  1.9260215e+00 6.15e-02 1.39e+16   2.1 1.17e+00    -  9.95e-01 1.00e+00h  1
+  43  1.9261700e+00 6.12e-02 5.66e+14   2.1 4.34e-03  11.4 9.59e-01 9.59e-01s 22
+  44  1.9263853e+00 6.07e-02 4.34e+14   1.4 2.35e-02  10.9 2.32e-01 2.32e-01s 22
+  45  1.9263870e+00 6.07e-02 4.33e+14   0.7 7.48e-04  12.2 2.39e-03 6.25e-02f  5
+  46  1.9262816e+00 6.07e-02 4.31e+14   0.7 3.02e+00    -  1.01e-08 3.32e-04h  1
+  47  1.8935657e+00 5.43e-02 4.32e+14  -0.0 3.03e+00    -  3.28e-04 1.04e-01h  1
+  48  1.8763296e+00 5.14e-02 3.91e+14   2.8 3.12e+00    -  9.23e-02 5.48e-02f  1
+  49  1.8761584e+00 5.13e-02 2.74e+14   2.6 3.16e+00    -  2.93e-01 5.41e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  50r 1.8761584e+00 5.13e-02 9.96e+02   2.8 0.00e+00    -  0.00e+00 3.38e-07R  5
+  51r 1.8658714e+00 4.12e-02 8.39e+00   0.5 6.71e-01    -  9.92e-01 9.58e-01f  1
+  52  1.8562643e+00 4.10e-02 1.71e+00  -0.3 1.43e+00    -  9.86e-03 6.53e-03f  1
+  53  1.8777866e+00 3.69e-02 6.75e+01  -1.0 4.75e+00    -  1.00e+00 1.01e-01f  1
+  54  1.8806599e+00 3.34e-02 8.66e+01  -1.0 2.90e+00    -  4.11e-01 9.59e-02h  1
+  55  1.8804434e+00 3.12e-02 1.62e+03  -0.7 4.09e+00    -  1.00e+00 6.65e-02h  1
+  56  1.8806926e+00 3.11e-02 6.60e+03   0.3 2.70e+01    -  8.41e-02 2.06e-03h  4
+  57  1.8807088e+00 3.11e-02 4.81e+05   1.2 1.16e+02    -  1.00e+00 1.04e-04h  8
+  58  1.8807260e+00 3.11e-02 1.19e+06   1.6 5.00e+01    -  2.70e-02 1.05e-03h  5
+  59  1.8807829e+00 3.11e-02 1.55e+06   0.9 1.02e+02    -  5.11e-03 2.28e-04h  7
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  60  1.8808135e+00 3.11e-02 4.59e+06   0.9 1.08e+02    -  3.12e-02 1.05e-04h  8
+  61  1.8808653e+00 3.11e-02 2.90e+08   1.7 9.13e+01    -  1.00e+00 2.48e-04h  7
+  62  1.8809199e+00 3.11e-02 4.25e+08   2.8 9.08e+01    -  7.73e-03 2.44e-04h  7
+  63  1.8809802e+00 3.11e-02 7.71e+08   2.1 9.76e+01    -  1.29e-02 2.25e-04h  7
+  64  1.8810118e+00 3.11e-02 1.10e+09   1.4 9.91e+01    -  6.65e-03 1.09e-04h  8
+  65  1.8810439e+00 3.11e-02 7.32e+10   2.3 9.80e+01    -  1.00e+00 1.10e-04h  8
+  66  1.8811016e+00 3.11e-02 1.06e+11   2.8 8.89e+01    -  7.03e-03 2.32e-04h  7
+  67  1.8811347e+00 3.11e-02 1.84e+11   2.1 9.57e+01    -  1.12e-02 1.10e-04h  8
+  68  1.8811682e+00 3.11e-02 3.15e+12   2.8 9.48e+01    -  2.40e-01 1.10e-04h  8
+  69  1.8812330e+00 3.11e-02 4.68e+12   2.8 9.04e+01    -  7.44e-03 2.27e-04h  7
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  70  1.8812687e+00 3.10e-02 9.77e+12   2.1 9.67e+01    -  1.59e-02 1.05e-04h  8
+  71  1.8813044e+00 3.10e-02 5.74e+13   2.8 9.42e+01    -  7.04e-02 1.07e-04h  8
+  72  1.8813399e+00 3.10e-02 9.07e+13   2.8 9.14e+01    -  8.48e-03 1.10e-04h  8
+  73  1.8813767e+00 3.10e-02 2.14e+14   2.8 9.35e+01    -  1.95e-02 1.06e-04h  8
+  74  1.8814140e+00 3.10e-02 4.10e+14   2.8 9.32e+01    -  1.30e-02 1.06e-04h  8
+  75  1.8814521e+00 3.10e-02 3.48e+15   2.8 9.38e+01    -  1.05e-01 1.04e-04h  8
+  76  1.8814901e+00 3.10e-02 5.60e+15   2.8 9.14e+01    -  8.67e-03 1.06e-04h  8
+  77  1.8815294e+00 3.10e-02 7.10e+16   2.8 9.35e+01    -  1.73e-01 1.03e-04h  8
+  78  1.8814632e+00 3.10e-02 4.40e+16   2.8 1.02e+02    -  7.77e-03 8.92e-05h  7
+  79  1.8814013e+00 3.10e-02 7.12e+16   2.8 1.09e+02    -  1.80e-02 8.73e-05h  7
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  80  1.8813442e+00 3.10e-02 7.12e+16   2.8 1.10e+02    -  1.26e-02 8.76e-05h  7
+  81  1.8812933e+00 3.10e-02 7.12e+16   2.8 1.14e+02    -  3.42e-02 8.78e-05h  7
+  82  1.8812487e+00 3.10e-02 7.12e+16   2.8 1.18e+02    -  8.36e-03 8.81e-05h  7
+  83  1.8812110e+00 3.10e-02 7.12e+16   2.8 1.22e+02    -  1.00e+00 8.83e-05h  7
+  84  1.8811956e+00 3.10e-02 7.12e+16   2.8 1.27e+02    -  6.44e-03 4.43e-05h  8
+  85  1.8811821e+00 3.10e-02 7.12e+16   2.8 1.29e+02    -  1.87e-02 4.44e-05h  8
+  86  1.8811703e+00 3.10e-02 7.12e+16   2.8 1.31e+02    -  4.66e-01 4.44e-05h  8
+  87  1.8811605e+00 3.10e-02 7.12e+16   2.8 1.33e+02    -  6.28e-03 4.45e-05h  8
+  88  1.8811526e+00 3.10e-02 4.29e+16   2.8 1.36e+02    -  9.35e-03 4.46e-05h  8
+  89  1.8811526e+00 3.10e-02 7.13e+16   2.8 1.56e+02    -  2.40e-02 4.48e-05h  8
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  90  1.8811486e+00 3.10e-02 4.28e+16   2.8 1.40e+02    -  1.03e-02 4.47e-05h  8
+  91  1.8811513e+00 3.10e-02 5.07e+15   2.1 1.64e+02    -  5.79e-03 2.25e-05h  9
+  92r 1.8811513e+00 3.10e-02 1.00e+03   1.4 0.00e+00  11.8 0.00e+00 4.22e-07R 13
+  93r 1.8693011e+00 1.16e-02 2.44e+01   0.7 8.13e-02    -  9.91e-01 5.83e-01f  1
+  94  1.8663164e+00 1.12e-02 3.14e+01  -1.4 3.20e-01    -  8.03e-01 3.59e-02h  1
+  95  1.9184044e+00 1.06e-02 7.12e+02  -1.0 7.44e+00    -  9.99e-01 5.19e-02h  1
+  96  1.9192447e+00 1.06e-02 1.81e+04  -0.3 1.34e+01    -  1.00e+00 3.78e-03h  1
+  97  1.9203778e+00 1.05e-02 8.42e+05   0.7 3.56e+01    -  1.00e+00 5.34e-03h  3
+  98  1.9207709e+00 1.05e-02 5.11e+07   1.6 1.52e+01    -  1.00e+00 1.02e-03h  5
+  99  1.9208331e+00 1.05e-02 3.27e+09   2.8 4.03e+01    -  1.00e+00 2.32e-04h  7
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 100  1.9208955e+00 1.05e-02 1.07e+10   2.8 3.92e+01    -  3.55e-02 2.34e-04h  7
+ 101  1.9209594e+00 1.05e-02 9.35e+10   2.1 3.84e+01    -  1.19e-01 2.35e-04h  7
+ 102  1.9210228e+00 1.05e-02 1.32e+12   1.4 3.84e+01    -  1.99e-01 2.31e-04h  7
+ 103  1.9210859e+00 1.05e-02 5.23e+12   1.4 3.82e+01    -  4.43e-02 2.28e-04h  7
+ 104  1.9211490e+00 1.05e-02 1.89e+14   1.4 3.78e+01    -  5.16e-01 2.24e-04h  7
+ 105  1.9212111e+00 1.05e-02 6.99e+14   1.4 3.82e+01    -  3.91e-02 2.21e-04h  7
+ 106  1.9212735e+00 1.05e-02 5.00e+16   2.8 3.78e+01    -  1.00e+00 2.17e-04h  7
+ 107  1.9213343e+00 1.05e-02 7.18e+16   2.8 3.82e+01    -  3.80e-02 2.12e-04h  7
+ 108  1.9221862e+00 1.05e-02 9.03e+15   2.1 1.08e+01    -  4.47e-01 2.41e-03h  3
+ 109  1.9237748e+00 1.04e-02 1.62e+17   2.8 9.94e+00    -  1.00e+00 4.23e-03h  2
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 110  1.9240637e+00 1.04e-02 1.63e+17   2.8 2.54e+01    -  6.26e-02 7.99e-04h  4
+ 111  1.9243221e+00 1.04e-02 8.50e+16   2.8 2.74e+01    -  4.79e-01 7.13e-04h  4
+ 112  1.9245595e+00 1.04e-02 3.14e+16   2.1 2.64e+01    -  5.74e-02 6.34e-04h  4
+ 113  1.9250219e+00 1.04e-02 5.90e+16   1.4 1.80e+01    -  3.11e-01 1.12e-03h  3
+ 114  1.9265941e+00 1.04e-02 1.76e+18   2.8 8.70e+00    -  1.00e+00 3.41e-03h  1
+ 115r 1.9265941e+00 1.04e-02 6.96e+02   2.8 0.00e+00    -  0.00e+00 3.15e-07R  9
+ 116r 1.9265924e+00 8.57e-03 7.01e+00  -3.3 6.32e-01    -  9.90e-01 9.83e-01f  1
+ 117  1.9265961e+00 8.57e-03 3.29e+04  -0.3 8.82e+00    -  1.64e-01 4.40e-06f  2
+ 118  1.9260996e+00 8.52e-03 1.30e+06  -0.3 2.56e+01    -  5.42e-01 6.77e-03h  2
+ 119r 1.9260996e+00 8.52e-03 9.99e+02  -0.3 0.00e+00    -  0.00e+00 3.38e-07R 10
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 120r 1.9260474e+00 1.36e-03 3.24e+02  -4.0 1.54e-01    -  9.89e-01 5.62e-02f  1
+ 121  1.9260548e+00 1.36e-03 1.85e+04  -4.0 4.99e-01    -  7.60e-01 4.07e-05h  1
+ 122r 1.9260548e+00 1.36e-03 1.00e+03  -0.9 0.00e+00    -  0.00e+00 4.58e-07R 12
+ 123r 1.9261900e+00 3.58e-04 2.71e+02  -0.6 9.77e-02    -  9.90e-01 9.68e-02f  1
+ 124  1.9261741e+00 3.58e-04 4.80e+03  -1.5 2.91e-01    -  9.62e-01 2.86e-04h  1
+ 125  1.9261569e+00 3.58e-04 7.49e+04   0.7 1.57e+03    -  1.68e-03 7.20e-06h  5
+ 126r 1.9261569e+00 3.58e-04 1.00e+03   0.2 0.00e+00    -  0.00e+00 2.57e-07R 12
+ 127r 1.9285636e+00 2.98e-04 9.31e+00   0.2 1.49e-01    -  9.91e-01 1.00e+00f  1
+ 128  1.9263970e+00 2.93e-04 8.70e+01  -1.3 3.49e-01    -  9.69e-01 1.65e-02h  1
+ 129  1.9326956e+00 2.86e-04 3.04e+03  -1.0 8.08e-01    -  1.00e+00 2.95e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 130r 1.9326956e+00 2.86e-04 1.00e+03   0.6 0.00e+00    -  0.00e+00 4.58e-07R 13
+ 131r 1.8952997e+00 9.43e-03 9.65e+00  -0.2 5.56e-01    -  9.90e-01 1.00e+00f  1
+ 132r 1.8301478e+00 1.65e-03 1.09e+01  -1.2 1.62e-01    -  1.00e+00 9.39e-01f  1
+ 133r 1.8091771e+00 9.13e-04 3.48e+02  -2.2 1.64e-01    -  9.67e-01 5.31e-01f  1
+ 134r 1.7182194e+00 1.36e-03 8.56e+01  -1.9 5.20e-01    -  1.00e+00 7.64e-01f  1
+ 135r 1.7537439e+00 1.44e-03 9.58e+00  -2.0 1.14e-01    -  1.00e+00 9.90e-01f  1
+ 136r 1.8510999e+00 1.31e-03 6.88e-01  -2.9 1.07e-01    -  1.00e+00 1.00e+00f  1
+ 137r 1.9196763e+00 9.73e-04 1.99e-01  -4.0 4.75e-02    -  1.00e+00 1.00e+00f  1
+ 138r 1.9286027e+00 9.64e-04 4.56e-03  -4.0 3.54e-02    -  1.00e+00 1.00e+00h  1
+ 139r 1.9287607e+00 9.64e-04 7.57e-07  -4.0 3.35e-03    -  1.00e+00 1.00e+00h  1
+
+Number of Iterations....: 139
+
+                                   (scaled)                 (unscaled)
+Objective...............:   1.9287600996961429e+00    1.9287600996961429e+00
+Dual infeasibility......:   1.0499748249250600e-01    1.0499748249250600e-01
+Constraint violation....:   9.6432594223952483e-04    9.6432594223952483e-04
+Variable bound violation:   0.0000000000000000e+00    0.0000000000000000e+00
+Complementarity.........:   1.0000001106056995e-04    1.0000001106056995e-04
+Overall NLP error.......:   1.0499748249250600e-01    1.0499748249250600e-01
+
+
+Number of objective function evaluations             = 693
+Number of objective gradient evaluations             = 132
+Number of equality constraint evaluations            = 693
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 148
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 140
+Total seconds in IPOPT                               = 0.905
+
+EXIT: Converged to a point of local infeasibility. Problem may be infeasible.
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.8.2.
+
+Number of nonzeros in equality constraint Jacobian...:      616
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:      994
+
+Total number of variables............................:      156
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:       80
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:       78
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  5.8500322e+00 1.48e-01 1.00e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  3.4748274e+00 7.10e-02 1.09e+00  -0.8 5.06e-01    -  1.00e+00 8.49e-01h  1
+   2  2.2130852e+00 5.08e-02 2.54e+00  -4.0 1.93e+00    -  3.34e-01 2.82e-01f  1
+   3  3.5124253e+00 8.41e-02 7.52e+00  -0.3 2.17e+00   0.0 5.64e-01 2.16e-01f  1
+   4  3.9042233e+00 7.94e-02 7.42e+00  -0.6 4.79e+00    -  6.41e-02 5.73e-02h  1
+   5  3.9771397e+00 1.01e-01 4.96e+00  -1.4 3.33e+00    -  3.10e-01 1.65e-01h  1
+   6  4.7233048e+00 8.52e-02 7.61e+00  -0.1 2.52e+00    -  1.65e-01 1.78e-01h  1
+   7  4.7150610e+00 7.33e-02 5.34e+00  -4.0 9.34e-01    -  2.44e-01 1.40e-01h  1
+   8  4.7959943e+00 6.95e-02 5.15e+00  -4.0 2.23e+00    -  4.26e-02 5.14e-02h  1
+   9  5.1321349e+00 6.12e-02 2.96e+01  -0.7 2.24e+00    -  4.10e-01 1.22e-01h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10  5.3881169e+00 5.61e-02 2.48e+01  -1.8 2.35e+00   0.4 7.04e-02 8.39e-02h  1
+  11  5.4322952e+00 5.56e-02 2.40e+01  -1.0 1.64e+01  -0.1 1.84e-02 8.48e-03h  1
+  12  5.6081690e+00 5.16e-02 4.83e+01  -0.2 3.57e+00   1.3 1.27e-01 7.35e-02H  1
+  13  5.8533285e+00 4.96e-02 4.63e+01  -4.0 3.98e+00    -  3.89e-02 3.83e-02h  1
+  14  6.0849990e+00 4.85e-02 7.77e+02  -0.2 8.68e+00    -  9.47e-01 2.22e-02h  1
+  15  6.4975637e+00 4.73e-02 4.75e+03   0.6 1.48e+01   0.8 1.00e+00 2.43e-02h  1
+  16  6.9205017e+00 4.75e-02 7.17e+04   2.7 2.96e+01    -  2.21e-01 8.59e-03f  1
+  17  6.7392697e+00 4.39e-02 1.11e+06   2.7 7.06e+00    -  1.00e+00 6.03e-02h  1
+  18  6.5956176e+00 4.28e-02 7.30e+05  -3.3 1.57e+01    -  1.83e-02 2.61e-02f  1
+  19  6.6744306e+00 4.26e-02 7.22e+05   2.8 2.62e+01    -  2.75e-03 3.03e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  20  7.0126891e+00 4.21e-02 4.66e+06   2.8 2.71e+01    -  2.13e-01 1.26e-02h  1
+  21  7.1747646e+00 4.19e-02 4.57e+06   2.8 3.88e+01    -  8.62e-04 4.31e-03h  1
+  22  7.4241741e+00 4.16e-02 1.14e+07   2.8 3.78e+01    -  2.00e-01 6.71e-03h  1
+  23  7.6385317e+00 4.15e-02 1.13e+07   2.8 5.81e+01    -  3.81e-04 3.84e-03h  1
+  24  7.8189585e+00 4.13e-02 4.92e+07   2.8 5.20e+01    -  5.62e-01 3.52e-03h  1
+  25  8.2869770e+00 4.11e-02 4.75e+07   2.8 8.85e+01    -  1.67e-04 5.32e-03h  1
+  26  8.2919662e+00 4.11e-02 5.73e+07  -2.8 4.25e+01    -  6.45e-03 1.11e-04h  1
+  27  8.6110192e+00 4.10e-02 5.50e+07   2.8 1.56e+02    -  8.81e-05 2.11e-03h  1
+  28  8.7362753e+00 4.10e-02 6.59e+08   2.7 1.09e+02    -  1.00e+00 1.18e-03h  1
+  29  8.7339376e+00 4.08e-02 8.85e+08   2.8 7.10e+01    -  4.82e-03 2.12e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  30  8.7295732e+00 4.08e-02 1.01e+09  -1.8 2.70e+02   4.8 1.33e-03 9.45e-04h  2
+  31  8.7849846e+00 4.08e-02 9.65e+08   2.8 1.48e+02   7.1 1.28e-04 3.82e-04h  1
+  32  8.8428218e+00 4.08e-02 1.01e+09   2.8 1.16e+02   6.6 6.84e-04 4.55e-04h  1
+  33  8.9373741e+00 4.07e-02 9.00e+08   2.8 7.12e+01   7.0 3.37e-04 7.15e-04h  1
+  34  9.0368176e+00 4.07e-02 9.66e+08   2.8 7.98e+01   6.5 9.68e-04 6.50e-04h  1
+  35  9.2408522e+00 4.07e-02 1.22e+09   2.8 9.56e+01   6.1 2.38e-03 1.18e-03h  1
+  36  9.3642019e+00 4.06e-02 4.80e+09   2.8 1.26e+02   5.6 1.11e-02 5.92e-04h  2
+  37  9.4587755e+00 4.06e-02 4.75e+09   2.8 2.14e+03   5.1 4.12e-04 5.37e-04h  1
+  38r 9.4587755e+00 4.06e-02 1.00e+03   2.8 0.00e+00    -  0.00e+00 2.87e-07R  6
+  39r 9.4809883e+00 3.15e-02 3.92e+00   1.1 6.49e-01    -  9.96e-01 9.82e-01f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  40  9.4115758e+00 2.92e-02 2.23e+01  -0.5 9.10e-01    -  6.65e-01 7.30e-02f  1
+  41  7.2873335e+00 2.63e-02 7.69e+01  -0.6 4.16e+00    -  4.75e-01 1.09e-01f  1
+  42  7.8038735e+00 2.46e-02 1.51e+02  -4.0 1.64e+00    -  1.58e-01 6.35e-02h  1
+  43  8.6660479e+00 2.37e-02 5.50e+01  -4.0 6.34e+00    -  2.11e-02 3.66e-02h  1
+  44  8.6698096e+00 2.36e-02 8.57e+04  -0.7 4.02e-01   4.6 9.72e-01 2.46e-03h  1
+  45  8.6925854e+00 2.36e-02 6.03e+06   1.3 4.83e+00   4.2 1.00e+00 2.09e-03h  1
+  46  9.1467215e+00 2.35e-02 5.51e+06   2.5 8.98e+01    -  9.44e-02 5.26e-03f  1
+  47  9.5071537e+00 2.33e-02 5.49e+06   1.8 2.15e+02    -  2.72e-03 4.83e-03h  1
+  48  9.4942695e+00 2.32e-02 5.46e+06   1.5 1.88e+02    -  4.91e-03 2.88e-03h  1
+  49  9.4208350e+00 2.28e-02 2.81e+06   2.1 1.37e+01    -  4.94e-01 1.44e-02f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  50  9.9427177e+00 2.19e-02 4.56e+05   2.4 8.07e+00    -  1.00e+00 3.93e-02f  1
+  51  9.9725274e+00 2.33e-02 1.40e+06   2.2 5.51e+01    -  2.42e-02 4.36e-03h  2
+  52  9.9738186e+00 2.33e-02 2.36e+06   2.8 4.42e+02    -  5.76e-03 2.55e-05h  8
+  53  9.9842744e+00 2.34e-02 3.27e+06   2.3 1.97e+02    -  3.29e-03 2.27e-04h  6
+  54  9.9934340e+00 2.34e-02 6.86e+06   2.8 1.99e+02    -  8.82e-03 2.17e-04h  6
+  55  1.0001034e+01 2.35e-02 1.19e+07   2.8 1.71e+02    -  6.19e-03 2.45e-04h  6
+  56  1.0007178e+01 2.36e-02 8.28e+07   2.8 1.73e+02    -  4.87e-02 2.35e-04h  6
+  57  1.0011379e+01 2.36e-02 1.32e+08   2.8 1.51e+02    -  5.22e-03 2.57e-04h  6
+  58  1.0019439e+01 2.37e-02 1.85e+08   2.8 1.67e+02    -  3.42e-03 2.28e-04h  6
+  59  1.0032689e+01 2.38e-02 3.73e+08   2.8 1.76e+02    -  8.07e-03 1.99e-04h  6
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  60  1.0044335e+01 2.38e-02 3.38e+09   2.8 1.68e+02    -  6.13e-02 2.08e-04h  6
+  61  1.0056319e+01 2.39e-02 4.29e+09   2.8 1.52e+02    -  2.27e-03 2.29e-04h  6
+  62  1.0064322e+01 2.39e-02 1.72e+10   2.8 1.67e+02    -  2.19e-02 2.02e-04h  6
+  63  1.0073652e+01 2.40e-02 2.66e+10   2.8 1.56e+02    -  4.14e-03 2.10e-04h  6
+  64  1.0082650e+01 2.41e-02 8.84e+10   2.8 1.65e+02    -  1.62e-02 1.92e-04h  6
+  65  1.0091706e+01 2.41e-02 1.50e+11   2.8 1.55e+02    -  4.98e-03 1.98e-04h  6
+  66  1.0100328e+01 2.42e-02 1.04e+12   2.8 1.61e+02    -  3.95e-02 1.85e-04h  6
+  67  1.0109215e+01 2.43e-02 1.77e+12   2.8 1.47e+02    -  4.79e-03 1.96e-04h  6
+  68  1.0117374e+01 2.43e-02 9.07e+12   2.8 1.55e+02    -  2.67e-02 1.80e-04h  6
+  69  1.0125919e+01 2.44e-02 1.72e+13   2.8 1.46e+02    -  5.87e-03 1.86e-04h  6
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  70  1.0129875e+01 2.44e-02 1.96e+14   2.8 1.51e+02    -  6.47e-02 8.71e-05h  7
+  71  1.0137900e+01 2.45e-02 3.90e+14   2.8 1.37e+02    -  6.26e-03 1.89e-04h  6
+  72  1.0142048e+01 2.45e-02 1.83e+15   2.8 1.45e+02    -  2.25e-02 8.64e-05h  7
+  73  1.0150294e+01 2.45e-02 4.12e+15   2.8 1.37e+02    -  7.68e-03 1.81e-04h  6
+  74  1.0154034e+01 2.45e-02 1.31e+16   2.8 1.42e+02    -  1.30e-02 8.45e-05h  7
+  75  1.0156025e+01 2.46e-02 3.27e+16   2.8 2.25e+02    -  1.40e-02 5.23e-05h  7
+  76  1.0156811e+01 2.46e-02 4.09e+16   2.8 2.58e+02    -  3.20e-03 2.25e-05h  8
+  77  1.0239589e+01 9.34e-02 4.08e+16   2.1 2.93e+02    -  2.51e-03 2.51e-03s 14
+  78  1.0306545e+01 9.33e-02 3.25e+16   1.4 1.12e+01    -  4.12e-02 7.55e-03h  1
+  79  1.0297241e+01 9.32e-02 3.25e+16   1.4 1.04e+01  14.0 1.71e-02 8.14e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  80  1.0093500e+01 9.26e-02 3.21e+16   1.4 1.81e+01  13.5 2.58e-03 5.90e-03h  1
+  81r 1.0093500e+01 9.26e-02 9.98e+02   1.4 0.00e+00  14.0 0.00e+00 2.94e-07R  6
+  82r 1.0106616e+01 2.67e-02 7.89e+01   1.7 5.33e-01    -  9.26e-01 8.52e-01f  1
+  83  9.3130845e+00 5.07e-02 1.46e+02   0.7 1.83e+01    -  1.00e+00 4.17e-02f  1
+  84  7.6743096e+00 5.68e-02 6.38e+01   0.7 9.17e-01    -  1.00e+00 8.26e-01f  1
+  85  9.4073940e+00 7.24e-02 2.71e+02   0.7 1.08e+00    -  4.98e-01 1.00e+00f  1
+  86  9.2663353e+00 5.32e-02 4.97e+12   0.7 4.29e-01  13.5 7.97e-01 3.04e-01h  1
+  87  9.2694257e+00 5.31e-02 4.96e+12   0.7 3.27e-01  13.0 1.00e+00 2.55e-03h  1
+  88  9.2694454e+00 5.31e-02 4.96e+12   0.7 2.47e-01  13.4 1.00e+00 2.50e-05h  1
+  89  9.2740664e+00 5.29e-02 4.94e+12   0.7 3.84e-01  12.9 8.56e-01 3.58e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  90  9.2835043e+00 5.23e-02 4.88e+12   0.7 2.76e-01  13.4 1.00e+00 1.14e-02h  1
+  91  9.2886180e+00 5.21e-02 4.86e+12   0.7 5.76e-01  12.9 4.30e-01 3.62e-03h  1
+  92  9.3237289e+00 5.01e-02 4.68e+12   0.7 3.36e-01  13.3 1.00e+00 3.90e-02h  1
+  93  9.3240988e+00 5.00e-02 1.47e+13   0.7 2.98e-01  13.7 1.00e+00 5.05e-04h  1
+  94  9.3605948e+00 4.83e-02 4.52e+12   0.7 3.88e-01  13.3 1.00e+00 3.50e-02h  1
+  95  9.3635296e+00 4.81e-02 1.74e+13   0.7 3.47e-01  13.7 1.00e+00 3.51e-03h  1
+  96  9.3923567e+00 4.70e-02 5.00e+12   0.7 4.94e-01  13.2 1.00e+00 2.40e-02h  1
+  97  9.4070255e+00 4.62e-02 1.80e+13   0.7 4.06e-01  13.6 1.00e+00 1.61e-02h  1
+  98  9.4386372e+00 4.52e-02 4.97e+12   0.8 6.48e-01  13.2 1.00e+00 2.28e-02h  1
+  99  9.4469545e+00 4.48e-02 2.49e+13   2.8 4.56e-01  13.6 1.00e+00 8.58e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 100  9.5166054e+00 4.28e-02 2.09e+13   2.1 1.09e+00  13.1 2.10e-01 4.45e-02h  1
+ 101  9.5171571e+00 4.28e-02 2.36e+13   2.7 6.01e-01  13.5 1.00e+00 4.69e-04h  1
+ 102  9.5362583e+00 4.23e-02 1.70e+13   2.8 1.01e+00  13.1 3.75e-01 1.17e-02h  1
+ 103  9.6060092e+00 3.98e-02 3.57e+13   2.8 6.43e-01  13.5 1.00e+00 6.01e-02h  1
+ 104  9.6703760e+00 3.77e-02 9.56e+13   2.8 6.30e-01  13.9 9.45e-01 5.49e-02h  1
+ 105  9.6717670e+00 3.76e-02 4.44e+13   2.8 1.76e+00  13.4 6.27e-01 7.20e-04h  1
+ 106  9.6723264e+00 3.76e-02 1.37e+14   2.8 6.32e-01  13.9 9.33e-01 4.14e-04h  1
+ 107  9.8428594e+00 3.47e-02 1.19e+14   2.8 1.46e+00  13.4 1.88e-01 7.90e-02h  1
+ 108  9.8450364e+00 3.47e-02 1.80e+14   2.8 1.06e+00  13.8 1.00e+00 1.10e-03h  1
+ 109  9.8460660e+00 3.47e-02 1.74e+14   2.8 6.82e+00  13.3 3.44e-02 3.95e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 110  9.8505495e+00 3.46e-02 2.30e+14   2.8 8.49e-01  13.8 8.55e-01 1.82e-03h  1
+ 111  9.9427814e+00 3.31e-02 5.17e+14   2.8 6.80e-01  14.2 9.29e-01 4.40e-02h  1
+ 112  9.9700703e+00 3.29e-02 3.52e+14   2.8 2.59e+00  13.7 5.07e-01 7.87e-03h  1
+ 113  9.9805798e+00 3.28e-02 6.42e+14   2.8 8.68e-01  14.1 5.63e-01 2.54e-03h  1
+ 114  1.0060432e+01 3.23e-02 5.61e+14   2.8 1.74e+00  13.7 2.35e-01 1.55e-02h  1
+ 115  1.0065762e+01 3.22e-02 1.10e+15   2.8 8.69e-01  14.1 1.00e+00 1.16e-03h  1
+ 116  1.0216702e+01 3.13e-02 1.04e+15   2.8 3.03e+00  13.6 7.55e-02 3.17e-02h  1
+ 117  1.0219301e+01 3.12e-02 1.10e+15   2.8 1.68e+00  14.0 5.38e-01 5.70e-04h  1
+ 118  1.0232698e+01 3.12e-02 1.05e+15   2.8 2.30e+00  13.6 1.36e-01 2.31e-03h  1
+ 119  1.0641641e+01 2.92e-02 1.30e+15   2.8 1.14e+00  14.0 8.72e-01 7.07e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 120  1.0646377e+01 2.92e-02 3.82e+15   2.8 1.32e+00  14.4 4.38e-01 6.08e-04h  1
+ 121  1.0743886e+01 2.89e-02 3.73e+15   2.8 3.93e+00  13.9 8.84e-02 1.03e-02h  1
+ 122  1.0746413e+01 2.89e-02 8.02e+15   2.8 1.65e+00  14.4 1.00e+00 2.46e-04h  1
+ 123  1.1103320e+01 2.81e-02 6.90e+15   2.8 2.01e+00  13.9 3.08e-01 2.95e-02h  1
+ 124  1.1203667e+01 2.78e-02 8.71e+15   2.8 3.04e+00  14.3 1.85e-01 7.39e-03h  1
+ 125  1.1292387e+01 2.77e-02 3.37e+16   2.8 2.84e+00  14.7 6.63e-01 6.78e-03h  1
+ 126  1.1293542e+01 2.77e-02 3.31e+16   2.8 3.41e+01  14.3 5.74e-03 6.30e-05h  4
+ 127  1.1341165e+01 2.76e-02 3.44e+16   2.8 4.18e+00  14.7 1.55e-01 3.61e-03h  1
+ 128  1.1408225e+01 2.74e-02 3.41e+16   2.8 2.91e+00  14.2 1.52e-01 4.72e-03h  1
+ 129  1.1554071e+01 2.71e-02 5.31e+16   2.8 3.23e+00  14.6 4.09e-01 1.05e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 130  1.1725931e+01 2.69e-02 5.24e+16   2.8 1.57e+01  14.2 2.55e-02 9.84e-03h  1
+ 131  1.1728339e+01 2.69e-02 5.36e+16   2.8 8.41e+00  14.6 7.71e-02 1.84e-04h  1
+ 132r 1.1728339e+01 2.69e-02 8.97e+02   2.8 0.00e+00  14.1 0.00e+00 4.24e-07R  2
+ 133r 1.1728665e+01 1.37e-02 9.77e+00  -3.3 6.42e-01    -  9.89e-01 9.79e-01f  1
+ 134  1.1664845e+01 1.34e-02 4.20e+00  -0.3 7.67e+00    -  1.88e-02 1.84e-02f  1
+ 135  1.1393815e+01 1.16e-02 3.48e+00  -1.0 2.61e+00    -  5.73e-01 1.82e-01f  1
+ 136  9.3174351e+00 1.76e-02 8.16e+00  -1.1 1.63e+00    -  4.38e-01 2.21e-01f  1
+ 137  9.4074256e+00 1.69e-02 7.85e+00  -4.0 2.01e+00    -  9.15e-02 3.83e-02h  1
+ 138  9.8108831e+00 1.43e-02 1.42e+01  -2.7 1.96e+00    -  2.47e-01 1.54e-01h  1
+ 139  9.8272786e+00 1.41e-02 9.13e+10  -0.8 2.09e-01  13.6 9.48e-01 1.04e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 140  9.8274411e+00 1.41e-02 9.16e+10  -0.2 2.09e-01  13.1 1.00e+00 1.03e-04h  1
+ 141r 9.8274411e+00 1.41e-02 1.00e+03  -0.1 0.00e+00  12.7 0.00e+00 4.58e-07R  5
+ 142r 1.0001837e+01 4.54e-03 7.95e+02   0.4 7.77e-01    -  1.00e+00 7.37e-02f  1
+ 143  9.9855348e+00 4.21e-03 1.02e+01  -1.6 5.88e-01    -  6.14e-01 7.50e-02h  1
+ 144  1.2020224e+01 1.20e-02 6.91e+01  -0.3 1.71e+00    -  1.00e+00 1.50e-01f  1
+ 145  1.1890153e+01 1.10e-02 6.63e+01  -0.5 3.43e+00    -  5.33e-01 1.45e-01h  1
+ 146  1.2440739e+01 9.52e-03 1.35e+02  -0.5 1.29e+00    -  2.86e-01 1.86e-01h  1
+ 147  1.3037556e+01 8.58e-03 2.66e+02  -0.5 3.23e+00    -  1.64e-01 9.59e-02h  1
+ 148  1.3059081e+01 8.51e-03 2.64e+02  -0.8 2.21e+01    -  1.31e-02 7.72e-03h  1
+ 149  1.3088272e+01 8.24e-03 8.35e+09  -0.6 1.71e-01  12.2 1.00e+00 3.16e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 150  1.3088584e+01 8.24e-03 8.37e+09  -1.2 1.67e-01  11.7 1.00e+00 3.25e-04h  1
+ 151  1.3088846e+01 8.24e-03 2.42e+10  -1.2 1.77e-01  11.2 1.00e+00 2.33e-04h  1
+ 152  1.3102792e+01 8.15e-03 7.28e+09   2.8 1.88e-01  10.8 1.00e+00 1.07e-02h  1
+ 153  1.3122572e+01 8.05e-03 5.14e+09   2.8 3.01e-01  10.3 7.32e-01 1.21e-02h  1
+ 154  1.3147352e+01 7.94e-03 5.53e+09   2.8 2.45e-01  10.7 5.09e-01 1.30e-02h  1
+ 155  1.3177071e+01 7.83e-03 4.43e+09   2.7 4.54e-01  10.2 1.00e+00 1.45e-02h  1
+ 156  1.3218111e+01 7.70e-03 2.54e+10   2.7 3.60e-01  10.7 1.00e+00 1.62e-02h  1
+ 157  1.3251117e+01 7.63e-03 1.84e+10   2.8 5.93e-01  10.2 7.36e-01 9.89e-03h  1
+ 158  1.3284718e+01 7.56e-03 7.04e+10   2.7 3.05e-01  10.6 1.00e+00 8.10e-03h  1
+ 159  1.3313593e+01 7.52e-03 4.63e+10   2.8 5.68e-01  10.1 1.00e+00 6.29e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 160  1.3352948e+01 7.45e-03 4.27e+10   2.8 1.12e+00   9.7 1.52e-01 7.47e-03h  1
+ 161  1.3402159e+01 7.39e-03 7.08e+10   2.8 1.23e+00  10.1 5.13e-01 6.86e-03h  1
+ 162  1.3407355e+01 7.39e-03 1.94e+11   2.8 1.50e+00  10.5 3.23e-01 5.21e-04h  1
+ 163  1.3631937e+01 7.16e-03 1.90e+11   2.8 1.77e+00  10.0 3.46e-01 2.02e-02h  1
+ 164  1.3641140e+01 7.16e-03 3.83e+11   2.8 1.99e+00  10.5 4.69e-01 7.58e-04h  1
+ 165  1.4258695e+01 7.02e-03 3.36e+11   2.8 1.99e+00  10.0 2.40e-01 4.92e-02h  1
+ 166  1.4363389e+01 6.97e-03 5.59e+11   2.8 2.62e+00  10.4 4.42e-01 8.03e-03h  1
+ 167  1.4376378e+01 6.93e-03 5.50e+11   2.8 7.53e+00   9.9 1.27e-02 5.45e-03h  1
+ 168  1.4397672e+01 6.92e-03 6.34e+11   2.8 2.83e+00  10.4 1.63e-01 1.33e-03h  1
+ 169  1.4444725e+01 6.90e-03 6.12e+11   2.8 4.27e+00   9.9 1.34e-01 3.13e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 170  1.4956059e+01 6.85e-03 8.04e+11   2.8 3.53e+00  10.3 3.38e-01 3.03e-02h  1
+ 171  1.4733450e+01 6.95e-03 8.29e+11   1.9 8.71e+01   9.8 2.42e-04 1.32e-03f  1
+ 172  1.4734598e+01 6.95e-03 7.63e+11   2.8 5.05e+00  10.3 8.53e-02 2.27e-04h  1
+ 173  1.4762303e+01 6.94e-03 6.89e+11   2.8 3.85e+00   9.8 3.16e-01 1.94e-03h  1
+ 174  1.4875601e+01 6.90e-03 6.67e+11   2.8 6.54e+00   9.3 6.57e-02 7.41e-03h  1
+ 175  1.5072771e+01 6.85e-03 8.03e+11   2.8 5.70e+00   9.7 4.48e-01 1.10e-02h  1
+ 176  1.5515065e+01 6.87e-03 7.98e+11   2.8 3.29e+01   9.2 4.61e-02 1.55e-02h  1
+ 177  1.5510475e+01 6.87e-03 7.14e+11   2.8 2.12e+01   9.7 1.57e-02 2.41e-04h  1
+ 178r 1.5510475e+01 6.87e-03 9.93e+02   2.8 0.00e+00   9.2 0.00e+00 2.87e-07R  4
+ 179r 1.5510539e+01 5.53e-03 1.02e+01  -3.4 6.24e-01    -  9.90e-01 9.85e-01f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 180  1.5528522e+01 5.47e-03 2.23e+01  -4.0 5.27e-01    -  2.48e-01 1.06e-02h  1
+ 181  1.6471708e+01 7.37e-03 3.84e+02  -1.3 5.31e+00    -  1.63e-01 7.68e-02f  1
+ 182  1.6325686e+01 6.56e-03 3.74e+02  -0.5 1.03e+01    -  2.07e-02 4.24e-02f  1
+ 183  1.6425884e+01 6.44e-03 4.53e+02  -4.0 4.61e+00    -  1.26e-01 1.76e-02h  1
+ 184  1.6573434e+01 6.43e-03 2.01e+04   1.2 6.45e+01    -  8.29e-01 2.41e-03f  1
+ 185  1.7343684e+01 1.17e-02 3.05e+05   1.0 9.85e+00    -  6.46e-02 6.51e-02h  1
+ 186  1.7411995e+01 1.16e-02 3.04e+05  -0.7 9.89e+01    -  6.54e-03 4.17e-03h  1
+ 187  1.7743787e+01 1.14e-02 2.97e+05   1.7 3.13e+01    -  1.00e+00 2.09e-02f  1
+ 188  1.8030725e+01 1.18e-02 4.29e+05  -4.0 1.11e+01    -  5.94e-02 1.22e-02h  1
+ 189  1.8045343e+01 1.18e-02 5.81e+05   2.8 3.64e+01    -  7.91e-03 5.74e-04h  5
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 190  1.8066239e+01 1.18e-02 2.72e+07   2.6 2.54e+01    -  1.00e+00 7.71e-04h  5
+ 191  1.8180266e+01 1.17e-02 2.69e+07  -2.8 3.43e+01    -  2.44e-03 2.93e-03h  3
+ 192  1.8076237e+01 1.20e-02 3.16e+07  -2.8 1.73e+01    -  1.72e-02 1.06e-02f  1
+ 193  1.8368765e+01 1.19e-02 2.02e+07   2.8 1.27e+01    -  2.19e-04 1.90e-02h  2
+ 194  1.8520872e+01 1.20e-02 2.19e+07   1.1 2.91e+01    -  1.14e-02 7.51e-03f  1
+ 195  1.8548424e+01 1.19e-02 2.19e+07   2.5 1.49e+01    -  1.63e-01 1.85e-03h  1
+ 196  1.8549995e+01 1.19e-02 6.70e+07   1.8 3.86e+00    -  3.45e-01 4.95e-04h  1
+ 197  1.8590083e+01 1.20e-02 5.17e+08   1.8 4.75e+01    -  5.09e-02 1.24e-03h  3
+ 198  1.8628456e+01 1.20e-02 4.46e+09   1.1 4.49e+01    -  4.50e-02 1.33e-03h  3
+ 199  1.8690287e+01 1.21e-02 1.16e+11   1.1 4.32e+01    -  1.11e-01 2.11e-03h  2
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 200  1.8756260e+01 1.22e-02 3.25e+12   1.1 4.36e+01    -  6.49e-02 2.20e-03h  1
+
+Number of Iterations....: 200
+
+                                   (scaled)                 (unscaled)
+Objective...............:   1.8756259883371239e+01    1.8756259883371239e+01
+Dual infeasibility......:   3.2496146063248760e+12    3.2496146063248760e+12
+Constraint violation....:   1.2224865032347454e-02    1.2224865032347454e-02
+Variable bound violation:   0.0000000000000000e+00    0.0000000000000000e+00
+Complementarity.........:   1.6396741953995086e+07    1.6396741953995086e+07
+Overall NLP error.......:   4.5815933744491497e+02    3.2496146063248760e+12
+
+
+Number of objective function evaluations             = 430
+Number of objective gradient evaluations             = 201
+Number of equality constraint evaluations            = 430
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 206
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 200
+Total seconds in IPOPT                               = 0.931
+
+EXIT: Maximum Number of Iterations Exceeded.
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.8.2.
+
+Number of nonzeros in equality constraint Jacobian...:      616
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:      994
+
+Total number of variables............................:      156
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:       80
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:       78
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  5.8500032e+01 1.48e-01 1.00e+01   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  2.1763389e+01 5.16e-02 8.68e+00  -0.7 2.21e-01   2.0 9.95e-01 6.28e-01f  1
+   2  2.0404640e+01 4.61e-02 4.40e+01   0.0 1.04e+00   1.5 1.00e+00 1.20e-01h  1
+   3  1.9057533e+01 4.21e-02 4.74e+02   0.6 1.59e+00   1.9 1.00e+00 1.13e-01h  1
+   4  2.0864413e+01 9.16e-02 2.15e+03   1.1 3.48e+00   2.4 1.00e+00 2.08e-01H  1
+   5  2.3397083e+01 9.15e-02 2.24e+03   1.5 1.38e+00   2.8 6.05e-01 1.39e-01f  1
+   6  2.4347973e+01 8.51e-02 2.48e+03   0.7 2.19e+00   2.3 2.22e-01 7.27e-02h  1
+   7  2.8441655e+01 1.25e-01 2.01e+04   2.2 7.96e+00   2.7 9.20e-01 6.71e-02f  1
+   8  2.9413971e+01 1.11e-01 2.11e+04   2.0 2.95e+00    -  3.19e-01 1.05e-01h  1
+   9  2.8376876e+01 9.28e-02 2.67e+04   1.2 4.02e+00    -  3.33e-01 1.66e-01h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10  2.8708320e+01 9.20e-02 3.12e+04   2.7 2.20e+01    -  3.48e-02 7.98e-03f  1
+  11  3.3300426e+01 7.68e-02 4.62e+04   2.2 2.45e+00   3.2 1.00e+00 1.64e-01f  1
+  12  3.4550500e+01 7.65e-02 4.63e+04  -3.8 2.77e+01    -  1.63e-03 5.04e-03h  1
+  13  3.5898372e+01 7.48e-02 4.89e+04   1.0 7.20e+00    -  8.10e-02 2.13e-02h  1
+  14  3.7722463e+01 7.23e-02 9.13e+04   2.8 4.21e+00   4.5 1.72e-01 3.38e-02f  1
+  15  3.9891857e+01 6.70e-02 9.58e+04   2.8 1.58e+00   4.9 9.39e-02 7.37e-02h  1
+  16  4.1278170e+01 6.40e-02 1.88e+05   2.8 1.27e+00   5.4 1.16e-01 4.49e-02h  1
+  17  4.2630567e+01 6.08e-02 5.75e+05   2.8 1.13e+00   5.8 1.64e-01 5.02e-02h  1
+  18  4.4199678e+01 5.78e-02 1.67e+06   2.8 1.26e+00   6.2 1.48e-01 4.84e-02h  1
+  19  4.5925162e+01 5.55e-02 1.94e+07   2.8 1.37e+00   6.6 5.13e-01 4.03e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  20  4.7231121e+01 5.44e-02 1.91e+07   2.8 2.01e+00   6.2 3.51e-02 2.05e-02h  1
+  21  5.2409348e+01 5.02e-02 1.75e+07   2.8 2.25e+00   5.7 1.36e-01 7.74e-02h  1
+  22  5.4101721e+01 4.91e-02 1.74e+07   2.8 4.26e+00   5.2 6.14e-02 2.13e-02h  1
+  23  5.5925328e+01 4.79e-02 1.76e+07   2.8 7.34e+00   4.7 1.03e-01 2.34e-02h  1
+  24  5.6012516e+01 4.79e-02 1.75e+07   2.8 5.37e+00   7.0 9.08e-04 1.01e-03h  1
+  25  5.6225180e+01 4.78e-02 1.71e+07   2.5 2.25e+01   6.5 1.83e-03 1.05e-03h  1
+  26  5.6231790e+01 4.78e-02 1.96e+07   0.7 9.08e+00   6.0 1.37e-02 6.65e-05h  1
+  27  5.6377030e+01 4.77e-02 2.91e+07   2.8 4.85e+00   7.3 7.09e-03 2.35e-03h  1
+  28  5.6502861e+01 4.76e-02 2.29e+07   2.8 4.88e+00   7.8 1.25e-03 2.35e-03h  1
+  29  5.6531076e+01 4.76e-02 4.95e+09   2.8 4.58e+00   8.2 3.32e-01 9.78e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  30  5.8159473e+01 4.70e-02 4.85e+09   2.8 8.45e+00   7.7 2.18e-03 1.10e-02h  1
+  31  5.8449804e+01 4.70e-02 4.85e+09  -1.6 3.93e+01   7.2 5.18e-04 1.56e-03h  1
+  32  5.8487325e+01 4.70e-02 5.09e+09   2.8 4.91e+00   8.6 6.75e-03 3.18e-04h  1
+  33  5.8512928e+01 4.69e-02 5.73e+09   2.8 5.82e+00   8.1 4.93e-02 1.79e-04h  1
+  34  6.3975630e+01 4.52e-02 5.48e+09   2.8 5.94e+00   7.6 5.24e-03 3.68e-02h  1
+  35  6.5706482e+01 4.48e-02 5.57e+09   2.8 7.35e+00   7.1 2.30e-01 9.35e-03h  1
+  36  6.7638111e+01 4.44e-02 5.52e+09   2.8 7.13e+00   6.7 3.92e-02 9.68e-03h  1
+  37  6.9425581e+01 4.39e-02 5.46e+09   2.8 1.33e+01   6.2 1.71e-02 9.66e-03h  1
+  38  7.0027376e+01 4.37e-02 5.44e+09   2.8 2.17e+01   5.7 1.64e-04 4.50e-03h  1
+  39  7.0301228e+01 4.36e-02 5.25e+09   2.8 3.45e+01   5.2 5.25e-02 3.19e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  40  7.0750536e+01 4.34e-02 5.22e+09   2.8 7.34e+01   4.7 5.51e-03 4.93e-03h  1
+  41  7.0988681e+01 4.33e-02 5.20e+09   2.8 2.00e+02   4.3 6.04e-03 2.14e-03h  1
+  42  7.1663887e+01 4.32e-02 5.19e+09   2.8 7.33e+01   4.7 4.01e-03 2.32e-03h  1
+  43  7.1912326e+01 4.32e-02 5.18e+09   2.8 4.34e+01   6.0 5.54e-05 7.93e-04h  1
+  44  7.2313829e+01 4.31e-02 6.39e+09   2.8 2.98e+01   5.5 1.98e-01 1.20e-03h  1
+  45  7.6479492e+01 4.26e-02 6.25e+09   2.8 3.47e+01   5.1 2.09e-03 1.19e-02h  1
+  46  7.6661165e+01 4.26e-02 6.32e+09   2.8 4.90e+01   4.6 4.70e-03 3.67e-04h  1
+  47  7.8822202e+01 4.24e-02 6.37e+09   2.8 1.64e+02   4.1 7.99e-03 4.16e-03h  1
+  48  7.9614356e+01 4.23e-02 6.80e+09   2.8 5.98e+01    -  1.56e-02 1.33e-03h  1
+  49  7.9620814e+01 4.23e-02 7.45e+09  -1.6 5.00e+02    -  9.06e-04 7.03e-05h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  50  8.0081064e+01 4.23e-02 6.79e+09   2.8 2.74e+02    -  1.50e-05 1.38e-03h  1
+  51  8.0403232e+01 4.23e-02 6.80e+09   2.8 5.86e+01    -  8.52e-04 5.52e-04h  1
+  52  8.1336063e+01 4.22e-02 3.09e+10   2.8 5.97e+01    -  2.85e-01 1.57e-03h  1
+  53  8.4444690e+01 4.20e-02 3.04e+10   2.8 6.48e+01    -  2.72e-03 4.80e-03h  1
+  54  8.4462465e+01 4.20e-02 5.35e+10   2.6 7.68e+01    -  5.95e-02 2.26e-05h  1
+  55  8.5041227e+01 4.20e-02 4.48e+10   2.8 2.01e+02    -  5.41e-06 7.39e-04h  1
+  56  8.5385429e+01 4.19e-02 4.38e+10   2.8 1.04e+02    -  5.59e-04 3.30e-04h  1
+  57  8.6070549e+01 4.19e-02 4.41e+10   2.8 1.09e+02    -  9.74e-04 6.29e-04h  1
+  58  8.7553531e+01 4.19e-02 4.75e+10   2.8 1.15e+02    -  4.09e-03 1.29e-03h  1
+  59  8.9325693e+01 4.18e-02 5.11e+10   2.8 1.31e+02    -  3.42e-03 1.35e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  60  8.9343407e+01 4.18e-02 7.59e+10   2.8 1.56e+02    -  7.88e-03 1.14e-05h  1
+  61  8.9343034e+01 4.18e-02 1.53e+11   2.8 3.06e+02    -  4.47e-04 1.50e-05h  1
+  62  8.9653137e+01 4.18e-02 7.27e+10   2.8 1.84e+02    -  3.26e-06 3.33e-04h  1
+  63  8.9799692e+01 4.18e-02 7.43e+10   2.8 3.09e+02    -  1.01e-04 4.77e-05h  1
+  64  9.0229349e+01 4.18e-02 7.46e+10   2.8 3.14e+02    -  1.48e-04 1.37e-04h  1
+  65  9.1008947e+01 4.18e-02 1.36e+11   2.6 3.31e+02    -  1.30e-03 2.36e-04h  1
+  66  9.1269172e+01 4.18e-02 9.61e+10   2.8 1.56e+02  10.0 5.29e-06 1.20e-04h  1
+  67  9.1308633e+01 4.18e-02 9.63e+10   2.8 3.65e+02    -  5.30e-05 4.69e-05h  1
+  68  9.1486842e+01 4.18e-02 9.67e+10   2.8 2.93e+02    -  1.28e-04 1.19e-04h  1
+  69  9.1833649e+01 4.17e-02 2.09e+11   2.8 3.02e+02    -  2.36e-03 2.24e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  70  9.2977225e+01 4.17e-02 1.95e+11   2.8 3.25e+02    -  4.87e-04 6.90e-04h  1
+  71r 9.2977225e+01 4.17e-02 1.00e+03   2.8 0.00e+00    -  0.00e+00 3.41e-07R  5
+  72r 9.6568960e+01 3.19e-02 1.47e+01   0.9 6.42e-01    -  9.85e-01 9.81e-01f  1
+  73  9.6028899e+01 3.17e-02 2.36e+02   0.6 8.98e+00    -  3.67e-01 6.54e-03f  1
+  74  6.9728721e+01 2.53e-02 2.44e+02  -0.0 3.13e+00    -  1.97e-01 1.43e-01f  1
+  75  7.4710180e+01 2.44e-02 5.26e+02  -4.0 1.59e+00    -  1.69e-01 5.25e-02h  1
+  76  7.9580180e+01 2.37e-02 5.99e+02  -4.0 6.14e+00    -  4.01e-02 3.02e-02h  1
+  77  8.6650639e+01 2.36e-02 5.53e+03   2.1 7.81e+01    -  2.80e-02 3.15e-03f  1
+  78  8.9509775e+01 2.28e-02 4.09e+03   0.6 4.99e+00    -  2.44e-02 3.32e-02h  1
+  79  9.1619511e+01 2.27e-02 4.53e+03  -4.0 2.00e+01    -  6.39e-03 5.00e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  80  9.5579684e+01 2.26e-02 1.59e+06   2.4 7.38e+01    -  1.00e+00 3.50e-03f  1
+  81  9.7085734e+01 2.24e-02 1.15e+07   2.3 2.23e+01    -  1.13e-01 1.02e-02h  1
+  82  1.0069880e+02 2.25e-02 8.35e+06   2.8 1.71e+02    -  2.87e-04 2.01e-03h  1
+  83  1.0111817e+02 2.25e-02 3.05e+07   2.8 1.82e+02    -  1.01e-02 2.97e-04h  1
+  84  1.0138004e+02 2.26e-02 2.72e+08   2.8 8.20e+01    -  2.42e-02 1.13e-03h  1
+  85  1.0103841e+02 2.29e-02 2.03e+09   2.8 7.89e+01    -  1.53e-02 2.09e-03h  1
+  86  1.0492525e+02 2.29e-02 1.40e+09  -2.8 1.47e+03    -  8.78e-05 2.36e-04h  1
+  87  1.0491820e+02 2.29e-02 4.96e+12   2.8 9.57e+00   9.5 1.38e-01 1.62e-05h  1
+  88  1.0346885e+02 2.29e-02 4.96e+12   2.8 1.48e+03    -  2.40e-06 3.26e-04f  1
+  89r 1.0346885e+02 2.29e-02 9.97e+02   2.8 0.00e+00    -  0.00e+00 4.43e-07R  3
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  90r 1.0357032e+02 1.77e-02 8.37e+00   0.9 6.35e-01    -  9.92e-01 9.88e-01f  1
+  91  1.0252389e+02 1.80e-02 2.34e+02   0.6 8.55e+00    -  3.16e-01 5.62e-03f  1
+  92  7.5929185e+01 1.61e-02 2.88e+02   0.1 4.27e+00    -  2.12e-01 1.06e-01f  1
+  93  8.1784847e+01 1.55e-02 6.15e+02  -4.0 1.40e+00    -  2.08e-01 6.36e-02h  1
+  94  8.4765965e+01 1.52e-02 1.14e+03   0.4 8.02e+00    -  4.48e-02 2.04e-02h  1
+  95  8.7539603e+01 1.50e-02 1.69e+03  -0.1 1.77e+01    -  2.44e-02 1.40e-02h  1
+  96  8.7584242e+01 1.50e-02 7.29e+05   0.9 2.36e-01   9.0 1.00e+00 3.72e-03h  1
+  97  8.7610031e+01 1.49e-02 2.68e+08   1.9 4.07e-01   8.5 1.00e+00 1.52e-03h  1
+  98  8.7676451e+01 1.49e-02 4.31e+08   2.6 5.75e-01   8.0 1.00e+00 2.36e-03h  1
+  99  8.7701586e+01 1.49e-02 4.86e+08   2.8 2.96e+00   7.6 7.70e-02 1.00e-03h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 100  8.7559485e+01 1.49e-02 5.39e+08   2.8 6.27e+00   7.1 5.82e-03 1.25e-03h  1
+ 101  8.7961784e+01 1.48e-02 5.27e+08   2.8 1.54e+01   6.6 1.38e-03 2.53e-03h  1
+ 102  8.8270361e+01 1.48e-02 7.16e+08   2.8 1.36e+01   7.0 1.11e-02 1.09e-03h  1
+ 103  8.9556526e+01 1.48e-02 7.35e+08   2.8 2.41e+01   6.6 3.28e-03 1.91e-03h  1
+ 104  9.0615065e+01 1.48e-02 9.97e+08   2.8 2.17e+01   7.0 9.39e-03 1.75e-03h  1
+ 105  9.2285248e+01 1.47e-02 2.19e+09   2.8 2.02e+01   7.4 1.63e-02 2.74e-03h  1
+ 106  9.4733384e+01 1.47e-02 2.90e+09   2.8 3.88e+01   6.9 1.13e-02 2.56e-03h  2
+ 107  9.6726081e+01 1.46e-02 9.85e+09   2.8 4.08e+01   7.4 3.18e-02 1.89e-03h  2
+ 108  9.7817482e+01 1.46e-02 1.14e+10   2.8 6.40e+01   6.9 7.59e-03 1.21e-03h  1
+ 109  9.8362213e+01 1.46e-02 1.36e+10   2.8 1.33e+02   6.4 6.95e-03 6.83e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 110  9.8432434e+01 1.46e-02 1.38e+10   2.8 4.42e+02   5.9 2.62e-04 3.12e-05h  5
+ 111  9.9000181e+01 1.46e-02 1.59e+10   2.8 2.66e+02   6.4 1.92e-03 3.51e-04h  1
+ 112  9.9761144e+01 1.46e-02 2.28e+10   2.8 1.26e+02   6.8 2.28e-03 2.96e-04h  1
+ 113  1.0038794e+02 1.46e-02 2.28e+10   2.8 7.27e+02   6.3 1.96e-04 1.96e-04s 10
+ 114  1.0042355e+02 1.46e-02 3.72e+10   2.8 2.47e+02   6.7 1.90e-03 1.49e-05h  1
+ 115  1.0102926e+02 1.46e-02 3.89e+10   2.1 1.00e+03   6.3 3.50e-04 1.54e-04h  1
+ 116r 1.0102926e+02 1.46e-02 1.00e+03   1.4 0.00e+00    -  0.00e+00 4.82e-07R  5
+ 117r 1.0103116e+02 8.40e-03 4.96e+01  -0.1 1.82e-01    -  9.90e-01 7.38e-01f  1
+ 118  1.0089933e+02 8.39e-03 3.29e+03   0.6 4.11e+00    -  4.35e-01 8.78e-04f  1
+ 119  9.2914364e+01 8.36e-03 1.63e+04   1.6 1.24e+02    -  3.88e-02 3.88e-03f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 120  9.3976232e+01 8.34e-03 3.12e+04  -4.0 1.60e+01    -  2.46e-02 2.34e-03h  1
+ 121  9.6367064e+01 8.32e-03 1.28e+06   1.9 1.41e+02    -  1.00e+00 1.35e-03h  1
+ 122  9.8377086e+01 8.29e-03 2.21e+06   2.8 3.23e+01    -  1.73e-02 3.52e-03h  3
+ 123  9.9598413e+01 8.27e-03 3.17e+06   2.8 2.01e+01    -  8.74e-03 3.48e-03h  1
+ 124  1.0229764e+02 8.21e-03 7.32e+07   2.8 2.15e+01    -  1.67e-01 6.13e-03h  1
+ 125  1.0372356e+02 8.19e-03 2.98e+08   2.8 4.00e+01    -  1.22e-02 2.31e-03h  1
+ 126  1.0344582e+02 8.19e-03 7.84e+08   2.1 9.19e+01    -  1.93e-03 4.76e-04h  1
+ 127  1.0307344e+02 8.19e-03 2.91e+08   2.8 2.02e+02    -  1.03e-04 4.23e-04h  1
+ 128  1.0315790e+02 8.19e-03 1.97e+08  -2.9 2.06e+02    -  5.49e-05 7.95e-05h  1
+ 129  1.0316319e+02 8.19e-03 1.95e+08   2.8 8.26e+02    -  3.33e-05 3.48e-05h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 130  1.0316825e+02 8.19e-03 2.45e+08   2.8 8.55e+02    -  6.90e-05 3.27e-05h  2
+ 131  1.0317300e+02 8.19e-03 5.20e+08   2.1 8.85e+02    -  2.12e-04 3.03e-05h  3
+ 132  1.0322172e+02 8.18e-03 5.18e+08   1.9 9.28e+02    -  3.00e-04 3.00e-04s 11
+ 133r 1.0322172e+02 8.18e-03 1.00e+03   2.8 0.00e+00    -  0.00e+00 4.95e-07R  5
+ 134r 1.0322094e+02 6.74e-03 1.08e+01  -3.5 6.29e-01    -  9.89e-01 9.84e-01f  1
+ 135  1.0322196e+02 6.74e-03 3.21e+04   2.1 1.15e+03    -  3.76e-04 3.75e-08f  1
+ 136  1.0545295e+02 6.74e-03 1.24e+05   2.1 4.30e+02    -  8.54e-04 2.29e-04f  1
+ 137r 1.0545295e+02 6.74e-03 9.99e+02   1.4 0.00e+00    -  0.00e+00 3.27e-07R  8
+ 138r 1.0808211e+02 5.54e-03 2.61e+01  -1.0 2.30e-01    -  9.90e-01 8.52e-01f  1
+ 139  1.0798459e+02 5.53e-03 4.30e+01  -4.0 1.30e+00    -  8.64e-02 1.95e-03f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 140  1.0654778e+02 5.53e-03 1.18e+02   0.0 9.36e+01    -  8.93e-04 4.11e-04f  1
+ 141  1.0430588e+02 5.52e-03 5.14e+03   0.6 2.15e+02    -  6.80e-03 4.57e-04h  1
+ 142  1.0456361e+02 5.52e-03 2.70e+04   0.9 2.08e+02    -  1.98e-03 9.61e-05h  2
+ 143  1.0387598e+02 5.52e-03 4.75e+04  -0.3 4.06e+02    -  5.53e-04 1.83e-04h  2
+ 144  1.0402695e+02 5.52e-03 1.51e+05  -2.3 7.58e+02    -  5.72e-04 6.73e-05h  1
+ 145  1.0353060e+02 5.52e-03 6.82e+05  -0.2 6.08e+02    -  7.02e-04 8.84e-05h  1
+ 146  1.0484639e+02 5.52e-03 1.07e+06   2.0 2.30e+03    -  1.98e-04 1.25e-04h  1
+ 147r 1.0484639e+02 5.52e-03 1.00e+03   1.9 0.00e+00    -  0.00e+00 2.77e-07R 11
+ 148r 1.0028854e+02 8.86e-03 3.08e+01  -0.5 9.61e-01    -  9.90e-01 4.95e-01f  1
+ 149r 1.0624865e+02 5.82e-03 5.36e+00  -0.8 2.11e-01    -  9.79e-01 9.30e-01f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 150r 9.7650428e+01 1.00e-02 2.32e+01  -1.0 1.72e+00    -  2.75e-01 3.40e-01f  1
+ 151r 9.5585326e+01 5.59e-03 4.10e+02  -0.8 3.40e-01    -  9.93e-01 4.38e-01f  1
+ 152r 9.8253644e+01 9.93e-03 3.11e+01  -1.3 2.79e-01    -  1.00e+00 9.86e-01f  1
+ 153r 9.9673557e+01 1.45e-02 1.66e+02  -0.9 3.33e-01    -  1.00e+00 3.12e-01f  1
+ 154r 1.0487679e+02 1.59e-02 6.52e+00  -1.6 1.73e-01    -  1.00e+00 1.00e+00f  1
+ 155r 1.0518952e+02 1.71e-02 6.74e-01  -2.7 6.58e-03   2.0 1.00e+00 1.00e+00f  1
+ 156r 1.0608663e+02 2.32e-02 1.59e+00  -3.5 1.24e-02   1.5 1.00e+00 8.37e-01f  1
+ 157r 1.0636278e+02 2.43e-02 1.38e+00  -4.0 4.27e-03   1.9 1.00e+00 5.47e-01f  1
+ 158r 1.0695764e+02 2.33e-02 3.56e+00  -4.0 8.47e-03   1.5 1.00e+00 4.63e-01f  1
+ 159r 1.0744126e+02 2.26e-02 2.84e-01  -4.0 3.58e-03   1.9 1.00e+00 1.00e+00f  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 160r 1.0786347e+02 2.13e-02 2.29e+00  -4.0 6.79e-03   1.4 1.00e+00 6.33e-01f  1
+ 161r 1.0802781e+02 2.11e-02 8.42e+00  -3.8 1.20e-02   0.9 1.00e+00 1.76e-01f  1
+ 162r 1.0842142e+02 2.17e-02 1.26e-01  -4.0 5.38e-03   1.4 1.00e+00 1.00e+00f  1
+ 163r 1.0883472e+02 2.31e-02 1.48e+00  -4.0 1.34e-02   0.9 1.00e+00 8.03e-01f  1
+ 164r 1.0897287e+02 2.38e-02 1.04e-01  -4.0 5.01e-03   1.3 1.00e+00 1.00e+00h  1
+ 165r 1.0912543e+02 2.52e-02 1.38e+00  -4.0 1.48e-02   0.8 1.00e+00 6.92e-01h  1
+ 166r 1.0922811e+02 2.83e-02 2.43e+00  -4.0 4.22e-02   0.4 1.00e+00 5.86e-01f  1
+ 167r 1.0934509e+02 2.87e-02 1.44e-01  -4.0 1.59e-02   0.8 1.00e+00 9.40e-01h  1
+ 168r 1.0937796e+02 3.14e-02 9.25e-02  -4.0 4.51e-02   0.3 1.00e+00 1.00e+00f  1
+ 169r 1.0932368e+02 3.56e-02 1.16e+00  -4.0 1.15e-01  -0.2 1.00e+00 7.47e-01h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 170r 1.0931641e+02 3.76e-02 1.14e-02  -4.0 6.25e-03   0.3 1.00e+00 1.00e+00h  1
+ 171r 1.0926632e+02 4.17e-02 2.33e-02  -4.0 9.56e-03  -0.2 1.00e+00 1.00e+00h  1
+ 172r 1.0904075e+02 4.82e-02 8.38e-02  -4.0 1.92e-02  -0.7 1.00e+00 1.00e+00h  1
+ 173r 1.0856365e+02 5.27e-02 4.14e-01  -4.0 4.51e-02  -1.2 1.00e+00 1.00e+00h  1
+ 174r 1.0829326e+02 5.67e-02 2.36e+00  -4.0 9.45e-02  -1.6 3.15e-01 3.69e-01h  1
+ 175r 1.0798791e+02 5.71e-02 2.14e-01  -4.0 2.57e-02  -1.2 1.00e+00 1.00e+00h  1
+ 176r 1.0745096e+02 5.38e-02 2.44e+01  -4.0 1.49e-01    -  7.62e-01 4.23e-01h  1
+ 177r 1.0734607e+02 5.37e-02 9.38e-02  -4.0 9.13e-03   1.0 1.00e+00 1.00e+00h  1
+ 178r 1.0732522e+02 5.37e-02 5.59e-03  -4.0 1.61e-03   0.5 1.00e+00 1.00e+00h  1
+ 179r 1.0715178e+02 5.21e-02 1.34e+01  -4.0 7.08e-02    -  1.00e+00 4.66e-01h  2
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+ 180r 1.0718217e+02 5.21e-02 1.62e-03  -4.0 1.28e-03   0.1 1.00e+00 1.00e+00h  1
+ 181r 1.0708541e+02 5.23e-02 1.30e-01  -4.0 2.50e-02    -  1.00e+00 1.00e+00h  1
+ 182r 1.0709881e+02 5.25e-02 9.78e-04  -4.0 2.96e-03    -  1.00e+00 1.00e+00h  1
+ 183r 1.0709909e+02 5.25e-02 4.38e-07  -4.0 4.65e-05    -  1.00e+00 1.00e+00h  1
+
+Number of Iterations....: 183
+
+                                   (scaled)                 (unscaled)
+Objective...............:   1.0709908976235937e+02    1.0709908976235937e+02
+Dual infeasibility......:   1.0004999970935499e+01    1.0004999970935499e+01
+Constraint violation....:   5.2450568706860101e-02    5.2450568706860101e-02
+Variable bound violation:   0.0000000000000000e+00    0.0000000000000000e+00
+Complementarity.........:   1.0000000001653207e-04    1.0000000001653207e-04
+Overall NLP error.......:   6.1089237951548521e+00    1.0004999970935499e+01
+
+
+Number of objective function evaluations             = 271
+Number of objective gradient evaluations             = 149
+Number of equality constraint evaluations            = 271
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 191
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 184
+Total seconds in IPOPT                               = 0.712
+
+EXIT: Converged to a point of local infeasibility. Problem may be infeasible.
+
+Time weight effects:
+Weight | Total Time | ||u||   | Max |u|
+---------------------------------------------
+0.1   | 19.0823 s   | 6.1207 | 0.9999
+1.0   | 18.9651 s   | 6.1614 | 1.0000
+10.0   | 10.9592 s   | 6.0696 | 1.0000
+
+Observations:
+  - Lower weight → slower trajectory, gentler controls
+  - Higher weight → faster trajectory, more aggressive controls</code></pre><h2 id="Step-9:-Time-Step-Adaptation"><a class="docs-heading-anchor" href="#Step-9:-Time-Step-Adaptation">Step 9: Time Step Adaptation</a><a id="Step-9:-Time-Step-Adaptation-1"></a><a class="docs-heading-anchor-permalink" href="#Step-9:-Time-Step-Adaptation" title="Permalink"></a></h2><pre><code class="language-julia hljs">Δt_variation = std(Δt_sol_mintime)
+println(&quot;\nTime step adaptation:&quot;)
+println(&quot;  Std dev(Δt): &quot;, Δt_variation)
+println(
+    &quot;  Coefficient of variation: &quot;,
+    @sprintf(&quot;%.3f&quot;, Δt_variation / mean(Δt_sol_mintime))
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+Time step adaptation:
+  Std dev(Δt): 0.095173550288543
+  Coefficient of variation: 0.201</code></pre><h2 id="Key-Insights"><a class="docs-heading-anchor" href="#Key-Insights">Key Insights</a><a id="Key-Insights-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Insights" title="Permalink"></a></h2><ol><li><strong>Free time variables</strong>: Setting <code>timestep=:Δt</code> makes time steps optimizable</li><li><strong>Time bounds are crucial</strong>: Lower bound prevents Δt -&gt; 0, upper bound prevents unrealistically large steps</li><li><strong>Time weight balances speed vs control</strong>: High weight -&gt; fast but aggressive, low weight -&gt; slow but gentle</li><li><strong>Control saturation</strong>: Time-optimal solutions often saturate control bounds (bang-bang behavior)</li><li><strong>Non-uniform time steps</strong>: Optimizer may choose variable Δt — larger steps where less control is needed</li><li><strong>Initial guess</strong>: Start with reasonable Δt to help convergence</li></ol><h2 id="Best-Practices"><a class="docs-heading-anchor" href="#Best-Practices">Best Practices</a><a id="Best-Practices-1"></a><a class="docs-heading-anchor-permalink" href="#Best-Practices" title="Permalink"></a></h2><h3 id="Time-Step-Bounds"><a class="docs-heading-anchor" href="#Time-Step-Bounds">Time Step Bounds</a><a id="Time-Step-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Step-Bounds" title="Permalink"></a></h3><ul><li><strong>Lower bound</strong>: ~0.01 to 0.05 (prevent numerical issues)</li><li><strong>Upper bound</strong>: 1/10 to 1/5 of expected total time</li><li>Start conservative, relax if needed</li></ul><h3 id="Control-Weights"><a class="docs-heading-anchor" href="#Control-Weights">Control Weights</a><a id="Control-Weights-1"></a><a class="docs-heading-anchor-permalink" href="#Control-Weights" title="Permalink"></a></h3><ul><li>Usually small (1e-3 to 1e-2) for regularization</li><li>Just enough to ensure well-conditioned problem</li><li>Too large defeats the purpose of time minimization</li></ul><h3 id="Time-Weights"><a class="docs-heading-anchor" href="#Time-Weights">Time Weights</a><a id="Time-Weights-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Weights" title="Permalink"></a></h3><ul><li>Start with ~1.0 and adjust</li><li>Increase to prioritize speed more</li><li>Decrease if controls become too aggressive</li></ul><h3 id="Number-of-Time-Steps"><a class="docs-heading-anchor" href="#Number-of-Time-Steps">Number of Time Steps</a><a id="Number-of-Time-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Number-of-Time-Steps" title="Permalink"></a></h3><ul><li>Fewer steps = less resolution, harder to satisfy dynamics</li><li>More steps = more variables, slower solve</li><li>Rule of thumb: 30-100 steps for most problems</li></ul><h3 id="Initialization"><a class="docs-heading-anchor" href="#Initialization">Initialization</a><a id="Initialization-1"></a><a class="docs-heading-anchor-permalink" href="#Initialization" title="Permalink"></a></h3><ul><li>Use solution from fixed-time problem as warm start</li><li>Or solve with high control weight first, then reduce</li></ul><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><h3 id="Exercise-1:-Bang-Bang-Control"><a class="docs-heading-anchor" href="#Exercise-1:-Bang-Bang-Control">Exercise 1: Bang-Bang Control</a><a id="Exercise-1:-Bang-Bang-Control-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-1:-Bang-Bang-Control" title="Permalink"></a></h3><p>Increase time weight to <code>w_time=100.0</code>. Do controls saturate more?</p><h3 id="Exercise-2:-Time-Step-Constraints"><a class="docs-heading-anchor" href="#Exercise-2:-Time-Step-Constraints">Exercise 2: Time Step Constraints</a><a id="Exercise-2:-Time-Step-Constraints-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-2:-Time-Step-Constraints" title="Permalink"></a></h3><p>Try tighter bounds: <code>Δt ∈ [0.05, 0.15]</code>. How does total time change?</p><h3 id="Exercise-3:-Longer-Distance"><a class="docs-heading-anchor" href="#Exercise-3:-Longer-Distance">Exercise 3: Longer Distance</a><a id="Exercise-3:-Longer-Distance-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-3:-Longer-Distance" title="Permalink"></a></h3><p>Change goal to <code>x_goal = [2.0, 0.0]</code>. How does optimal time scale?</p><h3 id="Exercise-4:-Multiple-Objectives"><a class="docs-heading-anchor" href="#Exercise-4:-Multiple-Objectives">Exercise 4: Multiple Objectives</a><a id="Exercise-4:-Multiple-Objectives-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-4:-Multiple-Objectives" title="Permalink"></a></h3><p>Add terminal cost with soft goal:</p><pre><code class="language-julia hljs">obj = w_control * QuadraticRegularizer(:u, traj, 1.0) +
+      w_time * MinimumTimeObjective(traj, 1.0) +
+      100.0 * TerminalObjective(x -&gt; norm(x - x_goal)^2, :x, traj)</code></pre><h3 id="Exercise-5:-Warm-Starting"><a class="docs-heading-anchor" href="#Exercise-5:-Warm-Starting">Exercise 5: Warm Starting</a><a id="Exercise-5:-Warm-Starting-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-5:-Warm-Starting" title="Permalink"></a></h3><p>Solve fixed-time problem first, use as initial guess for free-time:</p><pre><code class="language-julia hljs">traj_warm = NamedTrajectory(
+    (x = prob_fixed.trajectory.x,
+     u = prob_fixed.trajectory.u,
+     Δt = Δt_guess);
+    # ... rest of setup
+)</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties while minimizing time</li><li><strong>How-To Guide: Tune the Solver</strong>: Improve convergence for difficult problems</li><li><strong>Advanced Topics: Performance</strong>: Optimize large-scale problems</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../bilinear_control/">« Bilinear Control</a><a class="docs-footer-nextpage" href="../../../lib/">Library »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 14 May 2026 20:57">Thursday 14 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
