@@ -15,5 +15,5 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [sources]
 DirectTrajOpt = {path = ".."}
-# TODO: remove rev pin once HarmoniqsBenchmarks.jl#2 merges to main
-HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "fix/widen-dto-compat"}
+# HBJ not yet registered in General; track main until registration lands.
+HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "main"}
