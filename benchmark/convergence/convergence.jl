@@ -22,19 +22,19 @@ using TestItems
         prob,
         ipopt_opts;
         benchmark_name = "xgate_convergence_ipopt_N51",
-        runner         = runner,
-        callback       = cb,
+        runner = runner,
+        callback = cb,
     )
 
-    final_inf  = _xgate_infidelity(prob)
+    final_inf = _xgate_infidelity(prob)
     primal_inf = ipopt_primal_infeasibility(state)
-    iters      = ipopt_iterations(state)
+    iters = ipopt_iterations(state)
 
     crit = InfidelityConvergence(
-        target_infidelity    = 1e-3,
-        final_infidelity     = final_inf,
+        target_infidelity = 1e-3,
+        final_infidelity = final_inf,
         primal_infeasibility = primal_inf,
-        feas_tol             = 1e-6,
+        feas_tol = 1e-6,
     )
 
     result_with_conv = _build_convergence_result(result, crit; iterations = iters)
@@ -83,17 +83,17 @@ end
         prob,
         madnlp_opts;
         benchmark_name = "xgate_convergence_madnlp_N51",
-        runner         = runner,
+        runner = runner,
     )
 
-    final_inf  = _xgate_infidelity(prob)
+    final_inf = _xgate_infidelity(prob)
     primal_inf = result.constraint_violation
 
     crit = InfidelityConvergence(
-        target_infidelity    = 1e-3,
-        final_infidelity     = final_inf,
+        target_infidelity = 1e-3,
+        final_infidelity = final_inf,
         primal_infeasibility = primal_inf,
-        feas_tol             = 1e-6,
+        feas_tol = 1e-6,
     )
 
     result_with_conv = _build_convergence_result(result, crit)
