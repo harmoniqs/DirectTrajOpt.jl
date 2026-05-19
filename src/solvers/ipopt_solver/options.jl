@@ -1,9 +1,34 @@
 export IpoptOptions
 
 """
-    Solver options for Ipopt
+    IpoptOptions <: AbstractSolverOptions
 
-    https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_print_options_documentation
+Configuration options for the Ipopt nonlinear solver. All fields map directly to
+[Ipopt options](https://coin-or.github.io/Ipopt/OPTIONS.html).
+
+Any field can also be passed directly as a keyword argument to `solve!`:
+```julia
+solve!(prob; max_iter=200, tol=1e-6, eval_hessian=false)
+```
+
+# Commonly used fields
+- `tol::Float64 = 1e-8`: Overall NLP convergence tolerance
+- `max_iter::Int = 1_000`: Maximum number of solver iterations
+- `max_cpu_time = 1_000_000.0`: Maximum CPU time in seconds
+- `constr_viol_tol::Float64 = 1e-6`: Constraint violation tolerance
+- `eval_hessian = true`: Whether to provide exact Hessians (false uses L-BFGS)
+- `linear_solver = "mumps"`: Linear solver backend (`"mumps"`, `"pardiso"`, `"ma27"`, etc.)
+- `print_level::Int = 5`: Ipopt output verbosity (0 = silent, 12 = maximum)
+
+# Example
+```julia
+# Pass as struct
+opts = IpoptOptions(max_iter=200, tol=1e-6, print_level=0)
+solve!(prob; options=opts)
+
+# Or pass fields directly as kwargs to solve!
+solve!(prob; max_iter=200, tol=1e-6, print_level=0)
+```
 """
 Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     tol::Float64 = 1e-8
@@ -19,7 +44,11 @@ Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     acceptable_constr_viol_tol::Float64 = 1.0e-2
     acceptable_compl_inf_tol::Float64 = 1.0e-2
     acceptable_obj_change_tol::Float64 = 1.0e-5
-    diverging_iterates_tol::Float64 = 1.0e8
+    # Ipopt's default is 1e20; the previous 1e8 fired false-positive "Iterates
+    # diverging" exits on smooth-pulse NLPs whose unscaled second derivatives
+    # legitimately reach O(1e8) (e.g. ddu ≈ u_max / Δt² with Δt in ns).
+    # Until DTO-level variable scaling lands, defer to Ipopt's default.
+    diverging_iterates_tol::Float64 = 1.0e20
     eval_hessian = true
     hessian_approximation = eval_hessian ? "exact" : "limited-memory"
     hsllib = nothing
@@ -27,7 +56,7 @@ Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     linear_solver = "mumps"
     mu_strategy = "adaptive"
     refine = true
-    adaptive_mu_globalization = refine ? "obj-constr-filter" : "never-monotone-mode" 
+    adaptive_mu_globalization = refine ? "obj-constr-filter" : "never-monotone-mode"
     mu_target::Float64 = 1.0e-4
     nlp_scaling_method = "gradient-based"
     output_file = nothing
@@ -44,4 +73,11 @@ Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     recalc_y_feas_tol = 1.0e-6
     watchdog_shortened_iter_trigger = 0
     watchdog_trial_iter_max = 3
+end
+
+@testitem "IpoptOptions: diverging_iterates_tol default matches Ipopt" begin
+    using DirectTrajOpt: IpoptSolverExt
+    # Locks in the bump from 1e8 (false-positive on smooth-pulse NLPs) to Ipopt's
+    # native default of 1e20. See hopper/dto-variable-scaling for context.
+    @test IpoptSolverExt.IpoptOptions().diverging_iterates_tol == 1.0e20
 end

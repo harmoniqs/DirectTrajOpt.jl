@@ -52,7 +52,7 @@ struct NonlinearGlobalConstraint{F} <: AbstractNonlinearConstraint
         g::Function,
         global_names::AbstractVector{Symbol},
         traj::NamedTrajectory;
-        equality::Bool=true
+        equality::Bool = true,
     )
         global_comps = vcat([traj.global_components[name] for name in global_names]...)
         global_dim = length(global_comps)
@@ -62,13 +62,7 @@ struct NonlinearGlobalConstraint{F} <: AbstractNonlinearConstraint
         @assert g_eval isa AbstractVector{<:Real}
         g_dim = length(g_eval)
 
-        return new{typeof(g)}(
-            g,
-            global_names,
-            equality,
-            g_dim,
-            global_dim
-        )
+        return new{typeof(g)}(g, global_names, equality, g_dim, global_dim)
     end
 end
 
@@ -76,9 +70,15 @@ function NonlinearGlobalConstraint(
     g::Function,
     global_name::Symbol,
     traj::NamedTrajectory;
-    kwargs...
+    kwargs...,
 )
     return NonlinearGlobalConstraint(g, [global_name], traj; kwargs...)
+end
+
+function Base.show(io::IO, c::NonlinearGlobalConstraint)
+    globals = join([":$n" for n in c.global_names], ", ")
+    eq_str = c.equality ? "equality" : "inequality"
+    print(io, "NonlinearGlobalConstraint on [$globals], $eq_str (dim = $(c.dim))")
 end
 
 # ----------------------------------------------------------------------------- #
@@ -86,11 +86,9 @@ end
 # ----------------------------------------------------------------------------- #
 
 # Per-constraint evaluation methods (called by wrapper functions)
-function (constraint::NonlinearGlobalConstraint)(
-    δ::AbstractVector,
-    traj::NamedTrajectory
-)
-    global_comps = vcat([traj.global_components[name] for name in constraint.global_names]...)
+function (constraint::NonlinearGlobalConstraint)(δ::AbstractVector, traj::NamedTrajectory)
+    global_comps =
+        vcat([traj.global_components[name] for name in constraint.global_names]...)
     δ .= constraint.g(traj.global_data[global_comps])
     return nothing
 end
@@ -104,9 +102,10 @@ This is part of the common interface with integrators.
 function CommonInterface.evaluate!(
     values::AbstractVector,
     constraint::NonlinearGlobalConstraint,
-    traj::NamedTrajectory
+    traj::NamedTrajectory,
 )
-    global_comps = vcat([traj.global_components[name] for name in constraint.global_names]...)
+    global_comps =
+        vcat([traj.global_components[name] for name in constraint.global_names]...)
     values .= constraint.g(traj.global_data[global_comps])
     return nothing
 end
@@ -118,21 +117,19 @@ Compute and return the full Jacobian using automatic differentiation.
 """
 function CommonInterface.eval_jacobian(
     constraint::NonlinearGlobalConstraint,
-    traj::NamedTrajectory
+    traj::NamedTrajectory,
 )
     Z_dim = traj.dim * traj.N + traj.global_dim
     ∂g_full = spzeros(constraint.dim, Z_dim)
-    
-    global_comps = vcat([traj.global_components[name] for name in constraint.global_names]...)
+
+    global_comps =
+        vcat([traj.global_components[name] for name in constraint.global_names]...)
     offset_global_comps = traj.dim * traj.N .+ global_comps
-    
+
     # Compute compact Jacobian and map to global columns
-    ∂g_compact = ForwardDiff.jacobian(
-        x -> constraint.g(x),
-        traj.global_data[global_comps]
-    )
+    ∂g_compact = ForwardDiff.jacobian(x -> constraint.g(x), traj.global_data[global_comps])
     ∂g_full[:, offset_global_comps] = ∂g_compact
-    
+
     return ∂g_full
 end
 
@@ -144,35 +141,40 @@ Compute and return the full Hessian of the Lagrangian using automatic differenti
 function CommonInterface.eval_hessian_of_lagrangian(
     constraint::NonlinearGlobalConstraint,
     traj::NamedTrajectory,
-    μ::AbstractVector
+    μ::AbstractVector,
 )
     Z_dim = traj.dim * traj.N + traj.global_dim
     μ∂²g_full = spzeros(Z_dim, Z_dim)
-    
-    global_comps = vcat([traj.global_components[name] for name in constraint.global_names]...)
+
+    global_comps =
+        vcat([traj.global_components[name] for name in constraint.global_names]...)
     offset_global_comps = traj.dim * traj.N .+ global_comps
-    
+
     # Compute compact Hessian and map to global×global block
-    μ∂²g_compact = ForwardDiff.hessian(
-        x -> μ' * constraint.g(x),
-        traj.global_data[global_comps]
-    )
+    μ∂²g_compact =
+        ForwardDiff.hessian(x -> μ' * constraint.g(x), traj.global_data[global_comps])
     μ∂²g_full[offset_global_comps, offset_global_comps] = μ∂²g_compact
-    
+
     return μ∂²g_full
 end
 
 # ============================================================================ #
 
-@testitem "testing NonlinearGlobalConstraint" begin    
+@testitem "testing NonlinearGlobalConstraint" begin
     include("../../../test/test_utils.jl")
 
-    _, traj = bilinear_dynamics_and_trajectory(add_global=true)
+    _, traj = bilinear_dynamics_and_trajectory(add_global = true)
 
     g_fn(g) = [norm(g) - 1.0]
 
-    NLC = NonlinearGlobalConstraint(g_fn, :g, traj; equality=false)
+    NLC = NonlinearGlobalConstraint(g_fn, :g, traj; equality = false)
 
     # Test with validation utility
-    test_constraint(NLC, traj; atol=1e-3, show_jacobian_diff=false, show_hessian_diff=false)
+    test_constraint(
+        NLC,
+        traj;
+        atol = 1e-3,
+        show_jacobian_diff = false,
+        show_hessian_diff = false,
+    )
 end

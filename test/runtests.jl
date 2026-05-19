@@ -1,6 +1,7 @@
 using DirectTrajOpt
 using TestItemRunner
 
+include("test_snippets.jl")
 
 # Run all testitem tests in package
 # Filter out experimental tests unless INCLUDE_EXPERIMENTAL environment variable is set

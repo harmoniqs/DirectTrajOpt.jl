@@ -66,46 +66,37 @@ struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
     var_dim::Int
     dim::Int
 
-    function BilinearIntegrator(
-        G::Function,
-        x::Symbol,
-        u::Symbol,
-        traj::NamedTrajectory
-    )
+    function BilinearIntegrator(G::Function, x::Symbol, u::Symbol, traj::NamedTrajectory)
         x_dim = traj.dims[x]
         u_dim = traj.dims[u]
         N = traj.N
-        
+
         # Variables: [xₖ, uₖ, Δtₖ, xₖ₊₁]
         var_dim = x_dim + u_dim + 1 + x_dim  # = 2*x_dim + u_dim + 1
-        
+
         # Total constraint dimension
         dim = x_dim * (N - 1)
-        
+
         # Define f function: constraint is f(xₖ₊₁, xₖ, uₖ, Δtₖ) = 0
         f = (xₖ₊₁, xₖ, uₖ, Δtₖ) -> xₖ₊₁ - expv(Δtₖ, G(uₖ), xₖ)
-        
-        return new{typeof(f)}(
-            f,
-            x,
-            u,
-            x_dim,
-            var_dim,
-            dim,
-        )
+
+        return new{typeof(f)}(f, x, u, x_dim, var_dim, dim)
     end
+end
+
+function Base.show(io::IO, B::BilinearIntegrator)
+    print(
+        io,
+        "BilinearIntegrator: :$(B.x_name) = exp(Δt G(:$(B.u_name))) :$(B.x_name)  (dim = $(B.x_dim))",
+    )
 end
 
 # -------------------------------------------------------------------------------- #
 # Methods
 # -------------------------------------------------------------------------------- #
 
-function evaluate!(
-    δ::AbstractVector,
-    B::BilinearIntegrator,
-    traj::NamedTrajectory,
-)
-    for k = 1:traj.N-1
+function evaluate!(δ::AbstractVector, B::BilinearIntegrator, traj::NamedTrajectory)
+    for k = 1:(traj.N-1)
         xₖ = traj[k][B.x_name]
         xₖ₊₁ = traj[k+1][B.x_name]
         uₖ = traj[k][B.u_name]
@@ -117,16 +108,13 @@ end
 
 # Jacobian methods
 
-@views function eval_jacobian(
-    B::AbstractBilinearIntegrator,
-    traj::NamedTrajectory
-)
+@views function eval_jacobian(B::AbstractBilinearIntegrator, traj::NamedTrajectory)
     ∂B = spzeros(B.dim, traj.dim * traj.N + traj.global_dim)
-    for k = 1:traj.N-1
+    for k = 1:(traj.N-1)
         ForwardDiff.jacobian!(
             ∂B[slice(k, B.x_dim), slice(k, 1:2traj.dim, traj.dim)],
-            zz -> begin 
-                zₖ₊₁ = zz[traj.dim+1:end]
+            zz -> begin
+                zₖ₊₁ = zz[(traj.dim+1):end]
                 zₖ = zz[1:traj.dim]
 
                 xₖ₊₁ = zₖ₊₁[traj.components[B.x_name]]
@@ -139,7 +127,7 @@ end
             [traj[k].data; traj[k+1].data],
         )
     end
-    return ∂B 
+    return ∂B
 end
 
 # Hessian methods
@@ -147,20 +135,17 @@ end
 function eval_hessian_of_lagrangian(
     B::AbstractBilinearIntegrator,
     traj::NamedTrajectory,
-    μ::AbstractVector
+    μ::AbstractVector,
 )
-    μ∂²B = spzeros(
-        traj.dim * traj.N + traj.global_dim,
-        traj.dim * traj.N + traj.global_dim,
-    )
+    μ∂²B = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
 
-    for k = 1:traj.N-1
+    for k = 1:(traj.N-1)
         μₖ = μ[slice(k, B.x_dim)]
-       
+
         μ∂²Bₖ = ForwardDiff.hessian(
             zz -> begin
                 zₖ = zz[1:traj.dim]
-                zₖ₊₁ = zz[traj.dim+1:end]
+                zₖ₊₁ = zz[(traj.dim+1):end]
                 xₖ = zₖ[traj.components[B.x_name]]
                 uₖ = zₖ[traj.components[B.u_name]]
                 Δtₖ = zₖ[traj.components[traj.timestep]][1]
@@ -172,7 +157,7 @@ function eval_hessian_of_lagrangian(
 
         μ∂²B[slice(k, 1:2traj.dim, traj.dim), slice(k, 1:2traj.dim, traj.dim)] .+= μ∂²Bₖ
     end
-    return μ∂²B 
+    return μ∂²B
 end
 
 # -------------------------------------------------------------------------------- #
@@ -186,6 +171,5 @@ end
 
     B = BilinearIntegrator(G, :x, :u, traj)
 
-    test_integrator(B, traj, atol=1e-3)
+    test_integrator(B, traj, atol = 1e-3)
 end
-
