@@ -161,7 +161,13 @@ end
 
     for N in N_values
         for dim in dim_values
-            prob = make_scaled_problem(; N = N, state_dim = dim)
+            # Deterministic distinct seed per (N, dim) cell so each
+            # data point comes from a different random instance. Both
+            # solvers receive the *same* instance for that cell to
+            # keep the Ipopt-vs-MadNLP comparison fair.
+            cell_seed = 1000 + 100 * N + dim
+
+            prob = make_scaled_problem(; N = N, state_dim = dim, seed = cell_seed)
             r_ipopt = benchmark_solve!(
                 prob,
                 IpoptOptions(max_iter = 50, print_level = 0);
@@ -170,7 +176,7 @@ end
             )
             push!(results, r_ipopt)
 
-            prob = make_scaled_problem(; N = N, state_dim = dim)
+            prob = make_scaled_problem(; N = N, state_dim = dim, seed = cell_seed)
             r_madnlp = benchmark_solve!(
                 prob,
                 MadNLPOptions(max_iter = 50, print_level = 6);
