@@ -101,6 +101,16 @@ end
 
     runner = get(ENV, "BENCHMARK_RUNNER", "local")
 
+    # Warm up both solvers on a tiny problem so first-call JIT compile
+    # (Ipopt/MadNLP extension load, KKT/AD codegen) doesn't pollute the
+    # timed solve. Discard the warmup results.
+    let warmup_prob = make_bilinear_problem(; N = 11, seed = 0)
+        DirectTrajOpt.solve!(warmup_prob; options = IpoptOptions(max_iter = 2, print_level = 0))
+    end
+    let warmup_prob = make_bilinear_problem(; N = 11, seed = 0)
+        DirectTrajOpt.solve!(warmup_prob; options = MadNLPOptions(max_iter = 2, print_level = 0))
+    end
+
     prob_ipopt = make_bilinear_problem(; N = 51, seed = 42)
     result_ipopt = benchmark_solve!(
         prob_ipopt,
@@ -137,6 +147,17 @@ end
     include("$(joinpath(@__DIR__, "problem_utils.jl"))")
 
     runner = get(ENV, "BENCHMARK_RUNNER", "local")
+
+    # JIT warmup: the first solve in this process compiles Ipopt/MadNLP
+    # extensions and the AD pipeline. Pay that cost on a throwaway tiny
+    # problem so the smallest cell in the sweep is not order-biased.
+    let warmup_prob = make_scaled_problem(; N = 11, state_dim = 2, seed = 0)
+        DirectTrajOpt.solve!(warmup_prob; options = IpoptOptions(max_iter = 2, print_level = 0))
+    end
+    let warmup_prob = make_scaled_problem(; N = 11, state_dim = 2, seed = 0)
+        DirectTrajOpt.solve!(warmup_prob; options = MadNLPOptions(max_iter = 2, print_level = 0))
+    end
+
     N_values = [25, 51, 101]
     dim_values = [4, 8, 16]
     results = BenchmarkResult[]
