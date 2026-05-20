@@ -20,4 +20,8 @@ DirectTrajOpt = {path = ".."}
 # results are reproducible. Bump this SHA (and the local Manifest) when HBJ
 # ships a new feature we want to use. Drop in favor of [compat] once HBJ
 # registers in General.
-HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "5401542c477c0f2da6d66028c513e8a278f4875f"}
+#
+# Bumped from 5401542c (v0.2.0 prep) to c38418cb (post-#12) to pick up the
+# alloc profile analyzer (`top_alloc_types`, `report_alloc_profile`, …)
+# used by `benchmark/alloc_profile.jl`.
+HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "c38418cb7f932f2ff9a9c6c6eacf9a11ff1018c1"}
