@@ -130,8 +130,7 @@ end
     @test abs(t[1]) < 1e-8
 end
 
-@testitem "TimeConsistencyConstraint with free time optimization — robustness sweep" tags =
-    [:robustness] begin
+@testitem "TimeConsistencyConstraint free-time robustness sweep" tags=[:robustness] begin
     include("../../../test/test_utils.jl")
     using NamedTrajectories
     using Random
@@ -139,55 +138,63 @@ end
     # K independent seeds; pass if ≥80% land within the same tolerance the
     # deterministic test uses. Catches regressions where the solver's local-
     # minimum behavior degrades for "typical" inconsistent initializations.
-    K = 20
-    pass_threshold = 0.80
-    pass_count = 0
-    failures = String[]
+    function run_sweep(K::Int)
+        pass_count = 0
+        failures = String[]
+        for seed = 1:K
+            rng = MersenneTwister(seed)
+            N = 10
+            Δt_val = 0.5
 
-    for seed = 1:K
-        rng = MersenneTwister(seed)
-        N = 10
-        Δt_val = 0.5
+            traj = NamedTrajectory(
+                (
+                    x = rand(rng, 2, N),
+                    u = rand(rng, 1, N),
+                    Δt = fill(Δt_val, N),
+                    t = cumsum(rand(rng, N)),
+                );
+                controls = (:u, :Δt, :t),
+                timestep = :Δt,
+                bounds = (u = (-1.0, 1.0), t = (0.0, 10.0)),
+                initial = (t = [0.0],),
+            )
 
-        traj = NamedTrajectory(
-            (
-                x = rand(rng, 2, N),
-                u = rand(rng, 1, N),
-                Δt = fill(Δt_val, N),
-                t = cumsum(rand(rng, N)),
-            );
-            controls = (:u, :Δt, :t),
-            timestep = :Δt,
-            bounds = (u = (-1.0, 1.0), t = (0.0, 10.0)),
-            initial = (t = [0.0],),
-        )
+            J = QuadraticRegularizer(:u, traj, 1.0)
+            J += QuadraticRegularizer(:t, traj, 0.1)
 
-        J = QuadraticRegularizer(:u, traj, 1.0)
-        J += QuadraticRegularizer(:t, traj, 0.1)
+            time_con = TimeConsistencyConstraint()
 
-        time_con = TimeConsistencyConstraint()
+            prob = DirectTrajOptProblem(
+                traj,
+                J,
+                AbstractIntegrator[];
+                constraints = [time_con],
+            )
 
-        prob = DirectTrajOptProblem(traj, J, AbstractIntegrator[]; constraints = [time_con])
+            ok = try
+                solve!(prob; max_iter = 100)
+                t = prob.trajectory.t
+                Δt = prob.trajectory.Δt
+                consistent = all(k -> abs(t[k+1] - t[k] - Δt[k]) < 1e-6, 1:(N-1))
+                initial_ok = abs(t[1]) < 1e-8
+                consistent && initial_ok
+            catch e
+                push!(failures, "seed $seed: threw $(typeof(e))")
+                false
+            end
 
-        ok = try
-            solve!(prob; max_iter = 100)
-            t = prob.trajectory.t
-            Δt = prob.trajectory.Δt
-            consistent = all(k -> abs(t[k+1] - t[k] - Δt[k]) < 1e-6, 1:(N-1))
-            initial_ok = abs(t[1]) < 1e-8
-            consistent && initial_ok
-        catch e
-            push!(failures, "seed $seed: threw $(typeof(e))")
-            false
+            if ok
+                pass_count += 1
+            else
+                push!(failures, "seed $seed: tolerance not met after solve")
+            end
         end
-
-        if ok
-            pass_count += 1
-        else
-            push!(failures, "seed $seed: tolerance not met after solve")
-        end
+        return pass_count, failures
     end
 
+    K = 20
+    pass_threshold = 0.80
+    pass_count, failures = run_sweep(K)
     pass_rate = pass_count / K
     @info "TimeConsistencyConstraint free-time robustness sweep" pass_count K pass_rate failures
     @test pass_rate >= pass_threshold

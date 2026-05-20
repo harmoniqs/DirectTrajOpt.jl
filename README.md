@@ -115,7 +115,7 @@ julia --project=. test/runtests.jl
 | Env var                     | Tag             | What it adds                                                                                                |
 | --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
 | `INCLUDE_EXPERIMENTAL=1`    | `:experimental` | Known-flaky tests held out of PR CI. Useful for local diagnosis while a fix is being worked out.            |
-| `INCLUDE_ROBUSTNESS=1`      | `:robustness`   | Multi-seed sweeps (K=20) that assert ≥80% of seeds pass within tolerance. Slow but catches noisy regressions. |
+| `INCLUDE_ROBUSTNESS=1`      | `:robustness`   | Multi-seed sweeps (K=20) that assert a minimum fraction of seeds pass within tolerance. Per-test threshold chosen with buffer above the observed baseline pass rate — typically 0.80 for clean tests, lower for inherently noisy ones (e.g. finite-difference comparisons). |
 
 ```bash
 INCLUDE_EXPERIMENTAL=1 julia --project=. test/runtests.jl
