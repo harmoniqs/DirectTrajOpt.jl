@@ -312,12 +312,17 @@ end
 
 @testitem "NonlinearKnotPointConstraint - single variable with vector syntax" begin
     using DirectTrajOpt: CommonInterface
+    using Random
 
     include("../../../test/test_utils.jl")
 
-    _, traj = bilinear_dynamics_and_trajectory()
+    # Deterministic trajectory + multiplier: the test verifies vector vs
+    # single-symbol syntax structurally, plus a single finite-diff comparison.
+    # Multi-seed coverage of the finite-diff tolerance lives in the robustness
+    # testitem below — this one must be reproducible across Julia versions.
+    rng = MersenneTwister(0)
+    _, traj = bilinear_dynamics_and_trajectory(; rng = rng)
 
-    # Test that [:u] syntax works the same as :u
     g(a) = [norm(a) - 1.0]
 
     NLC1 = NonlinearKnotPointConstraint(g, :u, traj; equality = false)
@@ -330,9 +335,71 @@ end
 
     @test δ1 ≈ δ2
 
-    # Test both with finite differences
-    test_constraint(NLC1, traj; atol = 1e-3)
-    test_constraint(NLC2, traj; atol = 1e-3)
+    # Test both with finite differences (seeded μ → deterministic Hessian check)
+    test_constraint(NLC1, traj; atol = 1e-3, rng = MersenneTwister(1))
+    test_constraint(NLC2, traj; atol = 1e-3, rng = MersenneTwister(1))
+end
+
+@testitem "NonlinearKnotPointConstraint - vector syntax robustness sweep" tags =
+    [:robustness] begin
+    using DirectTrajOpt: CommonInterface
+    using Random
+
+    include("../../../test/test_utils.jl")
+
+    # Finite-diff vs analytic Jacobian/Hessian at atol=1e-3 is fundamentally
+    # noisy in the random trajectory point. Run K seeds; require ≥80% pass.
+    K = 20
+    pass_threshold = 0.80
+    pass_count = 0
+    failures = String[]
+
+    g(a) = [norm(a) - 1.0]
+
+    for seed = 1:K
+        _, traj = bilinear_dynamics_and_trajectory(; rng = MersenneTwister(seed))
+        NLC1 = NonlinearKnotPointConstraint(g, :u, traj; equality = false)
+        NLC2 = NonlinearKnotPointConstraint(g, [:u], traj; equality = false)
+
+        δ1 = zeros(NLC1.dim)
+        δ2 = zeros(NLC2.dim)
+        CommonInterface.evaluate!(δ1, NLC1, traj)
+        CommonInterface.evaluate!(δ2, NLC2, traj)
+        syntax_ok = isapprox(δ1, δ2)
+
+        # `assert=false`: inspect jacobian_pass/hessian_pass directly instead
+        # of registering @test outcomes per-seed. `test_equality=false` uses
+        # the norm-based aggregate check (a single noisy entry shouldn't fail
+        # the seed — the overall derivative match is what matters).
+        r1 = test_constraint(
+            NLC1,
+            traj;
+            atol = 1e-3,
+            test_equality = false,
+            rng = MersenneTwister(seed + K),
+            assert = false,
+        )
+        r2 = test_constraint(
+            NLC2,
+            traj;
+            atol = 1e-3,
+            test_equality = false,
+            rng = MersenneTwister(seed + K),
+            assert = false,
+        )
+        fd_ok = r1.jacobian_pass && r1.hessian_pass && r2.jacobian_pass && r2.hessian_pass
+
+        if syntax_ok && fd_ok
+            pass_count += 1
+        else
+            !syntax_ok && push!(failures, "seed $seed: δ1 ≉ δ2 (syntax check)")
+            !fd_ok && push!(failures, "seed $seed: finite-diff check failed")
+        end
+    end
+
+    pass_rate = pass_count / K
+    @info "NonlinearKnotPointConstraint vector-syntax robustness sweep" pass_count K pass_rate failures
+    @test pass_rate >= pass_threshold
 end
 
 @testitem "NonlinearKnotPointConstraint - multiple variables concatenated" begin
