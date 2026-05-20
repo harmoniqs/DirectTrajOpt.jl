@@ -105,10 +105,16 @@ end
     # (Ipopt/MadNLP extension load, KKT/AD codegen) doesn't pollute the
     # timed solve. Discard the warmup results.
     let warmup_prob = make_bilinear_problem(; N = 11, seed = 0)
-        DirectTrajOpt.solve!(warmup_prob; options = IpoptOptions(max_iter = 2, print_level = 0))
+        DirectTrajOpt.solve!(
+            warmup_prob;
+            options = IpoptOptions(max_iter = 2, print_level = 0),
+        )
     end
     let warmup_prob = make_bilinear_problem(; N = 11, seed = 0)
-        DirectTrajOpt.solve!(warmup_prob; options = MadNLPOptions(max_iter = 2, print_level = 0))
+        DirectTrajOpt.solve!(
+            warmup_prob;
+            options = MadNLPOptions(max_iter = 2, print_level = 0),
+        )
     end
 
     prob_ipopt = make_bilinear_problem(; N = 51, seed = 42)
@@ -152,10 +158,16 @@ end
     # extensions and the AD pipeline. Pay that cost on a throwaway tiny
     # problem so the smallest cell in the sweep is not order-biased.
     let warmup_prob = make_scaled_problem(; N = 11, state_dim = 2, seed = 0)
-        DirectTrajOpt.solve!(warmup_prob; options = IpoptOptions(max_iter = 2, print_level = 0))
+        DirectTrajOpt.solve!(
+            warmup_prob;
+            options = IpoptOptions(max_iter = 2, print_level = 0),
+        )
     end
     let warmup_prob = make_scaled_problem(; N = 11, state_dim = 2, seed = 0)
-        DirectTrajOpt.solve!(warmup_prob; options = MadNLPOptions(max_iter = 2, print_level = 0))
+        DirectTrajOpt.solve!(
+            warmup_prob;
+            options = MadNLPOptions(max_iter = 2, print_level = 0),
+        )
     end
 
     N_values = [25, 51, 101]
