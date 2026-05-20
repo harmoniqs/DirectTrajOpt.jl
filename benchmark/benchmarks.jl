@@ -113,7 +113,7 @@ end
     let warmup_prob = make_bilinear_problem(; N = 11, seed = 0)
         DirectTrajOpt.solve!(
             warmup_prob;
-            options = MadNLPOptions(max_iter = 2, print_level = 0),
+            options = MadNLPOptions(max_iter = 2, print_level = 6),
         )
     end
 
@@ -166,7 +166,7 @@ end
     let warmup_prob = make_scaled_problem(; N = 11, state_dim = 2, seed = 0)
         DirectTrajOpt.solve!(
             warmup_prob;
-            options = MadNLPOptions(max_iter = 2, print_level = 0),
+            options = MadNLPOptions(max_iter = 2, print_level = 6),
         )
     end
 
