@@ -1,6 +1,7 @@
 using NamedTrajectories
 using SparseArrays
 using LinearAlgebra
+using Random
 using ForwardDiff
 using ExponentialAction
 
@@ -121,6 +122,7 @@ function bilinear_dynamics_and_trajectory(;
     ω::Float64 = 0.1,
     add_time::Bool = false,
     add_global::Bool = false,
+    rng::AbstractRNG = Random.default_rng(),
 )
     Gx = sparse(Float64[
         0 0 0 1;
@@ -148,8 +150,8 @@ function bilinear_dynamics_and_trajectory(;
 
     G(u) = ω * Gz + sum(u .* G_drives)
 
-    u_initial = u_bound * (2rand(2, N) .- 1)
-    x_initial = 2rand(4, N) .- 1
+    u_initial = u_bound * (2rand(rng, 2, N) .- 1)
+    x_initial = 2rand(rng, 4, N) .- 1
 
     x_init = [1.0, 0.0, 0.0, 0.0]
     x_goal = [0.0, 1.0, 0.0, 0.0]
@@ -158,8 +160,8 @@ function bilinear_dynamics_and_trajectory(;
         (
             x = x_initial,
             u = u_initial,
-            du = randn(2, N),
-            ddu = randn(2, N),
+            du = randn(rng, 2, N),
+            ddu = randn(rng, 2, N),
             Δt = fill(Δt, N),
         );
         controls = (:ddu, :Δt),
@@ -175,7 +177,7 @@ function bilinear_dynamics_and_trajectory(;
     end
 
     if add_global
-        traj = add_component(traj, :g, randn(N), type = :global)
+        traj = add_component(traj, :g, randn(rng, N), type = :global)
     end
 
     return G, traj
