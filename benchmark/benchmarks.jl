@@ -45,24 +45,26 @@ using TestItems
                     break
                 end
             end
-        catch
+        catch e
+            @warn "Failed to look up DirectTrajOpt version from Pkg.dependencies" exception =
+                (e, catch_backtrace())
         end
         isnothing(v) ? "unknown" : string(v)
     end
 
     pdims = problem_dims(prob)
 
+    commit_sha = try
+        String(strip(read(`git rev-parse --short HEAD`, String)))
+    catch e
+        @warn "Failed to capture git commit SHA" exception = (e, catch_backtrace())
+        "unknown"
+    end
+
     result = MicroBenchmarkResult(
         package = "DirectTrajOpt",
         package_version = pkg_version,
-        commit = (
-            try
-                String(strip(read(`git rev-parse --short HEAD`, String)))
-            catch
-                ;
-                "unknown"
-            end
-        ),
+        commit = commit_sha,
         benchmark_name = "evaluator_micro_bilinear_N51",
         N = N,
         state_dim = pdims.state_dim,
