@@ -130,7 +130,7 @@ end
     @test abs(t[1]) < 1e-8
 end
 
-@testitem "TimeConsistencyConstraint free-time robustness sweep" tags=[:robustness] begin
+@testitem "TimeConsistencyConstraint free-time robustness sweep" begin
     include("../../../test/test_utils.jl")
     using NamedTrajectories
     using Random

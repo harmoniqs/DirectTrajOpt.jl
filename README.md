@@ -105,42 +105,32 @@ solve!(prob; max_iter=100)
 
 ## Testing
 
-To run the standard test suite (what CI gates every PR on):
 ```bash
 julia --project=. test/runtests.jl
 ```
 
-`@testitem`s are filtered by tag. Two opt-in tags expand coverage:
+`runtests.jl` runs every `@testitem` in `src/`, `ext/`, and `test/`. Tests in
+`benchmark/` are skipped — that subdirectory ships its own `Project.toml`
+(extra deps like `HarmoniqsBenchmarks`) and has a dedicated workflow.
 
-| Env var                     | Tag             | What it adds                                                                                                |
-| --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
-| `INCLUDE_EXPERIMENTAL=1`    | `:experimental` | Known-flaky tests held out of PR CI. Useful for local diagnosis while a fix is being worked out.            |
-| `INCLUDE_ROBUSTNESS=1`      | `:robustness`   | Multi-seed sweeps (K=20) that assert a minimum fraction of seeds pass within tolerance. Per-test threshold chosen with buffer above the observed baseline pass rate — typically 0.80 for clean tests, lower for inherently noisy ones (e.g. finite-difference comparisons). |
+### Stochastic / numerical primitives — two-layer testing
 
-```bash
-INCLUDE_EXPERIMENTAL=1 julia --project=. test/runtests.jl
-INCLUDE_ROBUSTNESS=1   julia --project=. test/runtests.jl
-```
+A single seeded `MersenneTwister` is reproducible on one Julia version but
+small downstream numerics can drift across the CI matrix (1.10 / 1.11 / 1.12).
+For tests that touch non-deterministic surfaces (solver convergence from
+random init, finite-difference derivative comparisons) we pair each test:
 
-### Testing philosophy for stochastic / numerical primitives
+1. **Deterministic baseline**: a single seeded trajectory + multiplier.
+   A failure is a real regression on a specific (Julia version, seed) pair.
+2. **Robustness sweep**: K=20 independent seeds; passes if a fraction of
+   seeds (per-test threshold, chosen with buffer above the observed baseline
+   rate — typically 0.80, lower for inherently noisy checks like norm-based
+   finite-diff) land within tolerance. Detects regressions that drop the
+   true pass rate well below the threshold with very high probability
+   (binomial), while staying insensitive to lucky/unlucky single draws.
 
-A single `Random.seed!(0)` covers reproducibility on one Julia version but
-can drift across the CI matrix (1.10 / 1.11 / 1.12). For tests that touch
-non-deterministic surfaces — solver convergence with random initial
-conditions, finite-difference derivative comparisons — we use a two-layer
-approach:
-
-1. **Deterministic baseline** (untagged, runs every PR): a single seeded
-   trajectory + multiplier. A failure here means a real regression on the
-   specific (Julia version, seed) pair.
-2. **Robustness sweep** (`:robustness`, opt-in / nightly): K independent
-   seeds; pass if ≥80% land within the tolerance. A K=20 sweep detects
-   regressions that drop the true pass rate below ~80% with very high
-   probability (binomial), while staying robust against random unlucky
-   draws on the deterministic baseline.
-
-When writing a new flaky test, prefer adding both rather than tagging
-`:experimental` indefinitely.
+The sweeps are cheap enough (a handful of seconds in aggregate) to run on
+every PR.
 
 ## Contributing
 

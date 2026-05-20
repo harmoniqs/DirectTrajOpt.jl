@@ -340,7 +340,7 @@ end
     test_constraint(NLC2, traj; atol = 1e-3, rng = MersenneTwister(1))
 end
 
-@testitem "NonlinearKnotPointConstraint vector syntax robustness sweep" tags=[:robustness] begin
+@testitem "NonlinearKnotPointConstraint vector syntax robustness sweep" begin
     using DirectTrajOpt: CommonInterface
     using Random
 
