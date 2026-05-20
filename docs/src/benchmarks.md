@@ -61,9 +61,15 @@ the natural optimization target.
 
 Both solvers across increasing problem sizes (``N \times \text{state\_dim}``).
 Each solver is capped at 50 iterations to measure scaling behavior rather than
-convergence. Every ``(N, \text{state\_dim})`` cell uses a deterministic
-distinct seed so each data point is a fresh instance; both solvers receive the
-same instance per cell to keep that cell's comparison fair.
+convergence. Every ``(N, \text{state\_dim})`` cell runs ``K = 3`` random
+instances (deterministic distinct seeds) and the table shows the **median** wall
+time and allocation total across those seeds — single-shot timings on random
+instances are noisy enough that one degenerate seed can dominate a cell. Both
+solvers receive the same instance per (cell, seed) so per-seed Ipopt-vs-MadNLP
+comparisons stay fair; only the choice of instance varies across the K samples.
+
+The per-seed `BenchmarkResult`s are all saved to the JLD2 artifact, so the
+raw distribution behind each median cell is available for downstream analysis.
 
 ### Scaling sweep — *illustrative*
 
@@ -79,8 +85,10 @@ same instance per cell to keep that cell's comparison fair.
 | 101 | 8 | 6.8 | 1,300 | 4.5 | 780 |
 | 101 | 16 | 19.5 | 4,200 | 12.8 | 2,500 |
 
-Each cell is one solve — useful for tracking the slope of each solver vs
-itself over time, less useful as a single-shot Ipopt-vs-MadNLP comparison.
+Each cell is the median over ``K = 3`` solves on independent random
+instances — most useful for tracking the slope of each solver vs itself
+over time, less useful as an instance-by-instance Ipopt-vs-MadNLP
+comparison since the underlying problems differ between cells.
 
 ## Environment
 

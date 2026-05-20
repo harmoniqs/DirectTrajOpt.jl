@@ -147,7 +147,7 @@ end
 
 @testitem "Memory scaling: N and state_dim sweep" begin
     using HarmoniqsBenchmarks, DirectTrajOpt, NamedTrajectories
-    using SparseArrays, ExponentialAction, Random, Dates, Printf
+    using SparseArrays, ExponentialAction, Random, Dates, Printf, Statistics
     import MadNLP
 
     include("$(joinpath(@__DIR__, "problem_utils.jl"))")
@@ -172,9 +172,18 @@ end
 
     N_values = [25, 51, 101]
     dim_values = [4, 8, 16]
+    # Median over `n_seeds` random instances per (N, dim) cell. Single-shot
+    # timing on random instances is noisy enough to be misleading — one
+    # earlier run had N=25, dim=8 return Ipopt in 11ms allocating 22KB
+    # because that one seed (`1000 + 100*25 + 8 = 3508`) produced a
+    # degenerate initial point Ipopt resolved at iteration 0. Median over
+    # K samples washes the anomaly out without sacrificing reproducibility:
+    # the per-seed BenchmarkResults are all saved to JLD2 so the raw
+    # distribution is available for downstream analysis.
+    n_seeds = 3
     results = BenchmarkResult[]
 
-    println("\n=== Memory Scaling Study ===")
+    println("\n=== Memory Scaling Study (median over $n_seeds seeds per cell) ===")
     @printf(
         "  %5s | %5s | %12s | %12s | %12s | %12s\n",
         "N",
@@ -196,38 +205,49 @@ end
 
     for N in N_values
         for dim in dim_values
-            # Deterministic distinct seed per (N, dim) cell so each
-            # data point comes from a different random instance. Both
-            # solvers receive the *same* instance for that cell to
-            # keep the Ipopt-vs-MadNLP comparison fair.
-            cell_seed = 1000 + 100 * N + dim
+            ipopt_walls = Float64[]
+            madnlp_walls = Float64[]
+            ipopt_alloc_kb = Int[]
+            madnlp_alloc_kb = Int[]
 
-            prob = make_scaled_problem(; N = N, state_dim = dim, seed = cell_seed)
-            r_ipopt = benchmark_solve!(
-                prob,
-                IpoptOptions(max_iter = 50, print_level = 0);
-                benchmark_name = "scaling_N$(N)_d$(dim)_ipopt",
-                runner = runner,
-            )
-            push!(results, r_ipopt)
+            for k = 1:n_seeds
+                # Deterministic distinct seed per (N, dim, k) sample. Both
+                # solvers receive the *same* instance for that (N, dim, k)
+                # so the per-seed Ipopt-vs-MadNLP comparison is fair; only
+                # the choice of instance varies across the K samples.
+                cell_seed = 1000 + 100 * N + dim + 10_000 * (k - 1)
 
-            prob = make_scaled_problem(; N = N, state_dim = dim, seed = cell_seed)
-            r_madnlp = benchmark_solve!(
-                prob,
-                MadNLPOptions(max_iter = 50, print_level = 6);
-                benchmark_name = "scaling_N$(N)_d$(dim)_madnlp",
-                runner = runner,
-            )
-            push!(results, r_madnlp)
+                prob = make_scaled_problem(; N = N, state_dim = dim, seed = cell_seed)
+                r_ipopt = benchmark_solve!(
+                    prob,
+                    IpoptOptions(max_iter = 50, print_level = 0);
+                    benchmark_name = "scaling_N$(N)_d$(dim)_ipopt_s$(k)",
+                    runner = runner,
+                )
+                push!(results, r_ipopt)
+                push!(ipopt_walls, r_ipopt.wall_time_s)
+                push!(ipopt_alloc_kb, r_ipopt.total_allocations_bytes ÷ 1024)
+
+                prob = make_scaled_problem(; N = N, state_dim = dim, seed = cell_seed)
+                r_madnlp = benchmark_solve!(
+                    prob,
+                    MadNLPOptions(max_iter = 50, print_level = 6);
+                    benchmark_name = "scaling_N$(N)_d$(dim)_madnlp_s$(k)",
+                    runner = runner,
+                )
+                push!(results, r_madnlp)
+                push!(madnlp_walls, r_madnlp.wall_time_s)
+                push!(madnlp_alloc_kb, r_madnlp.total_allocations_bytes ÷ 1024)
+            end
 
             @printf(
                 "  %5d | %5d | %12.3f | %12d | %12.3f | %12d\n",
                 N,
                 dim,
-                r_ipopt.wall_time_s,
-                r_ipopt.total_allocations_bytes ÷ 1024,
-                r_madnlp.wall_time_s,
-                r_madnlp.total_allocations_bytes ÷ 1024
+                median(ipopt_walls),
+                round(Int, median(ipopt_alloc_kb)),
+                median(madnlp_walls),
+                round(Int, median(madnlp_alloc_kb))
             )
         end
     end
