@@ -105,17 +105,42 @@ solve!(prob; max_iter=100)
 
 ## Testing
 
-To run all stable tests:
+To run the standard test suite (what CI gates every PR on):
 ```bash
 julia --project=. test/runtests.jl
 ```
 
-To include experimental tests (tests marked as potentially flaky):
+`@testitem`s are filtered by tag. Two opt-in tags expand coverage:
+
+| Env var                     | Tag             | What it adds                                                                                                |
+| --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
+| `INCLUDE_EXPERIMENTAL=1`    | `:experimental` | Known-flaky tests held out of PR CI. Useful for local diagnosis while a fix is being worked out.            |
+| `INCLUDE_ROBUSTNESS=1`      | `:robustness`   | Multi-seed sweeps (K=20) that assert ≥80% of seeds pass within tolerance. Slow but catches noisy regressions. |
+
 ```bash
 INCLUDE_EXPERIMENTAL=1 julia --project=. test/runtests.jl
+INCLUDE_ROBUSTNESS=1   julia --project=. test/runtests.jl
 ```
 
-Some tests are tagged as `experimental` because they may be unstable or flaky in certain environments. By default, these tests are excluded from CI runs to maintain build stability.
+### Testing philosophy for stochastic / numerical primitives
+
+A single `Random.seed!(0)` covers reproducibility on one Julia version but
+can drift across the CI matrix (1.10 / 1.11 / 1.12). For tests that touch
+non-deterministic surfaces — solver convergence with random initial
+conditions, finite-difference derivative comparisons — we use a two-layer
+approach:
+
+1. **Deterministic baseline** (untagged, runs every PR): a single seeded
+   trajectory + multiplier. A failure here means a real regression on the
+   specific (Julia version, seed) pair.
+2. **Robustness sweep** (`:robustness`, opt-in / nightly): K independent
+   seeds; pass if ≥80% land within the tolerance. A K=20 sweep detects
+   regressions that drop the true pass rate below ~80% with very high
+   probability (binomial), while staying robust against random unlucky
+   draws on the deterministic baseline.
+
+When writing a new flaky test, prefer adding both rather than tagging
+`:experimental` indefinitely.
 
 ## Contributing
 
