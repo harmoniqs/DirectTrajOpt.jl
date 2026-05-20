@@ -9,12 +9,15 @@ using TestItems
 
     runner = get(ENV, "BENCHMARK_RUNNER", "local")
 
-    # `Profile.Allocs` slows the solve linearly in number of allocations and
-    # the bilinear problem allocates millions per solve — `sample_rate = 1.0`
-    # is intractable for a full Ipopt/MadNLP run (>15 min on N=10 in early
-    # experiments). `0.01` keeps the trace tractable while still giving
-    # statistically useful per-frame breakdowns. The 1/sample_rate scaling
-    # applied by `report_alloc_profile` extrapolates back to total bytes.
+    # `Profile.Allocs` slows the solve dramatically — `sample_rate = 1.0` is
+    # intractable for a full Ipopt/MadNLP run (>15 min on N=10 in early
+    # experiments), and even `0.01` runs MadNLP at ~3000× slowdown vs the
+    # un-profiled solve. `0.01` keeps the trace tractable while still giving
+    # statistically useful per-frame breakdowns; combined with `max_iter = 30`
+    # (representative per-iter allocation pattern — convergence isn't the
+    # goal) the testitem completes well inside the workflow timeout. The
+    # `1 / sample_rate` scaling applied by `report_alloc_profile` extrapolates
+    # back to total bytes.
     sample_rate = 0.01
 
     # JIT warmup so first-call compile of Ipopt/MadNLP extensions, KKT/AD
@@ -41,7 +44,7 @@ using TestItems
         profile = benchmark_memory!(
             () -> DirectTrajOpt.solve!(
                 prob;
-                options = IpoptOptions(max_iter = 200, print_level = 0),
+                options = IpoptOptions(max_iter = 30, print_level = 0),
             );
             package = "DirectTrajOpt",
             solver = "Ipopt",
@@ -65,7 +68,7 @@ using TestItems
         profile = benchmark_memory!(
             () -> DirectTrajOpt.solve!(
                 prob;
-                options = MadNLPOptions(max_iter = 200, print_level = 6),
+                options = MadNLPOptions(max_iter = 30, print_level = 6),
             );
             package = "DirectTrajOpt",
             solver = "MadNLP",
