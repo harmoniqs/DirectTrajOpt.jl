@@ -15,5 +15,8 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [sources]
 DirectTrajOpt = {path = "../.."}
-# HBJ v0.2.0 not yet registered in General; track main until registration lands.
-HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "main"}
+# HBJ v0.2.0 not yet registered in General; pin to a specific commit so
+# convergence results are reproducible across CI re-runs. Bump this SHA
+# (and the local Manifest) when HBJ ships a new feature we want to use.
+# Drop in favor of `[compat]` once HBJ registers in General.
+HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "c38418cb7f932f2ff9a9c6c6eacf9a11ff1018c1"}
