@@ -28,28 +28,10 @@ function get_num_variables(prob::DirectTrajOptProblem)
 end
 
 function get_nonlinear_constraints(prob)
-    # Compute dynamics dimension from integrators (same as TrajectoryDynamics does)
-    dynamics_dim = 0
-
-    # TODO: this is hacky as time integrator is being checked for, which should really bea linear constraint
-    for integrator in prob.integrators
-        # Get the state dimension from the trajectory using the integrator's x_name, x_names, or t_name
-        if hasfield(typeof(integrator), :x_name)
-            dynamics_dim += prob.trajectory.dims[integrator.x_name]
-        elseif hasfield(typeof(integrator), :x_names)
-            for x_name in integrator.x_names
-                dynamics_dim += prob.trajectory.dims[x_name]
-            end
-        elseif hasfield(typeof(integrator), :t_name)
-            dynamics_dim += prob.trajectory.dims[integrator.t_name]
-        else
-            error(
-                "Integrator type $(typeof(integrator)) must have either x_name, x_names, or t_name field",
-            )
-        end
-    end
-
-    n_dynamics_constraints = dynamics_dim * (prob.trajectory.N - 1)
+    # Use the integrator's declared residual dimension directly.
+    # This avoids assuming that one residual block always matches the
+    # dimension of a single trajectory component.
+    n_dynamics_constraints = sum(integrator.dim for integrator in prob.integrators; init = 0)
 
     nl_cons = fill(MOI.NLPBoundsPair(0.0, 0.0), n_dynamics_constraints)
 

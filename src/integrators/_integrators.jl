@@ -36,6 +36,7 @@ abstract type AbstractIntegrator end
 include("derivative_integrator.jl")
 include("bilinear_integrator.jl")
 include("time_dependent_bilinear_integrator.jl")
+include("hermite_bezier_integrator.jl")
 
 
 include("../../test/test_utils.jl")
