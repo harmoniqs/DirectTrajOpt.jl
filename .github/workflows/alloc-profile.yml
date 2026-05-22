@@ -1,0 +1,57 @@
+name: Alloc Profile
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'benchmark/alloc_profile.jl'
+      - 'benchmark/problem_utils.jl'
+      - 'benchmark/Project.toml'
+      - '.github/workflows/alloc-profile.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  alloc-profile:
+    name: Alloc profile (Ipopt + MadNLP)
+    runs-on: ubuntu-latest
+    # Profile.Allocs has high per-allocation overhead that doesn't scale down
+    # with sample_rate — each Ipopt/MadNLP solve under sampling takes ~30-40
+    # min on GH Actions runners even at max_iter=30. Two solves + startup =
+    # ~75 min observed in practice; 90 min gives a comfortable cushion.
+    timeout-minutes: 90
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+          arch: x64
+
+      - uses: julia-actions/cache@v2
+
+      - name: Instantiate benchmark environment
+        run: julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run alloc profile
+        env:
+          BENCHMARK_RUNNER: github-actions
+        run: |
+          julia --project=benchmark -t auto -e '
+            using TestItemRunner
+            TestItemRunner.run_tests("benchmark/"; filter = ti -> occursin("alloc_profile", ti.filename))
+          '
+
+      - name: Upload alloc-profile artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alloc-profile-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
+          path: benchmark/results/allocs/
+          retention-days: 90

@@ -34,13 +34,16 @@ jobs:
       - name: Instantiate benchmark environment
         run: julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
 
-      - name: Run benchmarks
+      - name: Run benchmarks (excluding alloc profile)
         env:
           BENCHMARK_RUNNER: github-actions
         run: |
           julia --project=benchmark -t auto -e '
             using TestItemRunner
-            TestItemRunner.run_tests("benchmark/")
+            # Alloc profile testitem runs in `.github/workflows/alloc-profile.yml`
+            # because Profile.Allocs adds ~30-40min per solve regardless of
+            # max_iter, making it impractical to gate every PR on it.
+            TestItemRunner.run_tests("benchmark/"; filter = ti -> !occursin("alloc_profile", ti.filename))
           '
 
       - name: Upload benchmark artifacts
