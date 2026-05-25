@@ -90,6 +90,12 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     _jacobian_ncols::Int
     _hessian_ncols::Int
 
+    # Reusable trajectory wrapper — datavec/global_data are rebound per callback
+    # to avoid reconstructing a NamedTrajectory on every MOI evaluation.
+    # Shares all structural metadata (components, dims, bounds, etc.) with
+    # `trajectory`; only the data pointers differ.
+    _cached_traj::NamedTrajectory
+
     function Evaluator(prob::DirectTrajOptProblem; eval_hessian = true, verbose = false)
         t_start = time()
 
@@ -246,6 +252,17 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
             println("      evaluator ready (total: $(round(time() - t_start, digits=3))s)")
         end
 
+        # Build a one-time cached trajectory wrapper. This is the ONLY call to
+        # the NamedTrajectory copy constructor during the entire solve. The
+        # datavec and global_data are owned copies (real Vector{Float64}),
+        # ensuring the backing-store contract is preserved. Subsequent
+        # _update_trajectory_cache! calls copyto! into these buffers.
+        _cached_traj = NamedTrajectory(
+            prob.trajectory;
+            datavec = copy(prob.trajectory.datavec),
+            global_data = copy(prob.trajectory.global_data),
+        )
+
         return new(
             prob.trajectory,
             prob.objective,
@@ -266,6 +283,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
             hessian_linear_map,
             jacobian_ncols,
             hessian_ncols,
+            _cached_traj,
         )
     end
 end
@@ -444,21 +462,23 @@ end
 """
     _update_trajectory_cache!(evaluator, Z⃗)
 
-Update the cached trajectory in-place with new data from Z⃗.
-Avoids repeated allocation of NamedTrajectory wrappers.
+Copy the solver's current iterate `Z⃗` into the pre-allocated cached
+trajectory's backing vectors. The `_cached_traj.datavec` and
+`_cached_traj.global_data` are owned `Vector{Float64}` buffers allocated
+once at Evaluator construction; this call overwrites their contents via
+`copyto!` without allocating or rebinding.
+
+The returned trajectory shares all structural metadata (components, dims,
+bounds, names, etc.) with `evaluator.trajectory` (= `prob.trajectory`).
 """
-@inline @views function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
+@inline function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
     n_traj = evaluator.trajectory.dim * evaluator.trajectory.N
-
-    # Create trajectory wrapper with views (minimal allocation)
-    # This is equivalent to the old approach but reuses structure
-    traj = NamedTrajectory(
-        evaluator.trajectory;
-        datavec = Z⃗[1:n_traj],
-        global_data = Z⃗[(n_traj+1):end],
-    )
-
-    return traj
+    copyto!(evaluator._cached_traj.datavec, 1, Z⃗, 1, n_traj)
+    n_global = evaluator.trajectory.global_dim
+    if n_global > 0
+        copyto!(evaluator._cached_traj.global_data, 1, Z⃗, n_traj + 1, n_global)
+    end
+    return evaluator._cached_traj
 end
 
 """
