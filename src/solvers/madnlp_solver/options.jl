@@ -27,11 +27,16 @@ export MadNLPOptions
     # Return `false` to stop the solver (yields `USER_REQUESTED_STOP`).
     intermediate_callback::Any = nothing
 
-    # Controls how MadNLP handles variables with `lb == ub`. Default (`nothing`)
-    # uses MadNLP's `MakeParameter`, which eliminates fixed vars from `solver.x`.
-    # Pass `MadNLP.RelaxBound` if a callback needs the full primal vector (e.g.
-    # to reconstruct a `NamedTrajectory` from `MadNLP.variable(solver.x)`).
-    fixed_variable_treatment::Any = nothing
+    # Controls how MadNLP handles variables with `lb == ub`. Mirrors MadNLP's
+    # own `fixed_variable_treatment::Type` field — must be a `Type` subtype of
+    # `MadNLP.AbstractFixedVariableTreatment` (e.g. `MadNLP.MakeParameter` or
+    # `MadNLP.RelaxBound`). Default (`nothing`) defers to MadNLP's kkt_system-
+    # aware default: `RelaxBound` for `SparseCondensedKKTSystem`, otherwise
+    # `MakeParameter`. Pass `MadNLP.RelaxBound` explicitly if a callback needs
+    # the full primal vector (auto-coupled by `set_options!` when an
+    # `AbstractIntermediateCallback` is installed and this field is left at
+    # the default).
+    fixed_variable_treatment::Union{Type,Nothing} = nothing
 
     # # Only supported by DirectTrajOpt._solve, as an optional kwarg override of `hessian_approximation`;
     # #   `hessian_approximation = eval_hessian ? "exact" : "compact_lbfgs"`
