@@ -29,11 +29,35 @@ include("utils.jl")
     @test opts.max_iter == 3000
     @test opts.print_level == 3
     @test opts.hessian_approximation == "exact"
+    @test opts.intermediate_callback === nothing
+    @test opts.fixed_variable_treatment === nothing
 
     opts2 = DirectTrajOpt.MadNLPOptions(max_iter = 100, tol = 1e-6)
     @test opts2.max_iter == 100
     @test opts2.tol == 1e-6
     @test opts isa Solvers.AbstractSolverOptions
+end
+
+@testitem "MadNLP intermediate_callback fires per iter" setup=[DTOTestHelpers] begin
+    import MadNLP
+
+    mutable struct _IterCounter <: MadNLP.AbstractUserCallback
+        count::Base.RefValue{Int}
+    end
+    (cb::_IterCounter)(::MadNLP.AbstractMadNLPSolver, _) = (cb.count[] += 1; true)
+
+    cb = _IterCounter(Ref(0))
+    prob, _ = make_standard_prob()
+    solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 5,
+            intermediate_callback = cb,
+            fixed_variable_treatment = MadNLP.RelaxBound,
+        ),
+        verbose = false,
+    )
+    @test cb.count[] > 0
 end
 
 @testitem "MadNLP basic solve" setup=[DTOTestHelpers] begin

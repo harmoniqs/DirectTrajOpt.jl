@@ -14,6 +14,17 @@ export MadNLPOptions
     kkt_system::Any = nothing  # e.g. MadNLP.SparseUnreducedKKTSystem
     cudss_ordering::Any = nothing  # e.g. MadNLPGPU.AMD_ORDERING
 
+    # Per-iteration user callback. Must be a subtype of `MadNLP.AbstractUserCallback`
+    # with call signature `(cb)(solver::MadNLP.AbstractMadNLPSolver, mode) -> Bool`.
+    # Return `false` to stop the solver (yields `USER_REQUESTED_STOP`).
+    intermediate_callback::Any = nothing
+
+    # Controls how MadNLP handles variables with `lb == ub`. Default (`nothing`)
+    # uses MadNLP's `MakeParameter`, which eliminates fixed vars from `solver.x`.
+    # Pass `MadNLP.RelaxBound` if a callback needs the full primal vector (e.g.
+    # to reconstruct a `NamedTrajectory` from `MadNLP.variable(solver.x)`).
+    fixed_variable_treatment::Any = nothing
+
     # # Only supported by DirectTrajOpt._solve, as an optional kwarg override of `hessian_approximation`;
     # #   `hessian_approximation = eval_hessian ? "exact" : "compact_lbfgs"`
     # eval_hessian::Bool = true
