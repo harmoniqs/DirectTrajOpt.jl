@@ -28,11 +28,33 @@ Subtypes implement a callable with signature
     (cb::SubType)(primal::AbstractVector, iter::Integer) -> Bool
 
 where `primal` is the current full NLP primal vector and `iter` is the
-iteration index. Return `true` to continue solving, `false` to stop early.
+iteration index from the solver's main optimization loop. Return `true` to
+continue solving, `false` to stop early (the solver will report a
+user-requested termination).
 
 Each solver extension wraps an `AbstractIntermediateCallback` instance in a
 solver-specific adapter at solve time, so the same callback object works
 with every backend (MadNLP, Ipopt, …).
+
+# Contract
+
+- **`primal` may alias the solver's internal vector.** Copy it (e.g.
+  `collect(primal)`) if you need to retain the data past the callback
+  invocation — its contents may shift on the next iteration.
+- **`iter` is monotonic.** The callback is invoked only from the solver's
+  main IPM loop; auxiliary phases (e.g. MadNLP's feasibility restoration
+  or robust modes) do not fire it.
+
+# Required MadNLP setup
+
+When using MadNLP, the callback must receive the **full** primal vector
+to reconstruct trajectories correctly. MadNLP's default
+`fixed_variable_treatment = MakeParameter` eliminates variables with
+`lb == ub` from the working primal, so any subtype that maps `primal`
+back onto a `NamedTrajectory` needs `fixed_variable_treatment =
+MadNLP.RelaxBound`. When an `AbstractIntermediateCallback` is installed
+via `MadNLPOptions.intermediate_callback`, DTO sets this automatically
+(with an `@info` log) unless the user has provided a value.
 """
 abstract type AbstractIntermediateCallback end
 

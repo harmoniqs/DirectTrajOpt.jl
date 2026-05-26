@@ -89,6 +89,71 @@ end
     @test cb.last_primal_len[] == length(prob.trajectory.datavec) + prob.trajectory.global_dim
 end
 
+@testitem "MadNLP intermediate_callback auto-couples RelaxBound" setup=[DTOTestHelpers] begin
+    import MadNLP
+
+    mutable struct _AutoCoupleProbe <: DirectTrajOpt.AbstractIntermediateCallback
+        last_primal_len::Base.RefValue{Int}
+    end
+    function (cb::_AutoCoupleProbe)(primal::AbstractVector, _)
+        cb.last_primal_len[] = length(primal)
+        return true
+    end
+
+    cb = _AutoCoupleProbe(Ref(0))
+    prob, _ = make_standard_prob()
+    # Note: NOT passing fixed_variable_treatment. set_options! should auto-set it.
+    solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 5,
+            intermediate_callback = cb,
+        ),
+        verbose = false,
+    )
+    # If RelaxBound auto-coupled correctly, the primal includes fixed variables.
+    @test cb.last_primal_len[] == length(prob.trajectory.datavec) + prob.trajectory.global_dim
+end
+
+@testitem "MadNLP intermediate_callback early termination via return false" setup=[DTOTestHelpers] begin
+    import MadNLP
+
+    mutable struct _Stopper <: DirectTrajOpt.AbstractIntermediateCallback
+        max_iters::Int
+        count::Base.RefValue{Int}
+    end
+    function (cb::_Stopper)(_, _)
+        cb.count[] += 1
+        return cb.count[] < cb.max_iters
+    end
+
+    cb = _Stopper(3, Ref(0))
+    prob, _ = make_standard_prob()
+    solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 100,
+            intermediate_callback = cb,
+        ),
+        verbose = false,
+    )
+    # Callback stopped the solve well before max_iter=100.
+    @test cb.count[] <= 5
+end
+
+@testitem "MadNLP intermediate_callback rejects invalid type" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    bogus_cb(args...) = true   # bare Function — neither abstract nor MadNLP subtype
+    @test_throws ArgumentError solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 5,
+            intermediate_callback = bogus_cb,
+        ),
+        verbose = false,
+    )
+end
+
 @testitem "MadNLP basic solve" setup=[DTOTestHelpers] begin
     prob, _ = make_standard_prob()
     traj_before = deepcopy(prob.trajectory.data)

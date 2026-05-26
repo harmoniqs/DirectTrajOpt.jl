@@ -204,20 +204,42 @@ end
     _MadNLPCallbackAdapter(inner)
 
 Wrap a `DirectTrajOpt.AbstractIntermediateCallback` so MadNLP can call it
-with its native `(solver, mode)` signature. Translates `solver.x` (with
-slacks) into just the NLP primal via `MadNLP.variable`, and forwards
-`solver.cnt.k` as the iteration index.
+with its native `(solver, mode)` signature.
+
+The adapter:
+- **Filters mode to `UserCallbackRegular`.** MadNLP also invokes user
+  callbacks during feasibility restoration and robust mode; those phases
+  surface intermediate IPM state that's typically not meaningful to a
+  trajectory-level callback, so they're silently skipped (return `true`).
+  This makes `solver.cnt.k` monotonic from the callback's point of view.
+- **Translates `solver.x` → `MadNLP.variable(solver.x)`** to strip the
+  slack tail and hand back just the NLP primal.
+- **Forwards `solver.cnt.k`** as the iteration index.
 """
 struct _MadNLPCallbackAdapter <: MadNLP.AbstractUserCallback
     inner::DirectTrajOpt.AbstractIntermediateCallback
 end
 
-function (a::_MadNLPCallbackAdapter)(solver::MadNLP.AbstractMadNLPSolver, _mode)
+function (a::_MadNLPCallbackAdapter)(
+    solver::MadNLP.AbstractMadNLPSolver,
+    mode::MadNLP.AbstractUserCallbackStatus,
+)
+    mode isa MadNLP.UserCallbackRegular || return true
     return a.inner(MadNLP.variable(solver.x), solver.cnt.k)
 end
 
 function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
+
+    # Auto-couple: an AbstractIntermediateCallback needs the full primal vector,
+    # which requires fixed_variable_treatment = RelaxBound. If the user installed
+    # an agnostic callback without setting fixed_variable_treatment, apply it for
+    # them. Raw MadNLP callbacks are presumed to manage this themselves.
+    if options.intermediate_callback isa DirectTrajOpt.AbstractIntermediateCallback &&
+       options.fixed_variable_treatment === nothing
+        @info "Setting fixed_variable_treatment = MadNLP.RelaxBound for AbstractIntermediateCallback (required for full-primal access)"
+        optimizer.options[:fixed_variable_treatment] = MadNLP.RelaxBound
+    end
 
     for name in fieldnames(typeof(options))
         value = getfield(options, name)
@@ -237,11 +259,22 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
             hessian_approximation =
                 ((value == "compact_lbfgs") ? MadNLP.CompactLBFGS : hessian_approximation)
             optimizer.options[name] = hessian_approximation
-        elseif name == :intermediate_callback &&
-               value isa DirectTrajOpt.AbstractIntermediateCallback
-            # Wrap solver-agnostic callbacks in the MadNLP-shaped adapter.
-            # Raw `MadNLP.AbstractUserCallback` subtypes fall through unwrapped.
-            optimizer.options[name] = _MadNLPCallbackAdapter(value)
+        elseif name == :intermediate_callback
+            if value isa DirectTrajOpt.AbstractIntermediateCallback
+                # Wrap solver-agnostic callbacks in the MadNLP-shaped adapter.
+                optimizer.options[name] = _MadNLPCallbackAdapter(value)
+            elseif value isa MadNLP.AbstractUserCallback
+                # Raw MadNLP callbacks pass through unwrapped.
+                optimizer.options[name] = value
+            else
+                throw(
+                    ArgumentError(
+                        "intermediate_callback must be a subtype of " *
+                        "`DirectTrajOpt.AbstractIntermediateCallback` or " *
+                        "`MadNLP.AbstractUserCallback`, got $(typeof(value))",
+                    ),
+                )
+            end
         else
             optimizer.options[name] = value
         end
