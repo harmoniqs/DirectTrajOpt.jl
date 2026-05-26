@@ -38,7 +38,7 @@ include("utils.jl")
     @test opts isa Solvers.AbstractSolverOptions
 end
 
-@testitem "MadNLP intermediate_callback fires per iter" setup=[DTOTestHelpers] begin
+@testitem "MadNLP intermediate_callback (raw MadNLP callback) fires per iter" setup=[DTOTestHelpers] begin
     import MadNLP
 
     mutable struct _IterCounter <: MadNLP.AbstractUserCallback
@@ -58,6 +58,35 @@ end
         verbose = false,
     )
     @test cb.count[] > 0
+end
+
+@testitem "MadNLP intermediate_callback (AbstractIntermediateCallback) fires per iter" setup=[DTOTestHelpers] begin
+    import MadNLP
+
+    mutable struct _AgnosticCounter <: DirectTrajOpt.AbstractIntermediateCallback
+        count::Base.RefValue{Int}
+        last_primal_len::Base.RefValue{Int}
+    end
+    function (cb::_AgnosticCounter)(primal::AbstractVector, iter::Integer)
+        cb.count[] += 1
+        cb.last_primal_len[] = length(primal)
+        return true
+    end
+
+    cb = _AgnosticCounter(Ref(0), Ref(0))
+    prob, _ = make_standard_prob()
+    solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 5,
+            intermediate_callback = cb,
+            fixed_variable_treatment = MadNLP.RelaxBound,
+        ),
+        verbose = false,
+    )
+    @test cb.count[] > 0
+    # With RelaxBound, the primal vector matches the full NLP variable count.
+    @test cb.last_primal_len[] == length(prob.trajectory.datavec) + prob.trajectory.global_dim
 end
 
 @testitem "MadNLP basic solve" setup=[DTOTestHelpers] begin

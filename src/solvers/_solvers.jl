@@ -2,6 +2,7 @@ module Solvers
 
 export AbstractOptimizer
 export AbstractSolverOptions, DefaultSolverOptions, _DefaultSolverOptions
+export AbstractIntermediateCallback
 export _solve
 export _solve_with_kwargs
 export solve!
@@ -16,6 +17,24 @@ using TestItemRunner
 
 const AbstractOptimizer = MOI.AbstractOptimizer
 abstract type AbstractSolverOptions end
+
+"""
+    AbstractIntermediateCallback
+
+Solver-agnostic per-iteration callback for trajectory optimization.
+
+Subtypes implement a callable with signature
+
+    (cb::SubType)(primal::AbstractVector, iter::Integer) -> Bool
+
+where `primal` is the current full NLP primal vector and `iter` is the
+iteration index. Return `true` to continue solving, `false` to stop early.
+
+Each solver extension wraps an `AbstractIntermediateCallback` instance in a
+solver-specific adapter at solve time, so the same callback object works
+with every backend (MadNLP, Ipopt, …).
+"""
+abstract type AbstractIntermediateCallback end
 
 struct DefaultSolverOptions <: AbstractSolverOptions end
 const _DefaultSolverOptions::Ref{Type{<:AbstractSolverOptions}} =

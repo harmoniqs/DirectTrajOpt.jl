@@ -14,8 +14,16 @@ export MadNLPOptions
     kkt_system::Any = nothing  # e.g. MadNLP.SparseUnreducedKKTSystem
     cudss_ordering::Any = nothing  # e.g. MadNLPGPU.AMD_ORDERING
 
-    # Per-iteration user callback. Must be a subtype of `MadNLP.AbstractUserCallback`
-    # with call signature `(cb)(solver::MadNLP.AbstractMadNLPSolver, mode) -> Bool`.
+    # Per-iteration user callback. Two accepted forms:
+    #
+    #   1. A subtype of `DirectTrajOpt.AbstractIntermediateCallback` (solver-agnostic).
+    #      Signature: `(cb)(primal::AbstractVector, iter::Integer) -> Bool`.
+    #      The MadNLP extension wraps it in an internal adapter at solve time.
+    #
+    #   2. A raw `MadNLP.AbstractUserCallback` subtype with native MadNLP signature
+    #      `(cb)(solver::MadNLP.AbstractMadNLPSolver, mode) -> Bool` — passed through
+    #      unwrapped for users who want full access to the IPM state.
+    #
     # Return `false` to stop the solver (yields `USER_REQUESTED_STOP`).
     intermediate_callback::Any = nothing
 

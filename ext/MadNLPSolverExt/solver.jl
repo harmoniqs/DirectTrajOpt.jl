@@ -200,6 +200,22 @@ end
 # ----------------------------------------------------------------------------
 
 
+"""
+    _MadNLPCallbackAdapter(inner)
+
+Wrap a `DirectTrajOpt.AbstractIntermediateCallback` so MadNLP can call it
+with its native `(solver, mode)` signature. Translates `solver.x` (with
+slacks) into just the NLP primal via `MadNLP.variable`, and forwards
+`solver.cnt.k` as the iteration index.
+"""
+struct _MadNLPCallbackAdapter <: MadNLP.AbstractUserCallback
+    inner::DirectTrajOpt.AbstractIntermediateCallback
+end
+
+function (a::_MadNLPCallbackAdapter)(solver::MadNLP.AbstractMadNLPSolver, _mode)
+    return a.inner(MadNLP.variable(solver.x), solver.cnt.k)
+end
+
 function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
 
@@ -221,6 +237,11 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
             hessian_approximation =
                 ((value == "compact_lbfgs") ? MadNLP.CompactLBFGS : hessian_approximation)
             optimizer.options[name] = hessian_approximation
+        elseif name == :intermediate_callback &&
+               value isa DirectTrajOpt.AbstractIntermediateCallback
+            # Wrap solver-agnostic callbacks in the MadNLP-shaped adapter.
+            # Raw `MadNLP.AbstractUserCallback` subtypes fall through unwrapped.
+            optimizer.options[name] = _MadNLPCallbackAdapter(value)
         else
             optimizer.options[name] = value
         end
