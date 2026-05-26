@@ -38,7 +38,9 @@ include("utils.jl")
     @test opts isa Solvers.AbstractSolverOptions
 end
 
-@testitem "MadNLP intermediate_callback (raw MadNLP callback) fires per iter" setup=[DTOTestHelpers] begin
+@testitem "MadNLP intermediate_callback (raw MadNLP callback) fires per iter" setup=[
+    DTOTestHelpers,
+] begin
     import MadNLP
 
     mutable struct _IterCounter <: MadNLP.AbstractUserCallback
@@ -60,7 +62,9 @@ end
     @test cb.count[] > 0
 end
 
-@testitem "MadNLP intermediate_callback (AbstractIntermediateCallback) fires per iter" setup=[DTOTestHelpers] begin
+@testitem "MadNLP intermediate_callback (AbstractIntermediateCallback) fires per iter" setup=[
+    DTOTestHelpers,
+] begin
     import MadNLP
 
     mutable struct _AgnosticCounter <: DirectTrajOpt.AbstractIntermediateCallback
@@ -86,7 +90,8 @@ end
     )
     @test cb.count[] > 0
     # With RelaxBound, the primal vector matches the full NLP variable count.
-    @test cb.last_primal_len[] == length(prob.trajectory.datavec) + prob.trajectory.global_dim
+    @test cb.last_primal_len[] ==
+          length(prob.trajectory.datavec) + prob.trajectory.global_dim
 end
 
 @testitem "MadNLP intermediate_callback auto-couples RelaxBound" setup=[DTOTestHelpers] begin
@@ -105,17 +110,17 @@ end
     # Note: NOT passing fixed_variable_treatment. set_options! should auto-set it.
     solve!(
         prob;
-        options = DirectTrajOpt.MadNLPOptions(
-            max_iter = 5,
-            intermediate_callback = cb,
-        ),
+        options = DirectTrajOpt.MadNLPOptions(max_iter = 5, intermediate_callback = cb),
         verbose = false,
     )
     # If RelaxBound auto-coupled correctly, the primal includes fixed variables.
-    @test cb.last_primal_len[] == length(prob.trajectory.datavec) + prob.trajectory.global_dim
+    @test cb.last_primal_len[] ==
+          length(prob.trajectory.datavec) + prob.trajectory.global_dim
 end
 
-@testitem "MadNLP intermediate_callback early termination via return false" setup=[DTOTestHelpers] begin
+@testitem "MadNLP intermediate_callback early termination via return false" setup=[
+    DTOTestHelpers,
+] begin
     import MadNLP
 
     mutable struct _Stopper <: DirectTrajOpt.AbstractIntermediateCallback
@@ -131,10 +136,7 @@ end
     prob, _ = make_standard_prob()
     solve!(
         prob;
-        options = DirectTrajOpt.MadNLPOptions(
-            max_iter = 100,
-            intermediate_callback = cb,
-        ),
+        options = DirectTrajOpt.MadNLPOptions(max_iter = 100, intermediate_callback = cb),
         verbose = false,
     )
     # Callback stopped the solve well before max_iter=100.
