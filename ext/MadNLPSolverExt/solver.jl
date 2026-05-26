@@ -232,13 +232,21 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
     ignored_options = [:eval_hessian]
 
     # Auto-couple: an AbstractIntermediateCallback needs the full primal vector,
-    # which requires fixed_variable_treatment = RelaxBound. If the user installed
-    # an agnostic callback without setting fixed_variable_treatment, apply it for
-    # them. Raw MadNLP callbacks are presumed to manage this themselves.
+    # which requires fixed_variable_treatment = RelaxBound. We only override when
+    # MadNLP's own conditional default (`kkt_system <: SparseCondensedKKTSystem ?
+    # RelaxBound : MakeParameter`) would otherwise pick `MakeParameter` and break
+    # the callback. When the user has selected a kkt_system whose default is
+    # already `RelaxBound`, MadNLP's if-one-liner gets to do its job untouched.
+    # Raw MadNLP callbacks are presumed to manage this themselves.
     if options.intermediate_callback isa DirectTrajOpt.AbstractIntermediateCallback &&
        options.fixed_variable_treatment === nothing
-        @info "Setting fixed_variable_treatment = MadNLP.RelaxBound for AbstractIntermediateCallback (required for full-primal access)"
-        optimizer.options[:fixed_variable_treatment] = MadNLP.RelaxBound
+        madnlp_default_is_relax_bound =
+            options.kkt_system isa Type &&
+            options.kkt_system <: MadNLP.SparseCondensedKKTSystem
+        if !madnlp_default_is_relax_bound
+            @info "Setting fixed_variable_treatment = MadNLP.RelaxBound for AbstractIntermediateCallback (MadNLP's kkt_system default would otherwise eliminate fixed vars from solver.x)"
+            optimizer.options[:fixed_variable_treatment] = MadNLP.RelaxBound
+        end
     end
 
     for name in fieldnames(typeof(options))

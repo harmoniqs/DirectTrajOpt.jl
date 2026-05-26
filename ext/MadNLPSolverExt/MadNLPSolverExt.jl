@@ -118,6 +118,37 @@ end
           length(prob.trajectory.datavec) + prob.trajectory.global_dim
 end
 
+@testitem "MadNLP auto-couple respects MadNLP's conditional default" setup=[DTOTestHelpers] begin
+    import MadNLP
+    using Logging
+
+    mutable struct _PassthroughProbe <: DirectTrajOpt.AbstractIntermediateCallback
+        len::Base.RefValue{Int}
+    end
+    (cb::_PassthroughProbe)(primal, _) = (cb.len[] = length(primal); true)
+
+    cb = _PassthroughProbe(Ref(0))
+    prob, _ = make_standard_prob()
+    # With `kkt_system = SparseCondensedKKTSystem`, MadNLP's own conditional
+    # default for `fixed_variable_treatment` is already `RelaxBound`, so the
+    # auto-couple should not fire. Capture @info logs and assert ours is absent.
+    buf = IOBuffer()
+    with_logger(SimpleLogger(buf, Logging.Info)) do
+        solve!(
+            prob;
+            options = DirectTrajOpt.MadNLPOptions(
+                max_iter = 5,
+                intermediate_callback = cb,
+                kkt_system = MadNLP.SparseCondensedKKTSystem,
+            ),
+            verbose = false,
+        )
+    end
+    @test !occursin("Setting fixed_variable_treatment", String(take!(buf)))
+    # MadNLP's untouched conditional default still yields the full primal.
+    @test cb.len[] == length(prob.trajectory.datavec) + prob.trajectory.global_dim
+end
+
 @testitem "MadNLP intermediate_callback early termination via return false" setup=[
     DTOTestHelpers,
 ] begin
