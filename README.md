@@ -100,7 +100,37 @@ solve!(prob; max_iter=100)
 - **Modular objectives**: Combine cost terms with `+` and `*` (regularization, minimum time, terminal cost, etc.)
 - **Constraint support**: Bounds, equality, nonlinear, symmetry, and L1 slack constraints
 - **Automatic differentiation**: Sparse Jacobians and Hessians via ForwardDiff
+- **Sparse formulations**: Exploits problem structure for efficiency
 - **Solver callbacks**: Monitor and control the optimization process
+
+## Testing
+
+```bash
+julia --project=. test/runtests.jl
+```
+
+`runtests.jl` runs every `@testitem` in `src/`, `ext/`, and `test/`. Tests in
+`benchmark/` are skipped — that subdirectory ships its own `Project.toml`
+(extra deps like `HarmoniqsBenchmarks`) and has a dedicated workflow.
+
+### Stochastic / numerical primitives — two-layer testing
+
+A single seeded `MersenneTwister` is reproducible on one Julia version but
+small downstream numerics can drift across the CI matrix (1.10 / 1.11 / 1.12).
+For tests that touch non-deterministic surfaces (solver convergence from
+random init, finite-difference derivative comparisons) we pair each test:
+
+1. **Deterministic baseline**: a single seeded trajectory + multiplier.
+   A failure is a real regression on a specific (Julia version, seed) pair.
+2. **Robustness sweep**: K=20 independent seeds; passes if a fraction of
+   seeds (per-test threshold, chosen with buffer above the observed baseline
+   rate — typically 0.80, lower for inherently noisy checks like norm-based
+   finite-diff) land within tolerance. Detects regressions that drop the
+   true pass rate well below the threshold with very high probability
+   (binomial), while staying insensitive to lucky/unlucky single draws.
+
+The sweeps are cheap enough (a handful of seconds in aggregate) to run on
+every PR.
 
 ## Contributing
 

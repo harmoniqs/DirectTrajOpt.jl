@@ -24,6 +24,7 @@ using FiniteDiff
 using SparseArrays
 using TestItemRunner
 using LinearAlgebra
+using Random
 using Test
 
 # Import and extend the common interface
@@ -121,7 +122,8 @@ function get_full_hessian end
         show_hessian_diff=false,
         test_equality=true,
         atol=1e-5,
-        rtol=1e-5
+        rtol=1e-5,
+        rng=Random.default_rng(),
     )
 
 Test that constraint Jacobian and Hessian match finite difference approximations.
@@ -136,9 +138,16 @@ Test that constraint Jacobian and Hessian match finite difference approximations
 - `test_equality=true`: Test element-wise equality (vs norm-based test)
 - `atol=1e-5`: Absolute tolerance
 - `rtol=1e-5`: Relative tolerance
+- `rng`: RNG used to draw the Lagrange multiplier `μ` for the Hessian check.
+  Pass a seeded `AbstractRNG` (e.g. `MersenneTwister(seed)`) for reproducible
+  test results across runs and Julia versions.
+- `assert=true`: When `true`, fails the surrounding `@testset` via `@test` on
+  mismatch. Set `false` to inspect `jacobian_pass`/`hessian_pass` in the
+  returned NamedTuple without registering a test outcome — useful for
+  multi-seed robustness sweeps.
 
 # Returns
-Tuple of (∂g, ∂g_finite_diff, μ∂²g, μ∂²g_finite_diff) for inspection
+NamedTuple `(; ∂g, ∂g_finite_diff, μ∂²g, μ∂²g_finite_diff, jacobian_pass, hessian_pass)`
 
 # Example
 ```julia
@@ -155,6 +164,8 @@ function test_constraint(
     test_equality = true,
     atol = 1e-5,
     rtol = 1e-5,
+    rng::AbstractRNG = Random.default_rng(),
+    assert::Bool = true,
 )
 
     # Function to evaluate constraint via evaluate!
@@ -192,18 +203,19 @@ function test_constraint(
     end
 
     # Test Jacobian equality
-    if test_equality
-        @test all(isapprox.(∂g, ∂g_finite_diff, atol = atol, rtol = rtol))
+    jac_pass = if test_equality
+        all(isapprox.(∂g, ∂g_finite_diff, atol = atol, rtol = rtol))
     else
         if atol > 0.0
-            @test norm(∂g - ∂g_finite_diff) < atol
+            norm(∂g - ∂g_finite_diff) < atol
         else
-            @test norm(∂g - ∂g_finite_diff) / norm(∂g_finite_diff) < rtol
+            norm(∂g - ∂g_finite_diff) / norm(∂g_finite_diff) < rtol
         end
     end
+    assert && @test jac_pass
 
     # Test Hessian
-    μ = rand(constraint.dim)
+    μ = rand(rng, constraint.dim)
 
     μ∂²g = CommonInterface.eval_hessian_of_lagrangian(constraint, traj, μ)
 
@@ -225,17 +237,25 @@ function test_constraint(
     end
 
     # Test Hessian equality (only upper triangle since Hessian is symmetric)
-    if test_equality
-        @test all(isapprox.(triu(μ∂²g), triu(μ∂²g_finite_diff), atol = atol))
+    hess_pass = if test_equality
+        all(isapprox.(triu(μ∂²g), triu(μ∂²g_finite_diff), atol = atol))
     else
         if atol > 0.0
-            @test norm(μ∂²g - μ∂²g_finite_diff) < atol
+            norm(μ∂²g - μ∂²g_finite_diff) < atol
         else
-            @test norm(μ∂²g - μ∂²g_finite_diff) / norm(μ∂²g_finite_diff) < rtol
+            norm(μ∂²g - μ∂²g_finite_diff) / norm(μ∂²g_finite_diff) < rtol
         end
     end
+    assert && @test hess_pass
 
-    return ∂g, ∂g_finite_diff, μ∂²g, μ∂²g_finite_diff
+    return (;
+        ∂g,
+        ∂g_finite_diff,
+        μ∂²g,
+        μ∂²g_finite_diff,
+        jacobian_pass = jac_pass,
+        hessian_pass = hess_pass,
+    )
 end
 
 export test_constraint
