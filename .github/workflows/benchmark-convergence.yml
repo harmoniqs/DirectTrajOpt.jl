@@ -1,0 +1,52 @@
+name: Convergence Benchmarks
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'benchmark/convergence/**'
+      - '.github/workflows/benchmark-convergence.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  convergence:
+    name: Convergence suite (Ipopt + MadNLP)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+          arch: x64
+
+      - uses: julia-actions/cache@v2
+
+      - name: Instantiate convergence environment
+        run: julia --project=benchmark/convergence -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+
+      - name: Run convergence benchmarks
+        env:
+          BENCHMARK_RUNNER: github-actions
+        run: |
+          julia --project=benchmark/convergence -t auto -e '
+            using TestItemRunner
+            TestItemRunner.run_tests("benchmark/convergence/")
+          '
+
+      - name: Upload convergence artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: convergence-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
+          path: benchmark/convergence/results/
+          retention-days: 90
