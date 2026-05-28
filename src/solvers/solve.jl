@@ -151,57 +151,138 @@ end
 
 
 """
+    _default_save_path() -> String
+
+Build a default save path of the form `/tmp/pulse_<random>.jld2`. Used by
+`solve!` when the user enables `save_solution` without naming a path.
+"""
+function _default_save_path()
+    return joinpath("/tmp", "pulse_" * Random.randstring(12) * ".jld2")
+end
+
+"""
+    _write_solution(path, prob, best_callback)
+
+Serialize the post-solve `prob.trajectory` (and, if available, the best
+intermediate trajectory tracked by `best_callback`) to `path` as a JLD2
+file. Best-effort: failures (e.g. unwritable directory) are reported as
+warnings without aborting the solve.
+"""
+function _write_solution(
+    path::AbstractString,
+    prob::DirectTrajOptProblem,
+    best_callback;
+    verbose::Bool = false,
+)
+    try
+        mkpath(dirname(path))
+        payload = Dict{String,Any}("trajectory" => prob.trajectory)
+        if best_callback isa BestPulseCallback
+            payload["best_trajectory"] = best_trajectory(best_callback)
+            payload["best_objective"] = best_objective(best_callback)
+            payload["best_iteration"] = best_iteration(best_callback)
+            payload["best_primal_infeasibility"] = best_primal_infeasibility(best_callback)
+        end
+        JLD2.jldsave(String(path); payload...)
+        if verbose
+            @info "DirectTrajOpt: saved solution to $path"
+        end
+    catch err
+        @warn "DirectTrajOpt: failed to write solution JLD2" path = path exception = err
+    end
+    return nothing
+end
+
+"""
     solve!(
         prob::DirectTrajOptProblem;
-        options::IpoptOptions=IpoptOptions(),
-        verbose::Bool=true,
+        options=<default>,
+        verbose=true,
         callback=nothing,
+        track_best=true,
+        inf_pr_threshold=1e-4,
+        save_solution=true,
+        save_path=nothing,
         kwargs...
     )
 
-Solve a direct trajectory optimization problem using Ipopt.
+Solve a `DirectTrajOptProblem` and return the installed
+`BestPulseCallback` (or `nothing` if `track_best=false`).
 
-# Arguments
-- `prob::DirectTrajOptProblem`: The trajectory optimization problem to solve.
-- `options::IpoptOptions`: Ipopt solver options. Default is `IpoptOptions()`.
-- `verbose::Bool`: If `true`, print solver progress information.
-- `callback::Function`: Optional callback function to execute during optimization.
-- `kwargs...`: Any field of `IpoptOptions` can be passed as a keyword argument. These
-  override the corresponding field in `options`. See `IpoptOptions` for valid fields.
+# Callback handling
 
-# Common keyword arguments
-- `max_iter::Int`: Maximum solver iterations (default: 1000)
-- `tol::Float64`: Convergence tolerance (default: 1e-8)
-- `eval_hessian::Bool`: Use exact Hessians, or L-BFGS if false (default: true)
-- `linear_solver::String`: Linear solver backend, e.g. `"mumps"`, `"pardiso"` (default: `"mumps"`)
-- `print_level::Int`: Ipopt output verbosity 0–12 (default: 5)
-- `mu_strategy::String`: Barrier parameter strategy (default: `"adaptive"`)
+`callback` accepts a solver-specific `Function` (Ipopt only), an
+`AbstractIntermediateCallback` (works for both Ipopt and MadNLP), or
+`nothing`. When `track_best=true`, a `BestPulseCallback` is installed in
+addition to whatever the user passes; if the user already passes an
+`AbstractIntermediateCallback`, the two are combined via
+`CompositeIntermediateCallback`.
 
-# Returns
-- `nothing`: The problem's trajectory is updated in place with the optimized solution.
+# Best-pulse tracking
 
-# Examples
-```julia
-# Simple usage
-solve!(prob; max_iter=100, verbose=true)
+With `track_best=true` (default), the solver records the iterate with
+the smallest objective value whose primal infeasibility is at or below
+`inf_pr_threshold` (default `1e-4`). After the solve returns, the saved
+trajectory snapshot is accessible via `best_trajectory(cb)`.
 
-# Override multiple Ipopt options
-solve!(prob; max_iter=200, tol=1e-6, eval_hessian=false)
+# JLD2 dump
 
-# Pass an options struct and override specific fields
-solve!(prob; options=IpoptOptions(tol=1e-4), max_iter=500)
-```
+With `save_solution=true` (default), the final trajectory — and, if
+tracked, the best intermediate trajectory — are dumped to a JLD2 file.
+`save_path` overrides the default location; when left at `nothing`, the
+file lands in `/tmp/pulse_<random>.jld2`.
+
+# Backwards-compatible behavior
+
+The problem's trajectory is still updated in place. Existing callers
+that ignore the return value continue to work unchanged.
 """
 function DirectTrajOpt.solve!(
     prob::DirectTrajOptProblem;
     options = (Solvers._DefaultSolverOptions[])(),
     verbose::Bool = true,
     callback = nothing,
+    track_best::Bool = true,
+    inf_pr_threshold::Real = 1e-4,
+    save_solution::Bool = true,
+    save_path::Union{Nothing,AbstractString} = nothing,
     kwargs...,
 )
-    DirectTrajOpt._solve(prob, options; verbose = verbose, callback = callback, kwargs...)
+    best_callback =
+        track_best ? BestPulseCallback(prob; inf_pr_threshold = inf_pr_threshold) :
+        nothing
 
-    return nothing
+    intermediate_cb = if best_callback !== nothing &&
+                         callback isa AbstractIntermediateCallback
+        CompositeIntermediateCallback(
+            AbstractIntermediateCallback[best_callback, callback],
+        )
+    elseif best_callback !== nothing
+        best_callback
+    elseif callback isa AbstractIntermediateCallback
+        callback
+    else
+        nothing
+    end
+
+    # User-supplied Function callbacks are Ipopt-specific (factory form).
+    fn_callback = callback isa Function ? callback : nothing
+
+    DirectTrajOpt._solve(
+        prob,
+        options;
+        verbose = verbose,
+        callback = fn_callback,
+        intermediate_callback = intermediate_cb,
+        kwargs...,
+    )
+
+    if save_solution
+        path = save_path === nothing ? _default_save_path() : String(save_path)
+        _write_solution(path, prob, best_callback; verbose = verbose)
+    end
+
+    return best_callback
 end
 
 

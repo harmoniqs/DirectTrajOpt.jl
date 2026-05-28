@@ -13,6 +13,8 @@ function DirectTrajOpt._solve(
     options::IpoptOptions;
     verbose::Bool = true,
     callback = nothing,
+    intermediate_callback::Union{Nothing,DirectTrajOpt.AbstractIntermediateCallback} =
+        nothing,
     kwargs...,
 )
     # Apply kwargs to matching IpoptOptions fields
@@ -36,8 +38,14 @@ function DirectTrajOpt._solve(
             options.refine ? "obj-constr-filter" : "never-monotone-mode"
     end
 
+    composed_callback = Callbacks.compose_callback(
+        callback,
+        intermediate_callback,
+        prob,
+    )
+
     optimizer, variables =
-        get_optimizer_and_variables(prob, options, callback, verbose = verbose)
+        get_optimizer_and_variables(prob, options, composed_callback, verbose = verbose)
 
     MOI.optimize!(optimizer)
 

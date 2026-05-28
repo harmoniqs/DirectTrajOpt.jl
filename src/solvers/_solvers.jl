@@ -12,6 +12,9 @@ import Ipopt
 # import MadNLP
 import DirectTrajOpt
 
+import JLD2
+import Random
+import NamedTrajectories
 using TestItemRunner
 
 
@@ -25,12 +28,17 @@ Solver-agnostic per-iteration callback for trajectory optimization.
 
 Subtypes implement a callable with signature
 
-    (cb::SubType)(primal::AbstractVector, iter::Integer) -> Bool
+    (cb::SubType)(primal::AbstractVector, iter::Integer;
+                  obj_value::Float64, inf_pr::Float64, kwargs...) -> Bool
 
 where `primal` is the current full NLP primal vector and `iter` is the
-iteration index from the solver's main optimization loop. Return `true` to
-continue solving, `false` to stop early (the solver will report a
-user-requested termination).
+iteration index from the solver's main optimization loop. `obj_value` and
+`inf_pr` carry the current objective value and primal infeasibility as
+reported by the solver — implementations should accept them as keyword
+arguments (and a trailing `kwargs...` to absorb any solver-specific
+extras forwarded by future adapters). Return `true` to continue solving,
+`false` to stop early (the solver will report a user-requested
+termination).
 
 Each solver extension wraps an `AbstractIntermediateCallback` instance in a
 solver-specific adapter at solve time, so the same callback object works
@@ -71,6 +79,7 @@ end
 
 include("constrain.jl")
 include("evaluator.jl")
+include("best_pulse.jl")
 include("solve.jl")
 
 

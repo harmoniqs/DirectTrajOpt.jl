@@ -1,11 +1,107 @@
 module Callbacks
 
 using Ipopt
+import MathOptInterface as MOI
 
 using ..DirectTrajOpt
 using NamedTrajectories
 
 using TestItemRunner
+
+
+"""
+    callback_from_abstract_intermediate(cb::AbstractIntermediateCallback, prob)
+
+Adapt a solver-agnostic `AbstractIntermediateCallback` to Ipopt's
+`CallbackFunction` factory form. The returned function rebuilds the
+problem's trajectory from Ipopt's primal vector each iteration before
+invoking `cb`, so callbacks can observe both `primal` and a coherent
+`prob.trajectory` snapshot. `obj_value` and `inf_pr` from
+`IpoptOptimizerState` are forwarded as keyword arguments.
+"""
+function callback_from_abstract_intermediate(
+    cb::DirectTrajOpt.AbstractIntermediateCallback,
+    prob::DirectTrajOptProblem,
+)
+    function _factory(optimizer)
+        # Re-resolve variable indices at each invocation to match Ipopt's MOI layout.
+        function _adapter(
+            alg_mod::Cint,
+            iter_count::Cint,
+            obj_value::Float64,
+            inf_pr::Float64,
+            inf_du::Float64,
+            mu::Float64,
+            d_norm::Float64,
+            regularization_size::Float64,
+            alpha_du::Float64,
+            alpha_pr::Float64,
+            ls_trials::Cint,
+        )
+            primal = MOI.get(
+                optimizer,
+                MOI.VariablePrimal(),
+                optimizer.list_of_variable_indices,
+            )
+            return cb(
+                primal,
+                Int(iter_count);
+                obj_value = obj_value,
+                inf_pr = inf_pr,
+                inf_du = inf_du,
+                mu = mu,
+                d_norm = d_norm,
+                regularization_size = regularization_size,
+                alpha_du = alpha_du,
+                alpha_pr = alpha_pr,
+                ls_trials = Int(ls_trials),
+                alg_mod = Int(alg_mod),
+            )
+        end
+        return _adapter
+    end
+    return _factory
+end
+
+
+"""
+    compose_callback(user_callback, intermediate_callback, prob)
+
+Merge a (possibly `nothing`) user-supplied Ipopt callback factory with a
+(possibly `nothing`) solver-agnostic `AbstractIntermediateCallback` into
+a single factory ready for `Ipopt.CallbackFunction`. Returns `nothing`
+when both inputs are absent.
+"""
+function compose_callback(
+    user_callback,
+    intermediate_callback::Union{Nothing,DirectTrajOpt.AbstractIntermediateCallback},
+    prob::DirectTrajOptProblem,
+)
+    if intermediate_callback === nothing
+        return user_callback isa Function ? user_callback : nothing
+    end
+
+    adapter_factory = callback_from_abstract_intermediate(intermediate_callback, prob)
+
+    if user_callback === nothing
+        return adapter_factory
+    end
+
+    if !(user_callback isa Function)
+        @warn "Ipopt: ignoring non-Function user callback of type $(typeof(user_callback))"
+        return adapter_factory
+    end
+
+    return optimizer -> begin
+        user_fn = user_callback(optimizer)
+        adapter_fn = adapter_factory(optimizer)
+        function _combined(args...)
+            adapter_result = adapter_fn(args...)
+            user_result = user_fn(args...)
+            return adapter_result && user_result
+        end
+    end
+end
 
 
 # """

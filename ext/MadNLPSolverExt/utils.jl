@@ -58,6 +58,8 @@ function DirectTrajOpt._solve_with_kwargs(
     options::MadNLPOptions;
     verbose::Bool = true,
     callback = nothing,
+    intermediate_callback::Union{Nothing,DirectTrajOpt.AbstractIntermediateCallback} =
+        nothing,
     array_type = nothing,
     kwargs...,
 )
@@ -71,6 +73,10 @@ function DirectTrajOpt._solve_with_kwargs(
             # @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
             push!(madnlp_kwargs, Pair(k, v))
         end
+    end
+
+    if intermediate_callback !== nothing && options.intermediate_callback === nothing
+        options.intermediate_callback = intermediate_callback
     end
 
     # Sync derived fields that depend on other fields.

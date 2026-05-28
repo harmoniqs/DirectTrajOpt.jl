@@ -71,7 +71,7 @@ end
         count::Base.RefValue{Int}
         last_primal_len::Base.RefValue{Int}
     end
-    function (cb::_AgnosticCounter)(primal::AbstractVector, iter::Integer)
+    function (cb::_AgnosticCounter)(primal::AbstractVector, iter::Integer; kwargs...)
         cb.count[] += 1
         cb.last_primal_len[] = length(primal)
         return true
@@ -100,7 +100,7 @@ end
     mutable struct _AutoCoupleProbe <: DirectTrajOpt.AbstractIntermediateCallback
         last_primal_len::Base.RefValue{Int}
     end
-    function (cb::_AutoCoupleProbe)(primal::AbstractVector, _)
+    function (cb::_AutoCoupleProbe)(primal::AbstractVector, _; kwargs...)
         cb.last_primal_len[] = length(primal)
         return true
     end
@@ -124,7 +124,7 @@ end
     mutable struct _PassthroughProbe <: DirectTrajOpt.AbstractIntermediateCallback
         len::Base.RefValue{Int}
     end
-    (cb::_PassthroughProbe)(primal, _) = (cb.len[] = length(primal); true)
+    (cb::_PassthroughProbe)(primal, _; kwargs...) = (cb.len[] = length(primal); true)
 
     cb = _PassthroughProbe(Ref(0))
     prob, _ = make_standard_prob()
@@ -156,7 +156,7 @@ end
         max_iters::Int
         count::Base.RefValue{Int}
     end
-    function (cb::_Stopper)(_, _)
+    function (cb::_Stopper)(_, _; kwargs...)
         cb.count[] += 1
         return cb.count[] < cb.max_iters
     end

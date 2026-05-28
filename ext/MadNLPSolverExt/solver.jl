@@ -15,8 +15,14 @@ function DirectTrajOpt._solve(
     options::MadNLPOptions;
     verbose::Bool = true,
     callback = nothing,
+    intermediate_callback::Union{Nothing,DirectTrajOpt.AbstractIntermediateCallback} =
+        nothing,
     kwargs...,
 )
+    if callback isa Function
+        @warn "MadNLP backend ignores `callback::Function`. Use an `AbstractIntermediateCallback` subtype instead."
+    end
+
     # Apply kwargs to matching MadNLPOptions fields
     madnlp_fields = fieldnames(MadNLPOptions)
     madnlp_kwargs = Dict{Symbol,Any}()
@@ -26,6 +32,21 @@ function DirectTrajOpt._solve(
         else
             # @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
             push!(madnlp_kwargs, Pair(k, v))
+        end
+    end
+
+    if intermediate_callback !== nothing
+        if options.intermediate_callback === nothing
+            options.intermediate_callback = intermediate_callback
+        elseif options.intermediate_callback isa DirectTrajOpt.AbstractIntermediateCallback
+            options.intermediate_callback = DirectTrajOpt.CompositeIntermediateCallback(
+                DirectTrajOpt.AbstractIntermediateCallback[
+                    intermediate_callback,
+                    options.intermediate_callback,
+                ],
+            )
+        else
+            @warn "MadNLP: a non-Abstract intermediate_callback is already set in MadNLPOptions; cannot compose with `solve!`-installed tracker, falling back to the user-set one."
         end
     end
 
@@ -225,7 +246,21 @@ function (a::_MadNLPCallbackAdapter)(
     mode::MadNLP.AbstractUserCallbackStatus,
 )
     mode isa MadNLP.UserCallbackRegular || return true
-    return a.inner(MadNLP.variable(solver.x), solver.cnt.k)
+    obj_value = _safe_solver_field(solver, :obj_val, NaN)
+    inf_pr = _safe_solver_field(solver, :inf_pr, Inf)
+    return a.inner(
+        MadNLP.variable(solver.x),
+        solver.cnt.k;
+        obj_value = Float64(obj_value),
+        inf_pr = Float64(inf_pr),
+    )
+end
+
+# MadNLP doesn't commit to a stable public surface for solver state fields;
+# `obj_val` and `inf_pr` are present in current versions but read defensively
+# so future renames don't break the callback bridge.
+function _safe_solver_field(solver, name::Symbol, fallback)
+    return hasproperty(solver, name) ? getproperty(solver, name) : fallback
 end
 
 function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptions)
