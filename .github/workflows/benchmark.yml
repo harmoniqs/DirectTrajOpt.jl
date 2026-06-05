@@ -20,7 +20,11 @@ jobs:
     timeout-minutes: 60
     permissions:
       actions: write
-      contents: read
+      # contents: write so github-action-benchmark can auto-push the time-series
+      # to gh-pages (gated to main below); pull-requests: write for its
+      # regression alert comments.
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v6
 
@@ -43,6 +47,10 @@ jobs:
             TestItemRunner.run_tests("benchmark/")
           '
 
+      - name: Generate benchmark report
+        if: always()
+        run: julia --project=benchmark benchmark/report.jl
+
       - name: Upload benchmark artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,3 +58,23 @@ jobs:
           name: benchmark-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
           path: benchmark/results/
           retention-days: 90
+
+      # Publish to /bench on gh-pages (per-commit time-series chart + regression
+      # alerts), mirroring CuQuantum.jl. save-data-file / auto-push are gated to
+      # main so PR / branch runs render a comparison comment without polluting
+      # the published series.
+      - name: Publish benchmark to gh-pages
+        if: success() && hashFiles('benchmark/results/bench.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: DirectTrajOpt.jl benchmarks
+          tool: customSmallerIsBetter
+          output-file-path: benchmark/results/bench.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: bench
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: false
+          save-data-file: ${{ github.ref == 'refs/heads/main' }}
+          auto-push: ${{ github.ref == 'refs/heads/main' }}

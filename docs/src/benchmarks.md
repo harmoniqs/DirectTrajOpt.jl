@@ -24,6 +24,26 @@ with ``G_x, G_y, G_z`` the 4×4 real representations of the Pauli generators,
     and allocation against its own history across commits, which is the only
     apples-to-apples comparison the harness can offer.
 
+## Continuous tracking
+
+Every benchmark CI run post-processes its saved `BenchmarkResult` artifacts
+(`benchmark/report.jl`) into two display surfaces, mirroring the approach in
+[CuQuantum.jl](https://github.com/harmoniqs/CuQuantum.jl):
+
+- **Live dashboard.** A `customSmallerIsBetter` JSON (`benchmark/results/bench.json`)
+  is published by [`github-action-benchmark`](https://github.com/benchmark-action/github-action-benchmark)
+  to the [**`bench/` dashboard on gh-pages**](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/).
+  Each `(benchmark, metric)` pair — e.g. `bilinear_N51_ipopt [wall]`,
+  `bilinear_N51_madnlp [alloc]` — is tracked as its own per-commit time series.
+- **Regression alerts.** Any series that regresses by more than **120 %** versus
+  its history raises a comment on the offending commit/PR. Alerts never fail the
+  build (`fail-on-alert: false`); they flag, they don't block. The series are
+  only saved/pushed on `main`, so branch and PR runs render a comparison without
+  polluting the published history.
+- **Per-run job summary.** The same numbers are written to the Actions run's
+  job summary as a markdown table, so each run shows its results inline without
+  downloading the JLD2 artifact.
+
 ## Ipopt vs MadNLP
 
 Same problem (bilinear ``N = 51``, 4D state, 2D control), same initial guess,
@@ -110,6 +130,13 @@ julia --project=benchmark -t auto -e '
     using TestItemRunner
     TestItemRunner.run_tests("benchmark/")
 '
+```
+
+To regenerate the dashboard JSON (`bench.json`) and a markdown summary from the
+saved artifacts — exactly what CI runs after the suite:
+
+```bash
+julia --project=benchmark benchmark/report.jl
 ```
 
 Results are saved as JLD2 files in `benchmark/results/` (gitignored). Load with:
