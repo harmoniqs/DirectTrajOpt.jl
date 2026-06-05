@@ -25,7 +25,11 @@ jobs:
     timeout-minutes: 90
     permissions:
       actions: write
-      contents: read
+      # contents: write so github-action-benchmark can auto-push the time-series
+      # to gh-pages (gated to main below); pull-requests: write for its
+      # regression alert comments.
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v6
 
@@ -48,6 +52,10 @@ jobs:
             TestItemRunner.run_tests("benchmark/"; filter = ti -> occursin("alloc_profile", ti.filename))
           '
 
+      - name: Generate alloc-profile report
+        if: always()
+        run: julia --project=benchmark benchmark/alloc_report.jl
+
       - name: Upload alloc-profile artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -55,3 +63,22 @@ jobs:
           name: alloc-profile-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
           path: benchmark/results/allocs/
           retention-days: 90
+
+      # Publish to /bench-alloc on gh-pages — per-commit series for each solver's
+      # total sampled allocations, with 120% regression alerts. save-data-file /
+      # auto-push gated to main so PR runs render a comparison only.
+      - name: Publish alloc profile to gh-pages
+        if: success() && hashFiles('benchmark/results/allocs/bench.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: DirectTrajOpt.jl alloc profile
+          tool: customSmallerIsBetter
+          output-file-path: benchmark/results/allocs/bench.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: bench-alloc
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: false
+          save-data-file: ${{ github.ref == 'refs/heads/main' }}
+          auto-push: ${{ github.ref == 'refs/heads/main' }}
