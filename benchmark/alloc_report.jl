@@ -88,7 +88,10 @@ else
     end
     println(io)
     for p in profiles
-        println(io, "<details><summary><code>$(p.benchmark_name)</code> / $(p.solver) — top allocations</summary>")
+        println(
+            io,
+            "<details><summary><code>$(p.benchmark_name)</code> / $(p.solver) — top allocations</summary>",
+        )
         println(io)
         println(io, "```")
         report_alloc_profile(p; io = io, k_types = 10, k_leaves = 15, k_frames = 15)
