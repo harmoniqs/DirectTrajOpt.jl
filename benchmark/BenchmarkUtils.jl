@@ -64,8 +64,11 @@ _json_escape(s) = replace(string(s), '\\' => "\\\\", '"' => "\\\"")
 
 Write the `customSmallerIsBetter` JSON array. Per full-solve result we emit a
 wall-time series ("… [wall]", seconds) and an allocation series ("… [alloc]",
-bytes). Per micro result we emit a median-time series per evaluated callback
-("… / <op> [median]", nanoseconds). Smaller is better for all three.
+bytes); plus, when the solver reported them, an iteration-count series
+("… [iters]") and — for convergence suites — the achieved infidelity/objective
+("… [infidelity]" / "… [objective]"). Per micro result we emit a median-time
+series per evaluated callback ("… / <op> [median]", nanoseconds). Smaller is
+better for every series.
 """
 function emit_bench_json(
     io::IO,
@@ -77,6 +80,25 @@ function emit_bench_json(
     for r in full
         push!(entries, ("$(r.benchmark_name) [wall]", "s", r.wall_time_s))
         push!(entries, ("$(r.benchmark_name) [alloc]", "bytes", r.total_allocations_bytes))
+        # Iteration count is meaningful whenever the solver reported it
+        # (timing-only runs use the -1 sentinel and are skipped).
+        if r.iterations >= 0
+            push!(entries, ("$(r.benchmark_name) [iters]", "iterations", r.iterations))
+        end
+        # Convergence suites carry a criterion — track the achieved
+        # infidelity / objective as its own smaller-is-better series.
+        c = r.convergence
+        if c isa InfidelityConvergence
+            push!(
+                entries,
+                ("$(r.benchmark_name) [infidelity]", "infidelity", c.final_infidelity),
+            )
+        elseif c isa ObjectiveConvergence
+            push!(
+                entries,
+                ("$(r.benchmark_name) [objective]", "objective", c.final_objective),
+            )
+        end
     end
     for m in micro
         for (op, eb) in sort(collect(m.eval_benchmarks), by = first)
