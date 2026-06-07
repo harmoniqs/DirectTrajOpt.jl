@@ -22,6 +22,7 @@ module BenchmarkReporting
 using HarmoniqsBenchmarks
 using JLD2
 using Printf
+using Statistics: median
 
 export collect_results, emit_bench_json, emit_markdown, write_report
 
@@ -59,6 +60,28 @@ end
 # array the action parses.
 _json_escape(s) = replace(string(s), '\\' => "\\\\", '"' => "\\\"")
 
+# Replicate samples of one logical benchmark share a benchmark_name that differs
+# only by a trailing `_s<k>` suffix (the scaling sweep's per-seed convention,
+# e.g. `scaling_N51_d8_ipopt_s1/_s2/_s3`). For reporting we collapse them into a
+# single logical "cell" and summarize by the MEDIAN — so one unlucky random seed
+# can't trip a dashboard regression alert or skew the table. The per-seed
+# BenchmarkResults stay untouched in the JLD2 artifact for distribution analysis.
+# Names without the suffix are their own cell (group size 1 → median == value),
+# so non-replicated benchmarks are unaffected.
+_cell_key(name::AbstractString) = replace(name, r"_s\d+$" => "")
+
+# Group results into ordered (cell_key, samples) pairs, preserving first-seen order.
+function _cells(full::Vector{BenchmarkResult})
+    order = String[]
+    groups = Dict{String,Vector{BenchmarkResult}}()
+    for r in full
+        k = _cell_key(r.benchmark_name)
+        haskey(groups, k) || push!(order, k)
+        push!(get!(groups, k, BenchmarkResult[]), r)
+    end
+    return [(k, groups[k]) for k in order]
+end
+
 """
     emit_bench_json(io, full, micro)
 
@@ -76,29 +99,37 @@ function emit_bench_json(
     micro::Vector{MicroBenchmarkResult},
 )
     # value is Real: bytes stay Int (printed without exponent), timings Float64.
+    # One series per logical cell, summarized by the MEDIAN over replicate seeds
+    # (see `_cells`) so per-seed noise doesn't drive the dashboard / its alerts.
     entries = Tuple{String,String,Real}[]
-    for r in full
-        push!(entries, ("$(r.benchmark_name) [wall]", "s", r.wall_time_s))
-        push!(entries, ("$(r.benchmark_name) [alloc]", "bytes", r.total_allocations_bytes))
+    for (cell, samples) in _cells(full)
+        push!(entries, ("$cell [wall]", "s", median([s.wall_time_s for s in samples])))
+        push!(
+            entries,
+            (
+                "$cell [alloc]",
+                "bytes",
+                round(Int, median([Float64(s.total_allocations_bytes) for s in samples])),
+            ),
+        )
         # Iteration count is meaningful whenever the solver reported it
         # (timing-only runs use the -1 sentinel and are skipped).
-        if r.iterations >= 0
-            push!(entries, ("$(r.benchmark_name) [iters]", "iterations", r.iterations))
-        end
+        iters = [s.iterations for s in samples if s.iterations >= 0]
+        isempty(iters) ||
+            push!(entries, ("$cell [iters]", "iterations", round(Int, median(iters))))
         # Convergence suites carry a criterion — track the achieved
         # infidelity / objective as its own smaller-is-better series.
-        c = r.convergence
-        if c isa InfidelityConvergence
-            push!(
-                entries,
-                ("$(r.benchmark_name) [infidelity]", "infidelity", c.final_infidelity),
-            )
-        elseif c isa ObjectiveConvergence
-            push!(
-                entries,
-                ("$(r.benchmark_name) [objective]", "objective", c.final_objective),
-            )
-        end
+        infids = [
+            s.convergence.final_infidelity for
+            s in samples if s.convergence isa InfidelityConvergence
+        ]
+        isempty(infids) ||
+            push!(entries, ("$cell [infidelity]", "infidelity", median(infids)))
+        objs = [
+            s.convergence.final_objective for
+            s in samples if s.convergence isa ObjectiveConvergence
+        ]
+        isempty(objs) || push!(entries, ("$cell [objective]", "objective", median(objs)))
     end
     for m in micro
         for (op, eb) in sort(collect(m.eval_benchmarks), by = first)
@@ -165,24 +196,35 @@ function emit_markdown(
         )
         println(io)
         any_conv = any(r -> r.convergence !== nothing, full)
-        header = "| Benchmark | Solver | N | dim | Wall (s) | Allocations | Iters | Status |"
-        rule = "|---|---|--:|--:|--:|--:|--:|---|"
+        # Columns mirror the dashboard: one row per logical cell, wall/alloc/iters
+        # as the MEDIAN over replicate seeds, with `n` = sample count (>1 ⇒ the
+        # value is a median; the per-seed rows live in the JLD2 artifact).
+        header = "| Benchmark | Solver | N | dim | n | Wall (s) | Allocations | Iters | Status |"
+        rule = "|---|---|--:|--:|--:|--:|--:|--:|---|"
         if any_conv
             header *= " Converged |"
             rule *= "---|"
         end
         println(io, header)
         println(io, rule)
-        for r in full
+        for (cell, samples) in _cells(full)
+            r = samples[1]  # solver / N / dim / status are constant within a cell
+            iters = [s.iterations for s in samples if s.iterations >= 0]
             row = @sprintf(
-                "| `%s` | %s | %d | %d | %.4f | %s | %s | %s |",
-                r.benchmark_name,
+                "| `%s` | %s | %d | %d | %d | %.4f | %s | %s | %s |",
+                cell,
                 r.solver,
                 r.N,
                 r.state_dim,
-                r.wall_time_s,
-                _human_bytes(r.total_allocations_bytes),
-                r.iterations < 0 ? "—" : string(r.iterations),
+                length(samples),
+                median([s.wall_time_s for s in samples]),
+                _human_bytes(
+                    round(
+                        Int,
+                        median([Float64(s.total_allocations_bytes) for s in samples]),
+                    ),
+                ),
+                isempty(iters) ? "—" : string(round(Int, median(iters))),
                 r.solver_status,
             )
             if any_conv

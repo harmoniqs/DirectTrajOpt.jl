@@ -52,30 +52,41 @@ the recorded wall-time reflects steady-state behavior. Metrics captured by
 [HarmoniqsBenchmarks.jl](https://github.com/harmoniqs/HarmoniqsBenchmarks.jl)
 via `benchmark_solve!`.
 
-### Full solve (bilinear N=51, max_iter=200) — *illustrative*
+### Full solve (bilinear N=51, max_iter=200)
 
-| Solver | Wall time | Allocations | Objective | Status |
-|:-------|:---------:|:-----------:|:---------:|:------:|
-| Ipopt  | 8.52 s    | 3.4 GB      | —         | Optimal |
-| MadNLP | 5.75 s    | 1.9 GB      | —         | Optimal |
+Snapshot from commit `dd0beb4` on GH Actions `ubuntu-latest` (Julia 1.11, 2 vCPU).
+Numbers vary by hardware/BLAS/MUMPS build — the [live dashboard](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/) is the source of truth.
+
+| Solver | Wall time | Allocations |
+|:-------|:---------:|:-----------:|
+| Ipopt  | 0.617 s   | 1.37 GiB    |
+| MadNLP | 0.401 s   | 0.94 GiB    |
+
+`Allocations` is **total** (cumulative transient) allocation, not peak RSS — it's
+dominated by `ForwardDiff` Hessian/Jacobian buffers (corroborated by the
+allocation profile, whose 1 %-sampled total scales back to the same ~1.4 GiB).
 
 ## Evaluator micro-benchmarks
 
 Per-function timings for the MOI evaluator interface on the same bilinear
 ``N = 51`` problem. Measured with `BenchmarkTools.@benchmark`.
 
-### Per-function timings — *illustrative*
+### Per-function timings
+
+Snapshot from commit `dd0beb4` (GH Actions `ubuntu-latest`, Julia 1.11); see the
+[live dashboard](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/) for current values.
 
 | Function | Median | Allocations | Memory |
 |:---------|:------:|:-----------:|:------:|
-| `eval_objective` | 0.8 μs | 0 | 0 B |
-| `eval_objective_gradient` | 45 μs | 102 | 80 KB |
-| `eval_constraint` | 1.2 ms | 5,100 | 4.8 MB |
-| `eval_constraint_jacobian` | 3.5 ms | 15,300 | 14 MB |
-| `eval_hessian_lagrangian` | 12.7 ms | 73,000 | 68 MB |
+| `eval_objective` | 185 μs | 3,373 | 159 KB |
+| `eval_objective_gradient` | 209 μs | 4,288 | 197 KB |
+| `eval_constraint` | 1.0 ms | 16,743 | 999 KB |
+| `eval_constraint_jacobian` | 2.0 ms | 27,043 | 3.4 MB |
+| `eval_hessian_lagrangian` | 22.3 ms | 70,968 | 68.9 MB |
 
-`eval_hessian_lagrangian` is typically the dominant per-iteration cost and
-the natural optimization target.
+`eval_hessian_lagrangian` is the dominant per-iteration cost (~10× the Jacobian)
+and the natural optimization target — consistent with the allocation profile,
+where `ForwardDiff` Hessian buffers top the breakdown.
 
 ## Memory scaling
 
@@ -91,19 +102,29 @@ comparisons stay fair; only the choice of instance varies across the K samples.
 The per-seed `BenchmarkResult`s are all saved to the JLD2 artifact, so the
 raw distribution behind each median cell is available for downstream analysis.
 
-### Scaling sweep — *illustrative*
+### Scaling sweep
 
-| N | State dim | Ipopt (s) | Ipopt (MB) | MadNLP (s) | MadNLP (MB) |
+Median over ``K = 3`` seeds per cell, commit `dd0beb4` (GH Actions
+`ubuntu-latest`, Julia 1.11). Allocations are **GB** (total transient, not peak);
+see the [live dashboard](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/) for
+the per-commit trend.
+
+| N | State dim | Ipopt (s) | Ipopt (GB) | MadNLP (s) | MadNLP (GB) |
 |:-:|:---------:|:---------:|:----------:|:----------:|:-----------:|
-| 25 | 4 | 0.8 | 120 | 0.5 | 70 |
-| 25 | 8 | 1.5 | 310 | 1.0 | 180 |
-| 25 | 16 | 4.2 | 980 | 2.8 | 570 |
-| 51 | 4 | 1.6 | 250 | 1.1 | 150 |
-| 51 | 8 | 3.2 | 640 | 2.1 | 380 |
-| 51 | 16 | 9.1 | 2,100 | 6.0 | 1,200 |
-| 101 | 4 | 3.4 | 510 | 2.2 | 300 |
-| 101 | 8 | 6.8 | 1,300 | 4.5 | 780 |
-| 101 | 16 | 19.5 | 4,200 | 12.8 | 2,500 |
+| 25 | 4 | 0.02 | 0.0 | 0.86 | 1.6 |
+| 25 | 8 | 0.01 | 0.0 | 3.78 | 7.4 |
+| 25 | 16 | 0.57 | 1.0 | 26.68 | 48.8 |
+| 51 | 4 | 2.59 | 3.9 | 1.71 | 3.2 |
+| 51 | 8 | 7.00 | 14.4 | 7.48 | 15.4 |
+| 51 | 16 | 57.13 | 102.6 | 51.79 | 98.4 |
+| 101 | 4 | 3.51 | 6.6 | 3.02 | 6.0 |
+| 101 | 8 | 14.93 | 30.9 | 13.19 | 28.7 |
+| 101 | 16 | 114.43 | 199.0 | 98.51 | 193.2 |
+
+The near-zero Ipopt cells at ``N = 25`` (dim 4, 8) are real: on those small
+random instances Ipopt's interior-point method hits an acceptable point almost
+immediately, whereas MadNLP still runs its full iteration budget. At larger
+sizes the two are comparable, with MadNLP modestly faster at the largest cell.
 
 Each cell is the median over ``K = 3`` solves on independent random
 instances — most useful for tracking the slope of each solver vs itself
