@@ -21,8 +21,9 @@ jobs:
     # Profile.Allocs has high per-allocation overhead that doesn't scale down
     # with sample_rate — each Ipopt/MadNLP solve under sampling takes ~30-40
     # min on GH Actions runners even at max_iter=30. Two solves + startup =
-    # ~75 min observed in practice; 90 min gives a comfortable cushion.
-    timeout-minutes: 90
+    # ~75 min on Julia 1.11, but ~90+ min on Julia 1.12 (it overran a 90 min
+    # cap), so 120 min gives a real cushion on the slower runtime.
+    timeout-minutes: 120
     permissions:
       actions: write
       # contents: write so github-action-benchmark can auto-push the time-series
