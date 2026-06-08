@@ -18,7 +18,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 [sources]
 DirectTrajOpt = {path = ".."}
 # HBJ not yet registered in General; pin to a specific commit so benchmark
-# results are reproducible. Bump this SHA (and the local Manifest) when HBJ
-# ships a new feature we want to use. Drop in favor of [compat] once HBJ
-# registers in General.
-HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "5401542c477c0f2da6d66028c513e8a278f4875f"}
+# results are reproducible. Pinned to the SHA carrying the allocation analyzer
+# (benchmark_memory! / report_alloc_profile / AllocProfileResult) the alloc
+# profile suite needs. Drop in favor of [compat] once HBJ registers in General.
+HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "c38418cb7f932f2ff9a9c6c6eacf9a11ff1018c1"}
