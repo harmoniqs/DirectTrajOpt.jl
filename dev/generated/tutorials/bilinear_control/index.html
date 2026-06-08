@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Bilinear Control · DirectTrajOpt.jl</title><meta name="title" content="Bilinear Control · DirectTrajOpt.jl"/><meta property="og:title" content="Bilinear Control · DirectTrajOpt.jl"/><meta property="twitter:title" content="Bilinear Control · DirectTrajOpt.jl"/><meta name="description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:description" content="Documentation for DirectTrajOpt.jl."/><meta property="twitter:description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/bilinear_control/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/bilinear_control/"/><link rel="canonical" href="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/bilinear_control/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.svg" alt="DirectTrajOpt.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">DirectTrajOpt.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><span class="tocitem">Getting Started</span><ul><li><a class="tocitem" href="../../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../example/">Complete Example</a></li></ul></li><li><span class="tocitem">Core Concepts</span><ul><li><a class="tocitem" href="../../concepts/problem_formulation/">Problem Formulation</a></li><li><a class="tocitem" href="../../concepts/trajectories/">Trajectories</a></li><li><a class="tocitem" href="../../concepts/integrators/">Integrators</a></li><li><a class="tocitem" href="../../concepts/objectives/">Objectives</a></li><li><a class="tocitem" href="../../concepts/constraints/">Constraints</a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../linear_system/">Linear System</a></li><li class="is-active"><a class="tocitem" href>Bilinear Control</a><ul class="internal"><li><a class="tocitem" href="#Problem-Description"><span>Problem Description</span></a></li><li><a class="tocitem" href="#Step-1:-Define-the-System"><span>Step 1: Define the System</span></a></li><li><a class="tocitem" href="#Step-2:-Set-Up-the-Problem"><span>Step 2: Set Up the Problem</span></a></li><li><a class="tocitem" href="#Step-3:-Create-Trajectory-with-Bounds"><span>Step 3: Create Trajectory with Bounds</span></a></li><li><a class="tocitem" href="#Step-4:-Define-Dynamics-and-Objective"><span>Step 4: Define Dynamics and Objective</span></a></li><li><a class="tocitem" href="#Step-5:-Solve-the-Problem"><span>Step 5: Solve the Problem</span></a></li><li><a class="tocitem" href="#Step-6:-Analyze-the-Solution"><span>Step 6: Analyze the Solution</span></a></li><li><a class="tocitem" href="#Step-7:-Detailed-Results"><span>Step 7: Detailed Results</span></a></li><li><a class="tocitem" href="#Step-8:-Verify-Dynamics-Satisfaction"><span>Step 8: Verify Dynamics Satisfaction</span></a></li><li><a class="tocitem" href="#Comparison:-Different-Control-Weights"><span>Comparison: Different Control Weights</span></a></li><li><a class="tocitem" href="#Key-Observations"><span>Key Observations</span></a></li><li><a class="tocitem" href="#Exercises"><span>Exercises</span></a></li><li><a class="tocitem" href="#Next-Steps"><span>Next Steps</span></a></li></ul></li><li><a class="tocitem" href="../minimum_time/">Minimum Time</a></li></ul></li><li><a class="tocitem" href="../../../lib/">Library</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Bilinear Control</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Bilinear Control</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl/blob/main/docs/literate/tutorials/bilinear_control.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Tutorial:-Bilinear-Control-with-Multiple-Drives"><a class="docs-heading-anchor" href="#Tutorial:-Bilinear-Control-with-Multiple-Drives">Tutorial: Bilinear Control with Multiple Drives</a><a id="Tutorial:-Bilinear-Control-with-Multiple-Drives-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial:-Bilinear-Control-with-Multiple-Drives" title="Permalink"></a></h1><p>This tutorial demonstrates a more complex bilinear control problem with:</p><ul><li>Multiple control inputs</li><li>Control bounds</li><li>A 3D state space</li></ul><h2 id="Problem-Description"><a class="docs-heading-anchor" href="#Problem-Description">Problem Description</a><a id="Problem-Description-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-Description" title="Permalink"></a></h2><p>Control a 3D system with 2 independent control inputs.</p><p><strong>Dynamics:</strong></p><p class="math-container">\[\dot{x} = (G_0 + u_1 G_1 + u_2 G_2) x\]</p><p><strong>Goal:</strong> Navigate from <code>[1, 0, 0]</code> to <code>[0, 0, 1]</code> with bounded controls</p><pre><code class="language-julia hljs">using DirectTrajOpt
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Bilinear Control · DirectTrajOpt.jl</title><meta name="title" content="Bilinear Control · DirectTrajOpt.jl"/><meta property="og:title" content="Bilinear Control · DirectTrajOpt.jl"/><meta property="twitter:title" content="Bilinear Control · DirectTrajOpt.jl"/><meta name="description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:description" content="Documentation for DirectTrajOpt.jl."/><meta property="twitter:description" content="Documentation for DirectTrajOpt.jl."/><meta property="og:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/bilinear_control/"/><meta property="twitter:url" content="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/bilinear_control/"/><link rel="canonical" href="https://docs.harmoniqs.co/DirectTrajOpt.jl/generated/tutorials/bilinear_control/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.svg" alt="DirectTrajOpt.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">DirectTrajOpt.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">Home</a></li><li><span class="tocitem">Getting Started</span><ul><li><a class="tocitem" href="../../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../example/">Complete Example</a></li></ul></li><li><span class="tocitem">Core Concepts</span><ul><li><a class="tocitem" href="../../concepts/problem_formulation/">Problem Formulation</a></li><li><a class="tocitem" href="../../concepts/trajectories/">Trajectories</a></li><li><a class="tocitem" href="../../concepts/integrators/">Integrators</a></li><li><a class="tocitem" href="../../concepts/objectives/">Objectives</a></li><li><a class="tocitem" href="../../concepts/constraints/">Constraints</a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../linear_system/">Linear System</a></li><li class="is-active"><a class="tocitem" href>Bilinear Control</a><ul class="internal"><li><a class="tocitem" href="#Problem-Description"><span>Problem Description</span></a></li><li><a class="tocitem" href="#Step-1:-Define-the-System"><span>Step 1: Define the System</span></a></li><li><a class="tocitem" href="#Step-2:-Set-Up-the-Problem"><span>Step 2: Set Up the Problem</span></a></li><li><a class="tocitem" href="#Step-3:-Create-Trajectory-with-Bounds"><span>Step 3: Create Trajectory with Bounds</span></a></li><li><a class="tocitem" href="#Step-4:-Define-Dynamics-and-Objective"><span>Step 4: Define Dynamics and Objective</span></a></li><li><a class="tocitem" href="#Step-5:-Solve-the-Problem"><span>Step 5: Solve the Problem</span></a></li><li><a class="tocitem" href="#Step-6:-Analyze-the-Solution"><span>Step 6: Analyze the Solution</span></a></li><li><a class="tocitem" href="#Step-7:-Detailed-Results"><span>Step 7: Detailed Results</span></a></li><li><a class="tocitem" href="#Step-8:-Verify-Dynamics-Satisfaction"><span>Step 8: Verify Dynamics Satisfaction</span></a></li><li><a class="tocitem" href="#Comparison:-Different-Control-Weights"><span>Comparison: Different Control Weights</span></a></li><li><a class="tocitem" href="#Key-Observations"><span>Key Observations</span></a></li><li><a class="tocitem" href="#Exercises"><span>Exercises</span></a></li><li><a class="tocitem" href="#Next-Steps"><span>Next Steps</span></a></li></ul></li><li><a class="tocitem" href="../minimum_time/">Minimum Time</a></li></ul></li><li><a class="tocitem" href="../../../lib/">Library</a></li><li><a class="tocitem" href="../../../benchmarks/">Benchmarks</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Bilinear Control</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Bilinear Control</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/harmoniqs/DirectTrajOpt.jl/blob/main/docs/literate/tutorials/bilinear_control.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Tutorial:-Bilinear-Control-with-Multiple-Drives"><a class="docs-heading-anchor" href="#Tutorial:-Bilinear-Control-with-Multiple-Drives">Tutorial: Bilinear Control with Multiple Drives</a><a id="Tutorial:-Bilinear-Control-with-Multiple-Drives-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial:-Bilinear-Control-with-Multiple-Drives" title="Permalink"></a></h1><p>This tutorial demonstrates a more complex bilinear control problem with:</p><ul><li>Multiple control inputs</li><li>Control bounds</li><li>A 3D state space</li></ul><h2 id="Problem-Description"><a class="docs-heading-anchor" href="#Problem-Description">Problem Description</a><a id="Problem-Description-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-Description" title="Permalink"></a></h2><p>Control a 3D system with 2 independent control inputs.</p><p><strong>Dynamics:</strong></p><p class="math-container">\[\dot{x} = (G_0 + u_1 G_1 + u_2 G_2) x\]</p><p><strong>Goal:</strong> Navigate from <code>[1, 0, 0]</code> to <code>[0, 0, 1]</code> with bounded controls</p><pre><code class="language-julia hljs">using DirectTrajOpt
 using NamedTrajectories
 using LinearAlgebra
 using Statistics
@@ -59,8 +59,8 @@ Boundary conditions:
  1.0  0.983051   0.966102   0.949153   …  0.0338983  0.0169492  0.0
  0.0  0.0        0.0        0.0           0.0        0.0        0.0
  0.0  0.0169492  0.0338983  0.0508475     0.966102   0.983051   1.0</code></pre><p>Small random controls</p><pre><code class="language-julia hljs">u_guess = 0.1 * randn(2, N)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2×60 Matrix{Float64}:
- -0.0467669  -0.0338936   0.0239854  …  -0.0707329  0.00327359   0.209087
-  0.10598     0.0154512  -0.0320094     -0.097227   0.109954    -0.140752</code></pre><h2 id="Step-3:-Create-Trajectory-with-Bounds"><a class="docs-heading-anchor" href="#Step-3:-Create-Trajectory-with-Bounds">Step 3: Create Trajectory with Bounds</a><a id="Step-3:-Create-Trajectory-with-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Create-Trajectory-with-Bounds" title="Permalink"></a></h2><p>Control bounds: -1 ≤ u ≤ 1 for both controls</p><pre><code class="language-julia hljs">traj = NamedTrajectory(
+ 0.00623925  -0.0105655  0.0809771  …  0.0656231   0.0579315  -0.0134202
+ 0.0649146   -0.192617   0.0951084     0.0397071  -0.0866874  -0.0391138</code></pre><h2 id="Step-3:-Create-Trajectory-with-Bounds"><a class="docs-heading-anchor" href="#Step-3:-Create-Trajectory-with-Bounds">Step 3: Create Trajectory with Bounds</a><a id="Step-3:-Create-Trajectory-with-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Step-3:-Create-Trajectory-with-Bounds" title="Permalink"></a></h2><p>Control bounds: -1 ≤ u ≤ 1 for both controls</p><pre><code class="language-julia hljs">traj = NamedTrajectory(
     (x = x_guess, u = u_guess, Δt = fill(Δt, N));
     timestep = :Δt,
     controls = :u,
@@ -120,23 +120,20 @@ Total number of inequality constraints...............:        0
         inequality constraints with only upper bounds:        0
 
 iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
-   0  1.2441469e-02 1.49e-01 1.01e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
-   1  7.8625691e-03 1.21e-01 1.45e+00  -4.0 1.08e+00   0.0 2.14e-01 1.85e-01f  1
-   2  6.7307547e-03 1.14e-01 1.05e+01  -1.2 1.46e+00   0.4 3.90e-01 5.91e-02h  1
-   3  1.7694888e-02 1.04e-01 9.65e+01  -0.1 2.94e+00   0.9 9.59e-01 8.64e-02h  1
-   4  4.9810715e-02 9.67e-02 2.78e+02   0.4 3.49e+00   1.3 9.44e-01 7.77e-02h  1
-   5  2.2493327e-01 1.26e-01 6.45e+02   0.7 2.93e+00   1.7 1.00e+00 1.83e-01h  1
+   0  1.0667370e-02 1.50e-01 1.00e+00   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  5.4468897e-03 1.13e-01 1.43e+00  -4.0 6.13e-01   0.0 7.19e-01 2.42e-01h  1
+   2  2.5801235e-02 1.02e-01 4.85e+00  -1.2 2.51e+00   0.4 1.13e-01 1.03e-01h  1
 
-Number of Iterations....: 6
+Number of Iterations....: 3
 
-Number of objective function evaluations             = 7
-Number of objective gradient evaluations             = 7
-Number of equality constraint evaluations            = 7
+Number of objective function evaluations             = 4
+Number of objective gradient evaluations             = 4
+Number of equality constraint evaluations            = 4
 Number of inequality constraint evaluations          = 0
-Number of equality constraint Jacobian evaluations   = 6
+Number of equality constraint Jacobian evaluations   = 3
 Number of inequality constraint Jacobian evaluations = 0
-Number of Lagrangian Hessian evaluations             = 6
-Total seconds in IPOPT                               = 6.871
+Number of Lagrangian Hessian evaluations             = 3
+Total seconds in IPOPT                               = 4.864
 
 EXIT: Invalid number in NLP function or derivative detected.
 ==================================================
@@ -145,25 +142,25 @@ Optimization complete!
 u_sol = prob.trajectory.u
 times = cumsum([0.0; prob.trajectory.Δt[:]])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">61-element Vector{Float64}:
  0.0
- 0.17147644978942625
- 0.5463715679915248
- 0.8544358143961943
- 0.8814139377840787
- 0.8994227031689226
- 0.9237231770488933
- 0.9427183279264899
- 0.962345243483664
- 0.9855421164686853
+ 0.10703381807613668
+ 0.25704456049224833
+ 0.31974392108904737
+ 0.4291485870218138
+ 0.5688656638677589
+ 0.6580071750184532
+ 0.7586262746335369
+ 0.8623093400692479
+ 1.1511682063675361
  ⋮
- 2.8424375238716038
- 2.852996722761467
- 2.863077076303723
- 2.8729822923522863
- 2.884148748894702
- 2.8994876199868833
- 2.9093445540183924
- 2.92606971615229
- 3.2324420265840628</code></pre><h3 id="Goal-Reaching"><a class="docs-heading-anchor" href="#Goal-Reaching">Goal Reaching</a><a id="Goal-Reaching-1"></a><a class="docs-heading-anchor-permalink" href="#Goal-Reaching" title="Permalink"></a></h3><pre><code class="language-julia hljs">println(&quot;\nGoal reaching:&quot;)
+ 3.143299298509028
+ 3.145457208660241
+ 3.147708372246286
+ 3.1503547854209577
+ 3.1530050581510243
+ 3.155583942184218
+ 3.1580663329282403
+ 3.159574213957449
+ 3.3209174632608827</code></pre><h3 id="Goal-Reaching"><a class="docs-heading-anchor" href="#Goal-Reaching">Goal Reaching</a><a id="Goal-Reaching-1"></a><a class="docs-heading-anchor-permalink" href="#Goal-Reaching" title="Permalink"></a></h3><pre><code class="language-julia hljs">println(&quot;\nGoal reaching:&quot;)
 println(&quot;  Initial state: &quot;, x_sol[:, 1])
 println(&quot;  Final state:   &quot;, x_sol[:, end])
 println(&quot;  Goal state:    &quot;, x_goal)
@@ -188,21 +185,21 @@ for i = 1:2
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 Control statistics:
   u1:
-    Max magnitude: 0.317509447510209
-    Mean magnitude: 0.090606926364003
-    Total norm: 0.8840773774122429
+    Max magnitude: 0.32382125471454065
+    Mean magnitude: 0.08723135985947592
+    Total norm: 0.8861555805842722
     ✓ Bounds satisfied
   u2:
-    Max magnitude: 0.9669112932226718
-    Mean magnitude: 0.22569025132443327
-    Total norm: 2.5086982434419576
+    Max magnitude: 0.5897998596585352
+    Mean magnitude: 0.17477589423385126
+    Total norm: 1.6991310413199459
     ✓ Bounds satisfied</code></pre><h3 id="State-Trajectory-Analysis"><a class="docs-heading-anchor" href="#State-Trajectory-Analysis">State Trajectory Analysis</a><a id="State-Trajectory-Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#State-Trajectory-Analysis" title="Permalink"></a></h3><pre><code class="language-julia hljs">println(&quot;\nState trajectory:&quot;)
 println(&quot;  Max |x₁|: &quot;, maximum(abs.(x_sol[1, :])))
 println(&quot;  Max |x₂|: &quot;, maximum(abs.(x_sol[2, :])))
 println(&quot;  Max |x₃|: &quot;, maximum(abs.(x_sol[3, :])))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 State trajectory:
-  Max |x₁|: 1.0
-  Max |x₂|: 0.6039256176464481
+  Max |x₁|: 1.002247051535235
+  Max |x₂|: 0.3407924320976481
   Max |x₃|: 1.0</code></pre><h2 id="Step-7:-Detailed-Results"><a class="docs-heading-anchor" href="#Step-7:-Detailed-Results">Step 7: Detailed Results</a><a id="Step-7:-Detailed-Results-1"></a><a class="docs-heading-anchor-permalink" href="#Step-7:-Detailed-Results" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
 println(&quot;SOLUTION DETAILS&quot;)
 println(&quot;=&quot;^50)
@@ -232,23 +229,23 @@ State trajectory (selected time points):
 Time  |   x₁    |   x₂    |   x₃
 ----------------------------------------
 0.00 |  1.0000 |  0.0000 |  0.0000
-0.99 |  0.6640 | -0.2814 |  0.2815
-1.44 |  0.6123 |  0.0338 |  0.3712
-2.57 |  0.4070 | -0.4184 |  0.5960
-2.70 |  0.2553 | -0.1613 |  0.7216
-2.81 |  0.1082 | -0.0965 |  0.8548
-2.93 |  0.0000 |  0.0000 |  1.0000
+1.15 |  0.9419 | -0.3408 |  0.1424
+1.80 |  0.7084 | -0.2040 |  0.3180
+2.43 |  0.5884 | -0.1330 |  0.4614
+3.00 |  0.3690 | -0.1716 |  0.6222
+3.14 |  0.1647 | -0.1166 |  0.8001
+3.16 |  0.0000 |  0.0000 |  1.0000
 
 Control trajectory (selected time points):
 Time  |   u₁    |   u₂
 ------------------------------
-0.00 | -0.1026 | -0.2689
-0.99 |  0.1705 | -0.0674
-1.44 |  0.0490 |  0.1110
-2.57 |  0.0882 | -0.3144
-2.70 |  0.0141 | -0.1289
-2.81 | -0.0497 | -0.0740
-2.93 |  0.1772 | -0.1194</code></pre><h2 id="Step-8:-Verify-Dynamics-Satisfaction"><a class="docs-heading-anchor" href="#Step-8:-Verify-Dynamics-Satisfaction">Step 8: Verify Dynamics Satisfaction</a><a id="Step-8:-Verify-Dynamics-Satisfaction-1"></a><a class="docs-heading-anchor-permalink" href="#Step-8:-Verify-Dynamics-Satisfaction" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\nDynamics verification:&quot;)
+0.00 |  0.0998 | -0.0177
+1.15 |  0.1352 | -0.1941
+1.80 |  0.0589 | -0.1490
+2.43 | -0.0520 | -0.1388
+3.00 | -0.1478 | -0.0819
+3.14 |  0.0361 | -0.0472
+3.16 | -0.0144 | -0.0387</code></pre><h2 id="Step-8:-Verify-Dynamics-Satisfaction"><a class="docs-heading-anchor" href="#Step-8:-Verify-Dynamics-Satisfaction">Step 8: Verify Dynamics Satisfaction</a><a id="Step-8:-Verify-Dynamics-Satisfaction-1"></a><a class="docs-heading-anchor-permalink" href="#Step-8:-Verify-Dynamics-Satisfaction" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\nDynamics verification:&quot;)
 max_error = 0.0
 for k = 1:(N-1)
     global max_error
@@ -263,7 +260,7 @@ for k = 1:(N-1)
 end
 println(&quot;  Maximum dynamics error: $max_error&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 Dynamics verification:
-  Maximum dynamics error: 0.1506449725198804</code></pre><h2 id="Comparison:-Different-Control-Weights"><a class="docs-heading-anchor" href="#Comparison:-Different-Control-Weights">Comparison: Different Control Weights</a><a id="Comparison:-Different-Control-Weights-1"></a><a class="docs-heading-anchor-permalink" href="#Comparison:-Different-Control-Weights" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
+  Maximum dynamics error: 0.09952672092966379</code></pre><h2 id="Comparison:-Different-Control-Weights"><a class="docs-heading-anchor" href="#Comparison:-Different-Control-Weights">Comparison: Different Control Weights</a><a id="Comparison:-Different-Control-Weights-1"></a><a class="docs-heading-anchor-permalink" href="#Comparison:-Different-Control-Weights" title="Permalink"></a></h2><pre><code class="language-julia hljs">println(&quot;\n&quot; * &quot;=&quot;^50)
 println(&quot;EXPLORING DIFFERENT CONTROL WEIGHTS&quot;)
 println(&quot;=&quot;^50)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 ==================================================
@@ -309,30 +306,89 @@ Number of nonzeros in equality constraint Jacobian...:     2106
 Number of nonzeros in inequality constraint Jacobian.:        0
 Number of nonzeros in Lagrangian Hessian.............:     3318
 
+Total number of variables............................:      354
+                     variables with only lower bounds:       60
+                variables with lower and upper bounds:      120
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:      177
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
 
-Number of Iterations....: 0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0  1.2582626e-01 1.51e-01 8.55e-01   0.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1  9.3298476e-02 1.29e-01 1.08e+01  -4.0 1.03e+00   2.0 7.36e-01 1.44e-01f  1
+   2  2.9108030e-01 1.23e-01 2.00e+01   0.6 5.66e+00   1.5 1.96e-01 4.57e-02h  1
+   3  5.8924803e-01 1.12e-01 9.54e+01   0.5 1.99e+00   1.9 4.09e-01 9.25e-02h  1
+   4  1.2045209e+00 9.95e-02 8.63e+02   0.5 1.88e+00   2.4 1.00e+00 1.11e-01h  1
+   5  1.5735551e+00 9.35e-02 2.42e+03   0.4 1.56e+00   2.8 1.00e+00 6.01e-02h  1
+   6  2.2246439e+00 8.77e-02 1.62e+04   1.1 1.71e+00   3.2 1.00e+00 1.14e-01h  1
+   7  2.5275007e+00 7.77e-02 3.06e+04   1.5 1.51e+00   3.7 1.00e+00 1.26e-01h  1
+   8  2.8264922e+00 6.65e-02 6.17e+04   1.2 1.24e+00   4.1 1.00e+00 1.35e-01h  1
+   9  2.9831208e+00 6.14e-02 1.74e+05   0.7 1.18e+00   4.5 1.00e+00 6.99e-02h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10  3.3097950e+00 5.57e-02 1.19e+05   1.8 1.18e+00   4.0 1.00e+00 7.73e-02h  1
+  11  3.4177448e+00 5.28e-02 4.66e+05   2.9 1.25e+00   4.5 8.26e-01 4.77e-02f  1
+  12  4.0233216e+00 4.58e-02 4.17e+05   2.9 2.80e+00   4.0 4.26e-01 1.08e-01f  1
+  13  4.2159705e+00 4.39e-02 5.77e+05   2.9 3.95e+00   4.4 1.52e-01 4.16e-02h  1
+  14  5.8515392e+00 4.94e-02 9.04e+05   0.8 3.96e+00   4.8 1.76e-01 7.99e-02h  1
+  15  5.9306590e+00 4.91e-02 2.66e+07   2.9 2.22e+00   6.2 6.70e-01 4.73e-03h  1
+  16  7.7774595e+00 6.90e-02 2.49e+07   2.9 9.52e+00   5.7 3.14e-03 4.02e-02h  1
+  17  1.0545792e+01 1.03e-01 1.37e+07   2.9 3.91e+00   5.2 4.90e-01 9.31e-02h  1
+  18  1.1065608e+01 1.03e-01 1.49e+152   2.9 7.05e+00   4.7 4.10e-01 6.30e-03h  1
+  19  1.1053647e+01 1.03e-01 1.24e+07   1.0 7.61e+147   4.2 1.02e-148 3.95e-149h  3
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  20  1.3861510e+01 9.61e-02 1.16e+07   2.9 1.65e+01   3.8 6.00e-02 6.30e-02h  1
+  21  1.4056427e+01 9.58e-02 1.53e+07   2.9 2.23e+01   4.2 4.06e-02 2.76e-03h  1
+  22  1.6016076e+01 9.33e-02 2.02e+07   2.9 2.72e+00   5.5 4.95e-02 3.00e-02h  1
+  23  1.6912478e+01 9.24e-02 6.74e+08   2.9 5.96e+00   6.0 3.84e-01 1.01e-02h  1
+  24  1.7030683e+01 9.23e-02 6.77e+08   2.9 1.73e+02   5.5 2.91e-03 2.14e-03h  1
+  25  1.6316095e+01 9.23e-02 6.33e+08   2.9 1.97e+03   5.0 3.41e-04 1.51e-04f  1
+  26  1.6219056e+01 9.22e-02 6.32e+08   2.9 8.57e+02    -  1.31e-03 3.34e-04h  1
+  27  1.6316243e+01 9.20e-02 6.08e+08   2.9 4.36e+01   4.5 2.81e-02 2.60e-03h  1
+  28  1.7864958e+01 9.16e-02 6.02e+08   2.9 5.59e+01   4.0 9.16e-03 4.55e-03h  1
+  29  1.7848900e+01 9.16e-02 6.01e+08   2.9 2.36e+03    -  7.06e-04 1.32e-04h  1
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  30  1.7929363e+01 9.15e-02 6.01e+08   2.9 5.66e+02    -  1.42e-03 8.50e-04h  1
+  31  1.8245629e+01 9.13e-02 6.00e+08   2.9 2.92e+02    -  6.10e-03 2.66e-03h  1
+  32  1.8720252e+01 9.11e-02 6.05e+08   2.9 1.97e+02    -  6.05e-03 2.37e-03h  1
+  33  1.8949032e+01 9.10e-02 6.09e+08  -1.8 4.27e+02    -  1.51e-03 1.37e-03h  1
+  34  1.8701344e+01 9.09e-02 6.08e+08   2.9 4.80e+02    -  1.10e-05 8.06e-04h  1
+  35  1.7512434e+01 9.08e-02 6.07e+08   2.9 1.25e+02    -  6.72e-05 1.00e-03h  1
+  36  1.6925034e+01 9.07e-02 6.07e+08   1.0 9.13e+01    -  3.11e-03 6.09e-04h  1
+  37  1.1069098e+01 8.94e-02 6.06e+08   2.9 2.73e+01    -  2.42e-03 1.51e-02f  1
+  38  1.0724323e+01 8.92e-02 1.49e+152   2.9 1.57e+01    -  3.17e-02 2.18e-03f  2
+  39  1.1074970e+01 8.92e-02 5.86e+08   1.0 1.03e+149    -  8.82e-150 8.82e-150s537
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  40  1.0860242e+01 3.09e-01 5.11e+08   2.9 1.54e+01    -  1.26e-01 4.07e-02f  1
+  41  1.0915043e+01 3.09e-01 4.61e+08   2.2 1.59e+01    -  9.77e-02 7.87e-04h  1
+  42  1.0987299e+01 3.09e-01 4.39e+08   1.5 2.81e+01    -  5.11e-02 9.03e-04h  1
+  43  1.4500101e+01 3.01e-01 4.23e+08   1.5 1.19e+01    -  4.23e-02 2.59e-02h  2
 
-Number of objective function evaluations             = 0
-Number of objective gradient evaluations             = 1
-Number of equality constraint evaluations            = 0
+Number of Iterations....: 44
+
+Number of objective function evaluations             = 589
+Number of objective gradient evaluations             = 45
+Number of equality constraint evaluations            = 589
 Number of inequality constraint evaluations          = 0
-Number of equality constraint Jacobian evaluations   = 1
+Number of equality constraint Jacobian evaluations   = 44
 Number of inequality constraint Jacobian evaluations = 0
-Number of Lagrangian Hessian evaluations             = 0
-Total seconds in IPOPT                               = 0.002
+Number of Lagrangian Hessian evaluations             = 44
+Total seconds in IPOPT                               = 0.719
 
 EXIT: Invalid number in NLP function or derivative detected.
 
 Comparison:
   Original (R=1.0):
-    ||u||: 2.6599172329042258
+    ||u||: 1.9163293058808164
   High weight (R=10.0):
-    ||u||: 1.0485298661220035
-  Control reduction: 60.580357420476275%</code></pre><h2 id="Key-Observations"><a class="docs-heading-anchor" href="#Key-Observations">Key Observations</a><a id="Key-Observations-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Observations" title="Permalink"></a></h2><ol><li><strong>Multiple controls</strong> allow independent actuation of different system modes</li><li><strong>Bounds are strictly enforced</strong> — check that max|u| ≤ 1</li><li><strong>Control weight</strong> affects aggressiveness: lower weight produces larger controls that may saturate bounds, higher weight produces gentler controls</li><li><strong>Initial guess matters</strong> for bounded problems — random works here, but more complex problems may need better initialization</li><li><strong>BilinearIntegrator</strong> handles multi-input systems naturally — just provide all drive matrices in a vector</li></ol><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><p>Try these modifications:</p><h3 id="Exercise-1:-Asymmetric-Bounds"><a class="docs-heading-anchor" href="#Exercise-1:-Asymmetric-Bounds">Exercise 1: Asymmetric Bounds</a><a id="Exercise-1:-Asymmetric-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-1:-Asymmetric-Bounds" title="Permalink"></a></h3><p>Set different bounds for each control:</p><pre><code class="language-julia hljs">bounds=(u = ([-1.0, -0.5], [1.0, 2.0]),)</code></pre><h3 id="Exercise-2:-Initial-Control-Constraints"><a class="docs-heading-anchor" href="#Exercise-2:-Initial-Control-Constraints">Exercise 2: Initial Control Constraints</a><a id="Exercise-2:-Initial-Control-Constraints-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-2:-Initial-Control-Constraints" title="Permalink"></a></h3><p>Start and end with zero control:</p><pre><code class="language-julia hljs">initial=(x = x_init, u = [0.0, 0.0]),
+    ||u||: 8.779036113703487
+  Control reduction: -358.1173020087127%</code></pre><h2 id="Key-Observations"><a class="docs-heading-anchor" href="#Key-Observations">Key Observations</a><a id="Key-Observations-1"></a><a class="docs-heading-anchor-permalink" href="#Key-Observations" title="Permalink"></a></h2><ol><li><strong>Multiple controls</strong> allow independent actuation of different system modes</li><li><strong>Bounds are strictly enforced</strong> — check that max|u| ≤ 1</li><li><strong>Control weight</strong> affects aggressiveness: lower weight produces larger controls that may saturate bounds, higher weight produces gentler controls</li><li><strong>Initial guess matters</strong> for bounded problems — random works here, but more complex problems may need better initialization</li><li><strong>BilinearIntegrator</strong> handles multi-input systems naturally — just provide all drive matrices in a vector</li></ol><h2 id="Exercises"><a class="docs-heading-anchor" href="#Exercises">Exercises</a><a id="Exercises-1"></a><a class="docs-heading-anchor-permalink" href="#Exercises" title="Permalink"></a></h2><p>Try these modifications:</p><h3 id="Exercise-1:-Asymmetric-Bounds"><a class="docs-heading-anchor" href="#Exercise-1:-Asymmetric-Bounds">Exercise 1: Asymmetric Bounds</a><a id="Exercise-1:-Asymmetric-Bounds-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-1:-Asymmetric-Bounds" title="Permalink"></a></h3><p>Set different bounds for each control:</p><pre><code class="language-julia hljs">bounds=(u = ([-1.0, -0.5], [1.0, 2.0]),)</code></pre><h3 id="Exercise-2:-Initial-Control-Constraints"><a class="docs-heading-anchor" href="#Exercise-2:-Initial-Control-Constraints">Exercise 2: Initial Control Constraints</a><a id="Exercise-2:-Initial-Control-Constraints-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-2:-Initial-Control-Constraints" title="Permalink"></a></h3><p>Start and end with zero control:</p><pre><code class="language-julia hljs">initial=(x = x_init, u = [0.0, 0.0]),
 final=(x = x_goal, u = [0.0, 0.0])</code></pre><h3 id="Exercise-3:-Intermediate-Waypoint"><a class="docs-heading-anchor" href="#Exercise-3:-Intermediate-Waypoint">Exercise 3: Intermediate Waypoint</a><a id="Exercise-3:-Intermediate-Waypoint-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-3:-Intermediate-Waypoint" title="Permalink"></a></h3><p>Add a waypoint constraint at t=30:</p><pre><code class="language-julia hljs">waypoint = [0.5, 0.5, 0.5]
 constraint = NonlinearKnotPointConstraint(
     x -&gt; x - waypoint, :x, traj;
     times=[30], equality=true
 )</code></pre><h3 id="Exercise-4:-Different-Goal"><a class="docs-heading-anchor" href="#Exercise-4:-Different-Goal">Exercise 4: Different Goal</a><a id="Exercise-4:-Different-Goal-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-4:-Different-Goal" title="Permalink"></a></h3><p>Try reaching <code>[0, 1, 0]</code> instead of <code>[0, 0, 1]</code></p><h3 id="Exercise-5:-Add-Minimum-Time"><a class="docs-heading-anchor" href="#Exercise-5:-Add-Minimum-Time">Exercise 5: Add Minimum Time</a><a id="Exercise-5:-Add-Minimum-Time-1"></a><a class="docs-heading-anchor-permalink" href="#Exercise-5:-Add-Minimum-Time" title="Permalink"></a></h3><p>Make Δt variable and add MinimumTimeObjective:</p><pre><code class="language-julia hljs">obj = QuadraticRegularizer(:u, traj, 1.0) +
       MinimumTimeObjective(traj, 0.5)
-bounds=(u = 1.0, Δt = (0.05, 0.3))</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Minimum Time Tutorial</strong>: Optimize trajectory duration</li><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties for implementability</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linear_system/">« Linear System</a><a class="docs-footer-nextpage" href="../minimum_time/">Minimum Time »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 26 May 2026 19:25">Tuesday 26 May 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+bounds=(u = 1.0, Δt = (0.05, 0.3))</code></pre><h2 id="Next-Steps"><a class="docs-heading-anchor" href="#Next-Steps">Next Steps</a><a id="Next-Steps-1"></a><a class="docs-heading-anchor-permalink" href="#Next-Steps" title="Permalink"></a></h2><ul><li><strong>Minimum Time Tutorial</strong>: Optimize trajectory duration</li><li><strong>Smooth Controls Tutorial</strong>: Add derivative penalties for implementability</li></ul><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../linear_system/">« Linear System</a><a class="docs-footer-nextpage" href="../minimum_time/">Minimum Time »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 8 June 2026 07:02">Monday 8 June 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
