@@ -64,9 +64,10 @@ jobs:
           path: benchmark/results/allocs/
           retention-days: 90
 
-      # Publish to /bench-alloc on gh-pages — per-commit series for each solver's
-      # total sampled allocations, with 120% regression alerts. save-data-file /
-      # auto-push gated to main so PR runs render a comparison only.
+      # Publish to /bench-alloc on gh-pages — per-release series for each solver's
+      # total sampled allocations, with 120% regression alerts. This workflow only
+      # runs on v* tags and PRs; save-data-file / auto-push gated to tag refs so
+      # PR runs render a comparison only.
       - name: Publish alloc profile to gh-pages
         if: success() && hashFiles('benchmark/results/allocs/bench.json') != ''
         uses: benchmark-action/github-action-benchmark@v1
@@ -80,5 +81,5 @@ jobs:
           alert-threshold: '120%'
           comment-on-alert: true
           fail-on-alert: false
-          save-data-file: ${{ github.ref == 'refs/heads/main' }}
-          auto-push: ${{ github.ref == 'refs/heads/main' }}
+          save-data-file: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          auto-push: ${{ startsWith(github.ref, 'refs/tags/v') }}
