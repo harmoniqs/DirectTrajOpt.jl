@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780936818504,
+  "lastUpdate": 1780940351893,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl convergence": [
@@ -53,6 +53,65 @@ window.BENCHMARK_DATA = {
           {
             "name": "xgate_convergence_madnlp_N51 [alloc]",
             "value": 4476617640,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [infidelity]",
+            "value": 3.086420008457935e-14,
+            "unit": "infidelity"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "43344745+jack-champagne@users.noreply.github.com",
+            "name": "Jack Champagne",
+            "username": "jack-champagne"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "204b9ee52ccfcc9bc06575da26654c414bbf947a",
+          "message": "ci+docs(benchmarks): run suites on Julia 1.12 + refresh page data (#103)\n\nAll three benchmark suites on Julia 1.12; benchmarks.md tables refreshed with real 1.12 numbers (commit eeba1ff run); dashboard cadence wording corrected to per-release (v* tags). Admin-merge: only red is the pre-existing flaky Hessian CI test.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-06-08T13:37:25-04:00",
+          "tree_id": "c2231401fbacdb4cbc1d5d7109466e2febb52f29",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/204b9ee52ccfcc9bc06575da26654c414bbf947a"
+        },
+        "date": 1780940350265,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "xgate_convergence_ipopt_N51 [wall]",
+            "value": 19.108915239,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [alloc]",
+            "value": 4311642552,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [iters]",
+            "value": 22,
+            "unit": "iterations"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [infidelity]",
+            "value": 4.429490108037726e-11,
+            "unit": "infidelity"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [wall]",
+            "value": 18.621993404,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [alloc]",
+            "value": 4476556112,
             "unit": "bytes"
           },
           {
