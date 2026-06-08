@@ -1,5 +1,7 @@
 # Benchmarks
 
+**[Live time-series dashboard →](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/)** — per-commit Ipopt-vs-MadNLP wall-time, allocation, and convergence history with 120% regression alerts, populated on every push to `main` (mirrors CuQuantum.jl's dashboard).
+
 DirectTrajOpt ships a benchmark suite under [`benchmark/`](https://github.com/harmoniqs/DirectTrajOpt.jl/tree/main/benchmark)
 that exercises the package under both Ipopt and MadNLP on a shared bilinear
 quantum-gate problem: find a pulse sequence ``u(t)`` that steers a qubit state
