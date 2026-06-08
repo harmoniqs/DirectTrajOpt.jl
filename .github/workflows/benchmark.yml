@@ -38,16 +38,21 @@ jobs:
       - name: Instantiate benchmark environment
         run: julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
 
-      - name: Run benchmarks (excluding alloc profile)
+      - name: Run timing benchmarks only
         env:
           BENCHMARK_RUNNER: github-actions
         run: |
           julia --project=benchmark -t auto -e '
             using TestItemRunner
-            # The alloc-profile testitem has its own workflow
-            # (.github/workflows/alloc-profile.yml) — its Profile.Allocs run is
-            # far slower and would blow this suite''s 60-min budget.
-            TestItemRunner.run_tests("benchmark/"; filter = ti -> !occursin("alloc_profile", ti.filename))
+            # Run only the timing testitems (benchmark/benchmarks.jl). The
+            # alloc-profile (benchmark/alloc_profile.jl) and convergence
+            # (benchmark/convergence/) suites each have their own workflow +
+            # project env (alloc-profile.yml, benchmark-convergence.yml); running
+            # them here would use the wrong env and/or blow this suite''s 60-min
+            # budget.
+            TestItemRunner.run_tests("benchmark/";
+                filter = ti -> !occursin("alloc_profile", ti.filename) &&
+                               !occursin("/convergence/", ti.filename))
           '
 
       - name: Generate benchmark report
