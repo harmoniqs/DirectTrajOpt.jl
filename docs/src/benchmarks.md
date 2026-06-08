@@ -1,6 +1,6 @@
 # Benchmarks
 
-**[Live time-series dashboard →](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/)** — per-commit Ipopt-vs-MadNLP wall-time, allocation, and convergence history with 120% regression alerts, populated on every push to `main` (mirrors CuQuantum.jl's dashboard).
+**[Live time-series dashboard →](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/)** — per-release Ipopt-vs-MadNLP wall-time, allocation, and convergence history with 120% regression alerts, published on each tagged release (`v*`) (mirrors CuQuantum.jl's dashboard).
 
 DirectTrajOpt ships a benchmark suite under [`benchmark/`](https://github.com/harmoniqs/DirectTrajOpt.jl/tree/main/benchmark)
 that exercises the package under both Ipopt and MadNLP on a shared bilinear
@@ -36,12 +36,12 @@ Every benchmark CI run post-processes its saved `BenchmarkResult` artifacts
   is published by [`github-action-benchmark`](https://github.com/benchmark-action/github-action-benchmark)
   to the [**`bench/` dashboard on gh-pages**](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/).
   Each `(benchmark, metric)` pair — e.g. `bilinear_N51_ipopt [wall]`,
-  `bilinear_N51_madnlp [alloc]` — is tracked as its own per-commit time series.
+  `bilinear_N51_madnlp [alloc]` — is tracked as its own per-release time series.
 - **Regression alerts.** Any series that regresses by more than **120 %** versus
   its history raises a comment on the offending commit/PR. Alerts never fail the
   build (`fail-on-alert: false`); they flag, they don't block. The series are
-  only saved/pushed on `main`, so branch and PR runs render a comparison without
-  polluting the published history.
+  only saved/pushed on `v*` release tags, so branch and PR runs render a
+  comparison without polluting the published history.
 - **Per-run job summary.** The same numbers are written to the Actions run's
   job summary as a markdown table, so each run shows its results inline without
   downloading the JLD2 artifact.
@@ -138,7 +138,7 @@ comparison since the underlying problems differ between cells.
 | | CI benchmarks |
 |:---|:---|
 | **CPU** | GitHub Actions `ubuntu-latest` (2 vCPU, 7 GB RAM) |
-| **Julia** | 1.11 |
+| **Julia** | 1.12 |
 | **Threads** | `auto` |
 
 ## Reproduction
