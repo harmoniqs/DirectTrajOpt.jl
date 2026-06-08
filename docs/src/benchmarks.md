@@ -1,6 +1,6 @@
 # Benchmarks
 
-**[Live time-series dashboard →](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/)** — per-commit Ipopt-vs-MadNLP wall-time, allocation, and convergence history with 120% regression alerts, populated on every push to `main` (mirrors CuQuantum.jl's dashboard).
+**[Live time-series dashboard →](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/)** — per-release Ipopt-vs-MadNLP wall-time, allocation, and convergence history with 120% regression alerts, published on each tagged release (`v*`) (mirrors CuQuantum.jl's dashboard).
 
 DirectTrajOpt ships a benchmark suite under [`benchmark/`](https://github.com/harmoniqs/DirectTrajOpt.jl/tree/main/benchmark)
 that exercises the package under both Ipopt and MadNLP on a shared bilinear
@@ -16,7 +16,7 @@ with ``G_x, G_y, G_z`` the 4×4 real representations of the Pauli generators,
 
 !!! note "Example output, not authoritative measurements"
     The tables below show the **shape** of what each benchmark produces, with
-    illustrative numbers from one local run. They are not pinned reference
+    illustrative numbers from one CI run (Julia 1.12, GitHub Actions). They are not pinned reference
     results — wall-time and allocation figures vary by hardware, BLAS, MUMPS
     build, and Julia version. Don't quote them as the canonical "DirectTrajOpt
     vs MadNLP" comparison. Run the suite yourself on the hardware you care
@@ -36,12 +36,12 @@ Every benchmark CI run post-processes its saved `BenchmarkResult` artifacts
   is published by [`github-action-benchmark`](https://github.com/benchmark-action/github-action-benchmark)
   to the [**`bench/` dashboard on gh-pages**](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/).
   Each `(benchmark, metric)` pair — e.g. `bilinear_N51_ipopt [wall]`,
-  `bilinear_N51_madnlp [alloc]` — is tracked as its own per-commit time series.
+  `bilinear_N51_madnlp [alloc]` — is tracked as its own per-release time series.
 - **Regression alerts.** Any series that regresses by more than **120 %** versus
   its history raises a comment on the offending commit/PR. Alerts never fail the
   build (`fail-on-alert: false`); they flag, they don't block. The series are
-  only saved/pushed on `main`, so branch and PR runs render a comparison without
-  polluting the published history.
+  only saved/pushed on `v*` release tags, so branch and PR runs render a
+  comparison without polluting the published history.
 - **Per-run job summary.** The same numbers are written to the Actions run's
   job summary as a markdown table, so each run shows its results inline without
   downloading the JLD2 artifact.
@@ -56,13 +56,13 @@ via `benchmark_solve!`.
 
 ### Full solve (bilinear N=51, max_iter=200)
 
-Snapshot from commit `dd0beb4` on GH Actions `ubuntu-latest` (Julia 1.11, 2 vCPU).
+Snapshot from commit `eeba1ff` on GH Actions `ubuntu-latest` (Julia 1.12, 4 vCPU).
 Numbers vary by hardware/BLAS/MUMPS build — the [live dashboard](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/) is the source of truth.
 
 | Solver | Wall time | Allocations |
 |:-------|:---------:|:-----------:|
-| Ipopt  | 0.617 s   | 1.37 GiB    |
-| MadNLP | 0.401 s   | 0.94 GiB    |
+| Ipopt  | 0.616 s   | 1.33 GiB    |
+| MadNLP | 0.411 s   | 0.91 GiB    |
 
 `Allocations` is **total** (cumulative transient) allocation, not peak RSS — it's
 dominated by `ForwardDiff` Hessian/Jacobian buffers (corroborated by the
@@ -75,16 +75,16 @@ Per-function timings for the MOI evaluator interface on the same bilinear
 
 ### Per-function timings
 
-Snapshot from commit `dd0beb4` (GH Actions `ubuntu-latest`, Julia 1.11); see the
+Snapshot from commit `eeba1ff` (GH Actions `ubuntu-latest`, Julia 1.12); see the
 [live dashboard](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/) for current values.
 
 | Function | Median | Allocations | Memory |
 |:---------|:------:|:-----------:|:------:|
-| `eval_objective` | 185 μs | 3,373 | 159 KB |
-| `eval_objective_gradient` | 209 μs | 4,288 | 197 KB |
-| `eval_constraint` | 1.0 ms | 16,743 | 999 KB |
-| `eval_constraint_jacobian` | 2.0 ms | 27,043 | 3.4 MB |
-| `eval_hessian_lagrangian` | 22.3 ms | 70,968 | 68.9 MB |
+| `eval_objective` | 202 μs | 3,373 | 159 KB |
+| `eval_gradient` | 228 μs | 4,288 | 197 KB |
+| `eval_constraint` | 860 μs | 16,743 | 990 KB |
+| `eval_jacobian` | 2.05 ms | 24,804 | 3.2 MB |
+| `eval_hessian_lagrangian` | 23.3 ms | 71,132 | 67.2 MB |
 
 `eval_hessian_lagrangian` is the dominant per-iteration cost (~10× the Jacobian)
 and the natural optimization target — consistent with the allocation profile,
@@ -106,27 +106,30 @@ raw distribution behind each median cell is available for downstream analysis.
 
 ### Scaling sweep
 
-Median over ``K = 3`` seeds per cell, commit `dd0beb4` (GH Actions
-`ubuntu-latest`, Julia 1.11). Allocations are **GB** (total transient, not peak);
+Median over ``K = 3`` seeds per cell, commit `eeba1ff` (GH Actions
+`ubuntu-latest`, Julia 1.12). Allocations are **GB** (total transient, not peak);
 see the [live dashboard](https://harmoniqs.github.io/DirectTrajOpt.jl/bench/) for
-the per-commit trend.
+the per-release trend.
 
 | N | State dim | Ipopt (s) | Ipopt (GB) | MadNLP (s) | MadNLP (GB) |
 |:-:|:---------:|:---------:|:----------:|:----------:|:-----------:|
-| 25 | 4 | 0.02 | 0.0 | 0.86 | 1.6 |
-| 25 | 8 | 0.01 | 0.0 | 3.78 | 7.4 |
-| 25 | 16 | 0.57 | 1.0 | 26.68 | 48.8 |
-| 51 | 4 | 2.59 | 3.9 | 1.71 | 3.2 |
-| 51 | 8 | 7.00 | 14.4 | 7.48 | 15.4 |
-| 51 | 16 | 57.13 | 102.6 | 51.79 | 98.4 |
-| 101 | 4 | 3.51 | 6.6 | 3.02 | 6.0 |
-| 101 | 8 | 14.93 | 30.9 | 13.19 | 28.7 |
-| 101 | 16 | 114.43 | 199.0 | 98.51 | 193.2 |
+| 25 | 4 | 0.81 | 0.3 | 0.92 | 1.7 |
+| 25 | 8 | 0.92 | 1.9 | 3.94 | 7.8 |
+| 25 | 16 | 8.89 | 10.5 | 27.82 | 52.5 |
+| 51 | 4 | 1.61 | 3.3 | 1.68 | 3.3 |
+| 51 | 8 | 8.16 | 15.8 | 6.87 | 14.6 |
+| 51 | 16 | 58.63 | 110.8 | 54.13 | 110.8 |
+| 101 | 4 | 3.54 | 7.0 | 3.57 | 6.9 |
+| 101 | 8 | 0.66 | 1.4 | 15.29 | 32.0 |
+| 101 | 16 | 114.43 | 217.8 | 114.25 | 229.1 |
 
-The near-zero Ipopt cells at ``N = 25`` (dim 4, 8) are real: on those small
-random instances Ipopt's interior-point method hits an acceptable point almost
-immediately, whereas MadNLP still runs its full iteration budget. At larger
-sizes the two are comparable, with MadNLP modestly faster at the largest cell.
+Some Ipopt cells terminate far faster than their MadNLP counterpart — here
+``N = 101``/dim 8 finishes in 0.66 s vs MadNLP's 15.29 s: on that random instance
+Ipopt's interior-point method reaches an acceptable point almost immediately,
+while MadNLP runs its full 50-iteration budget. Which cell happens to be "easy"
+shifts with the random draw, so don't read any single cell as a fixed
+Ipopt-vs-MadNLP verdict. At the largest sizes the two are comparable (the
+``N = 101``/dim 16 cell is essentially tied on wall time).
 
 Each cell is the median over ``K = 3`` solves on independent random
 instances — most useful for tracking the slope of each solver vs itself
@@ -137,9 +140,9 @@ comparison since the underlying problems differ between cells.
 
 | | CI benchmarks |
 |:---|:---|
-| **CPU** | GitHub Actions `ubuntu-latest` (2 vCPU, 7 GB RAM) |
-| **Julia** | 1.11 |
-| **Threads** | `auto` |
+| **CPU** | GitHub Actions `ubuntu-latest` (4 vCPU, 16 GB RAM) |
+| **Julia** | 1.12 |
+| **Threads** | `auto` (4 on the CI runner) |
 
 ## Reproduction
 
