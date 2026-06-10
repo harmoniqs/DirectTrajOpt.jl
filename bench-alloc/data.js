@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780951579404,
+  "lastUpdate": 1781073892749,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl alloc profile": [
@@ -43,6 +43,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "alloc_bilinear_N51_madnlp [alloc-count]",
             "value": 17530,
+            "unit": "allocs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "43344745+jack-champagne@users.noreply.github.com",
+            "name": "Jack Champagne",
+            "username": "jack-champagne"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c47f87863cb8cf0c685222347f49a5431089cf2",
+          "message": "chore: autoformat convergence.jl (MadNLPOptions one-liner) (#110)\n\nJuliaFormatter collapses the MadNLPOptions(...) call onto a single line; my #109\nmulti-line form tripped the Formatter check. No code change.\n\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-06-10T00:44:08-04:00",
+          "tree_id": "ccd269fd67bf08b4b4ae789e3c39c44de254c596",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/0c47f87863cb8cf0c685222347f49a5431089cf2"
+        },
+        "date": 1781073890112,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "alloc_bilinear_N51_ipopt [alloc-total]",
+            "value": 14046504,
+            "unit": "bytes"
+          },
+          {
+            "name": "alloc_bilinear_N51_ipopt [alloc-count]",
+            "value": 26307,
+            "unit": "allocs"
+          },
+          {
+            "name": "alloc_bilinear_N51_madnlp [alloc-total]",
+            "value": 9266449,
+            "unit": "bytes"
+          },
+          {
+            "name": "alloc_bilinear_N51_madnlp [alloc-count]",
+            "value": 17397,
             "unit": "allocs"
           }
         ]
