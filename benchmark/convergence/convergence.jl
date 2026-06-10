@@ -74,11 +74,32 @@ end
 
     prob = _make_xgate_prob(; N = 51, seed = 42)
 
-    madnlp_opts = MadNLPOptions(max_iter = 500, print_level = 6)
+    # Capture MadNLP's iteration count. MadNLP has no `ipopt_capture` analogue,
+    # but it exposes the IPM iteration counter (`solver.cnt.k`) to user
+    # callbacks. We install a native `MadNLP.AbstractUserCallback` (form 2 of
+    # `MadNLPOptions.intermediate_callback`) that just records the latest
+    # `cnt.k`. A *raw* MadNLP callback is passed through unwrapped and — unlike a
+    # `DirectTrajOpt.AbstractIntermediateCallback` — does NOT flip
+    # `fixed_variable_treatment` to `RelaxBound`, so the solve behaves
+    # identically to an uninstrumented run; we only read the counter.
+    mutable struct _MadNLPIterCounter <: MadNLP.AbstractUserCallback
+        last::Int
+    end
+    function (c::_MadNLPIterCounter)(
+        solver::MadNLP.AbstractMadNLPSolver,
+        mode::MadNLP.AbstractUserCallbackStatus,
+    )
+        c.last = max(c.last, solver.cnt.k)
+        return true
+    end
+    iter_counter = _MadNLPIterCounter(0)
 
-    # MadNLP doesn't have an ipopt_capture analogue yet — use the post-solve
-    # constraint_violation that benchmark_solve! already extracted as the
-    # primal-infeasibility proxy.
+    madnlp_opts = MadNLPOptions(
+        max_iter = 500,
+        print_level = 6,
+        intermediate_callback = iter_counter,
+    )
+
     result = benchmark_solve!(
         prob,
         madnlp_opts;
@@ -88,6 +109,7 @@ end
 
     final_inf = _xgate_infidelity(prob)
     primal_inf = result.constraint_violation
+    iters = iter_counter.last
 
     crit = InfidelityConvergence(
         target_infidelity = 1e-3,
@@ -96,10 +118,11 @@ end
         feas_tol = 1e-6,
     )
 
-    result_with_conv = _build_convergence_result(result, crit)
+    result_with_conv = _build_convergence_result(result, crit; iterations = iters)
 
     @printf(
-        "\n=== X gate convergence (MadNLP) ===\n  final_inf=%.3e  cviol=%.3e  wall=%.3fs  converged=%s\n",
+        "\n=== X gate convergence (MadNLP) ===\n  iters=%d  final_inf=%.3e  cviol=%.3e  wall=%.3fs  converged=%s\n",
+        iters,
         final_inf,
         primal_inf,
         result_with_conv.wall_time_s,
