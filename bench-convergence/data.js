@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780945976982,
+  "lastUpdate": 1781068742326,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl convergence": [
@@ -172,6 +172,70 @@ window.BENCHMARK_DATA = {
             "name": "xgate_convergence_madnlp_N51 [alloc]",
             "value": 4476613400,
             "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [infidelity]",
+            "value": 3.086420008457935e-14,
+            "unit": "infidelity"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "43344745+jack-champagne@users.noreply.github.com",
+            "name": "Jack Champagne",
+            "username": "jack-champagne"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c47f87863cb8cf0c685222347f49a5431089cf2",
+          "message": "chore: autoformat convergence.jl (MadNLPOptions one-liner) (#110)\n\nJuliaFormatter collapses the MadNLPOptions(...) call onto a single line; my #109\nmulti-line form tripped the Formatter check. No code change.\n\nCo-authored-by: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+          "timestamp": "2026-06-10T00:44:08-04:00",
+          "tree_id": "ccd269fd67bf08b4b4ae789e3c39c44de254c596",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/0c47f87863cb8cf0c685222347f49a5431089cf2"
+        },
+        "date": 1781068737035,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "xgate_convergence_ipopt_N51 [wall]",
+            "value": 18.265534953,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [alloc]",
+            "value": 4303314520,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [iters]",
+            "value": 22,
+            "unit": "iterations"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [infidelity]",
+            "value": 4.429490108037726e-11,
+            "unit": "infidelity"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [wall]",
+            "value": 18.005350134,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [alloc]",
+            "value": 4477810360,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [iters]",
+            "value": 30,
+            "unit": "iterations"
           },
           {
             "name": "xgate_convergence_madnlp_N51 [infidelity]",
