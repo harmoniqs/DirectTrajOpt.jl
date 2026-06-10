@@ -94,11 +94,8 @@ end
     end
     iter_counter = _MadNLPIterCounter(0)
 
-    madnlp_opts = MadNLPOptions(
-        max_iter = 500,
-        print_level = 6,
-        intermediate_callback = iter_counter,
-    )
+    madnlp_opts =
+        MadNLPOptions(max_iter = 500, print_level = 6, intermediate_callback = iter_counter)
 
     result = benchmark_solve!(
         prob,
