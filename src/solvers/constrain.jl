@@ -1,6 +1,7 @@
 using DirectTrajOpt
 using NamedTrajectories
 using TrajectoryIndexingUtils
+using SparseArrays
 
 using DirectTrajOpt.Constraints
 
@@ -324,6 +325,43 @@ function (con::SymmetryConstraint)(
             MOI.EqualTo(0.0),
         )
     end
+end
+
+function (con::GlobalLinearConstraint)(
+    opt::AbstractOptimizer,
+    vars::Vector{MOI.VariableIndex},
+    traj::NamedTrajectory,
+)
+    haskey(traj.global_components, con.name) ||
+        error("GlobalLinearConstraint: global :$(con.name) not found in trajectory")
+    g = traj.global_components[con.name]          # indices within global_data
+    size(con.A, 2) == length(g) || error(
+        "GlobalLinearConstraint: A has $(size(con.A, 2)) columns but global " *
+        ":$(con.name) has dim $(length(g))",
+    )
+
+    base = traj.dim * traj.N                       # global vars follow the knot vars
+    nrows = size(con.A, 1)
+
+    # Bucket the sparse entries by row (CSC is column-major, so collect once).
+    row_terms = [MOI.ScalarAffineTerm{Float64}[] for _ = 1:nrows]
+    Is, Js, Vs = findnz(con.A)
+    for (i, j, v) in zip(Is, Js, Vs)
+        push!(row_terms[i], MOI.ScalarAffineTerm(v, vars[base + g[j]]))
+    end
+
+    for r = 1:nrows
+        isempty(row_terms[r]) && continue          # all-zero row → nothing to constrain
+        f = MOI.ScalarAffineFunction(row_terms[r], 0.0)
+        lo, hi = con.lb[r], con.ub[r]
+        if lo == hi
+            MOI.add_constraints(opt, f, MOI.EqualTo(lo))
+        else
+            isfinite(lo) && MOI.add_constraints(opt, f, MOI.GreaterThan(lo))
+            isfinite(hi) && MOI.add_constraints(opt, f, MOI.LessThan(hi))
+        end
+    end
+    return nothing
 end
 
 function (con::TimeConsistencyConstraint)(
