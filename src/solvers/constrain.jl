@@ -347,13 +347,23 @@ function (con::GlobalLinearConstraint)(
     row_terms = [MOI.ScalarAffineTerm{Float64}[] for _ = 1:nrows]
     Is, Js, Vs = findnz(con.A)
     for (i, j, v) in zip(Is, Js, Vs)
-        push!(row_terms[i], MOI.ScalarAffineTerm(v, vars[base + g[j]]))
+        push!(row_terms[i], MOI.ScalarAffineTerm(v, vars[base+g[j]]))
     end
 
     for r = 1:nrows
-        isempty(row_terms[r]) && continue          # all-zero row → nothing to constrain
-        f = MOI.ScalarAffineFunction(row_terms[r], 0.0)
         lo, hi = con.lb[r], con.ub[r]
+        if isempty(row_terms[r])
+            # All-zero row: A[r,:]·g ≡ 0, so the row reduces to lo ≤ 0 ≤ hi.
+            # Feasible iff 0 ∈ [lo, hi] — then there is nothing to add. Otherwise
+            # the user specified a structurally infeasible row; surface it rather
+            # than silently dropping it.
+            lo <= 0 <= hi || error(
+                "GlobalLinearConstraint: row $r of A is all zeros, reducing to " *
+                "$lo ≤ 0 ≤ $hi, which is infeasible",
+            )
+            continue
+        end
+        f = MOI.ScalarAffineFunction(row_terms[r], 0.0)
         if lo == hi
             MOI.add_constraints(opt, f, MOI.EqualTo(lo))
         else
