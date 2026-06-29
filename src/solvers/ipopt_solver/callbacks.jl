@@ -191,6 +191,13 @@ function callback_intermediate_factory(inner::DirectTrajOpt.AbstractIntermediate
         optimizer_state::IpoptOptimizerState;
         kwargs...,
     )
+        # Cadence parity with MadNLP + the AbstractIntermediateCallback contract
+        # ("invoked only from the solver's main IPM loop; auxiliary phases do not
+        # fire it"): skip Ipopt's restoration phase (alg_mod == 1). MadNLP's
+        # adapter does the analogous `mode isa UserCallbackRegular || return true`,
+        # so without this guard the SAME callback would see extra restoration-phase
+        # iterates under Ipopt that it never sees under MadNLP.
+        optimizer_state.alg_mod == 0 || return true
         primal = MOI.get(
             optimizer,
             MOI.VariablePrimal(),
@@ -738,11 +745,14 @@ end
         return true
     end
 
-    prob_ipopt, _ = make_standard_prob()
-    prob_madnlp, _ = make_standard_prob()
+    # add_global=true so global_dim > 0 — this actually exercises the
+    # datavec|globals primal layout (not length(datavec) + 0).
+    prob_ipopt, _ = make_standard_prob(add_global = true)
+    prob_madnlp, _ = make_standard_prob(add_global = true)
     full_dim = length(prob_ipopt.trajectory.datavec) + prob_ipopt.trajectory.global_dim
+    @test prob_ipopt.trajectory.global_dim > 0     # guard: the parity check is meaningful
 
-    cb = _ParityProbe(Int[])
+    cb = _ParityProbe(Int[])                       # the SAME object installed under BOTH backends
     solve!(
         prob_ipopt;
         options = IpoptOptions(max_iter = 5, intermediate_callback = cb, print_level = 0),
@@ -755,9 +765,11 @@ end
         verbose = false,
     )
 
-    @test n_ipopt > 0
-    @test length(cb.lens) > n_ipopt                # MadNLP added more invocations
-    @test all(==(full_dim), cb.lens)               # identical full-primal under both
+    @test n_ipopt > 0                              # Ipopt fired the callback
+    @test length(cb.lens) > n_ipopt                # the same object also fired under MadNLP (≥1)
+    # Identical full-primal shape (datavec + globals) under BOTH backends — the
+    # same callback object, no backend-specific branching.
+    @test all(==(full_dim), cb.lens)
 end
 
 @testitem "Ipopt intermediate_callback early termination via return false" setup=[
