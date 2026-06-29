@@ -198,11 +198,8 @@ function callback_intermediate_factory(inner::DirectTrajOpt.AbstractIntermediate
         # so without this guard the SAME callback would see extra restoration-phase
         # iterates under Ipopt that it never sees under MadNLP.
         optimizer_state.alg_mod == 0 || return true
-        primal = MOI.get(
-            optimizer,
-            MOI.VariablePrimal(),
-            optimizer.list_of_variable_indices,
-        )
+        primal =
+            MOI.get(optimizer, MOI.VariablePrimal(), optimizer.list_of_variable_indices)
         return inner(primal, Int(optimizer_state.iter_count))::Bool
     end
 end
@@ -820,12 +817,10 @@ end
     (cb::_IpoptComposeCounter)(_, _) = (cb.count[] += 1; true)
 
     raw_count = Ref(0)
-    raw_cb = Callbacks.callback_factory(
-        function (optimizer, optimizer_state; kwargs...)
-            raw_count[] += 1
-            return true
-        end,
-    )
+    raw_cb = Callbacks.callback_factory(function (optimizer, optimizer_state; kwargs...)
+        raw_count[] += 1
+        return true
+    end)
     ic = _IpoptComposeCounter(Ref(0))
     prob, _ = make_standard_prob()
     solve!(
