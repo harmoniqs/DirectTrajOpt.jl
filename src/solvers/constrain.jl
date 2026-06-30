@@ -1,6 +1,7 @@
 using DirectTrajOpt
 using NamedTrajectories
 using TrajectoryIndexingUtils
+using SparseArrays
 
 using DirectTrajOpt.Constraints
 
@@ -358,6 +359,58 @@ function (con::TimeConsistencyConstraint)(
             ),
             MOI.EqualTo(0.0),
         )
+    end
+end
+
+function (con::LinearGlobalsConstraint)(
+    opt::AbstractOptimizer,
+    vars::Vector{MOI.VariableIndex},
+    traj::NamedTrajectory,
+)
+    @assert size(con.A, 2) == traj.global_dim (
+        "LinearGlobalsConstraint: A has $(size(con.A, 2)) columns, expected $(traj.global_dim) (traj.global_dim)"
+    )
+    @assert length(con.lb) == length(con.ub) == size(con.A, 1) (
+        "LinearGlobalsConstraint: lb/ub length must equal size(A, 1) = $(size(con.A, 1))"
+    )
+
+    global_offset = traj.dim * traj.N
+    rows = rowvals(con.A)
+    vals = nonzeros(con.A)
+    n_rows = size(con.A, 1)
+
+    # Bucket the CSC non-zeros into per-row affine term lists.
+    row_terms = [MOI.ScalarAffineTerm{Float64}[] for _ ∈ 1:n_rows]
+    for col ∈ 1:size(con.A, 2)
+        for kk ∈ nzrange(con.A, col)
+            push!(
+                row_terms[rows[kk]],
+                MOI.ScalarAffineTerm(vals[kk], vars[global_offset + col]),
+            )
+        end
+    end
+
+    for i ∈ 1:n_rows
+        isempty(row_terms[i]) && error(
+            "LinearGlobalsConstraint: row $i of A has no non-zeros (vacuous row)",
+        )
+        f = MOI.ScalarAffineFunction(row_terms[i], 0.0)
+        lb_i, ub_i = con.lb[i], con.ub[i]
+        if isfinite(lb_i) && isfinite(ub_i)
+            if lb_i == ub_i
+                MOI.add_constraints(opt, f, MOI.EqualTo(lb_i))
+            else
+                MOI.add_constraints(opt, f, MOI.Interval(lb_i, ub_i))
+            end
+        elseif isfinite(lb_i)
+            MOI.add_constraints(opt, f, MOI.GreaterThan(lb_i))
+        elseif isfinite(ub_i)
+            MOI.add_constraints(opt, f, MOI.LessThan(ub_i))
+        else
+            error(
+                "LinearGlobalsConstraint: row $i has neither finite lb nor ub (vacuous row)",
+            )
+        end
     end
 end
 
