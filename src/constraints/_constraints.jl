@@ -209,8 +209,7 @@ function test_constraint(
 
     # Compute finite difference Hessian using full vector (datavec + global_data)
     # Collect to convert from lazy ApplyArray to regular Vector
-    μ∂²g_finite_diff =
-        FiniteDiff.finite_difference_hessian(Z⃗ -> μ'ĝ(Z⃗), collect(vec(traj)))
+    μ∂²g_finite_diff = FiniteDiff.finite_difference_hessian(Z⃗ -> μ'ĝ(Z⃗), collect(vec(traj)))
 
     if show_hessian_diff
         println("\tDifference in Hessian")

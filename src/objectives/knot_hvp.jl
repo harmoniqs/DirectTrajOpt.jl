@@ -259,7 +259,7 @@ end
 
     # The struct still constructs through every existing outer constructor.
     obj3 = KnotPointObjective(x -> norm(x)^2, [:x], traj)           # vector-of-names
-    obj4 = KnotPointObjective((x, p) -> norm(x)^2 + p, :x, traj, [1.0 for _ in 1:traj.N])
+    obj4 = KnotPointObjective((x, p) -> norm(x)^2 + p, :x, traj, [1.0 for _ = 1:traj.N])
     obj5 = TerminalObjective(x -> norm(x)^2, :x, traj)
     @test obj3.knot_hvp === nothing
     @test obj4.knot_hvp === nothing
