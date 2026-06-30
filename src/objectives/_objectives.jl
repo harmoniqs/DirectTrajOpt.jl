@@ -14,6 +14,10 @@ export MinimumTimeObjective
 export KnotPointObjective
 export GlobalObjective
 export GlobalKnotPointObjective
+export KnotHVP
+export ConstantLowRankHVP
+export CustomKnotHVP
+export knot_hvp
 
 using ..Constraints
 
@@ -335,6 +339,7 @@ end
 # Additional objectives
 # ----------------------------------------------------------------------------- #
 
+include("knot_hvp.jl")
 include("knot_point_objectives.jl")
 include("global_objectives.jl")
 include("minimum_time_objective.jl")
