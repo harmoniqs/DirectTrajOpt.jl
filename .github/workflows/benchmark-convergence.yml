@@ -28,12 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.12'
           arch: x64
 
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
 
       - name: Instantiate convergence environment
         run: julia --project=benchmark/convergence -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
@@ -53,7 +53,7 @@ jobs:
 
       - name: Upload convergence artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: convergence-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
           path: benchmark/convergence/results/

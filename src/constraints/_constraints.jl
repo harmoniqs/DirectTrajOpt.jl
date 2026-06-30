@@ -247,6 +247,7 @@ include("linear/total_constraint.jl")
 include("linear/symmetry_constraint.jl")
 include("linear/time_consistency_constraint.jl")
 include("linear/l1_slack_constraint.jl")
+include("linear/global_linear_constraint.jl")
 
 # Nonlinear constraints
 include("nonlinear/knot_point_constraint.jl")
