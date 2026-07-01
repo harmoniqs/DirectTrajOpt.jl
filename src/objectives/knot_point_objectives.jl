@@ -25,7 +25,11 @@ where ℓ is evaluated on trajectory variables at each knot point.
 - `times::Vector{Int}`: Time indices where objective is evaluated
 - `params::Vector`: Parameters for each time index
 - `Qs::Vector{Float64}`: Weights for each time index
-- `∂²Ls::Vector{SparseMatrixCSC{Float64, Int}}`: Preallocated sparse Hessian storage (one per timestep)
+- `knot_hvp::Union{Nothing, KnotHVP}`: Optional declarable matrix-free
+  per-knot Hessian-vector product capability (see [`KnotHVP`](@ref)).
+  `nothing` (the default) leaves the existing dense-Hessian behavior
+  unchanged. Set to a `ConstantLowRankHVP` or `CustomKnotHVP` to
+  advertise a matrix-free apply to downstream consumers.
 
 # Constructor
 ```julia
@@ -35,7 +39,8 @@ KnotPointObjective(
     traj::NamedTrajectory,
     params::AbstractVector;
     times::AbstractVector{Int}=1:traj.N,
-    Qs::AbstractVector{Float64}=ones(length(times))
+    Qs::AbstractVector{Float64}=ones(length(times)),
+    knot_hvp::Union{Nothing, KnotHVP}=nothing,
 )
 ```
 
@@ -63,6 +68,7 @@ struct KnotPointObjective <: AbstractObjective
     times::Vector{Int}
     params::Vector
     Qs::Vector{Float64}
+    knot_hvp::Union{Nothing,KnotHVP}
 end
 
 function KnotPointObjective(
@@ -72,6 +78,7 @@ function KnotPointObjective(
     params::AbstractVector;
     times::AbstractVector{Int} = 1:traj.N,
     Qs::AbstractVector{Float64} = ones(length(times)),
+    knot_hvp::Union{Nothing,KnotHVP} = nothing,
 )
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
@@ -82,6 +89,7 @@ function KnotPointObjective(
         Vector{Int}(times),
         Vector(params),
         Vector{Float64}(Qs),
+        knot_hvp,
     )
 end
 
@@ -154,6 +162,11 @@ function Base.show(io::IO, obj::KnotPointObjective)
     times_str = n <= 3 ? "t = $(obj.times)" : "$n knot points"
     print(io, "KnotPointObjective on [$vars] at $times_str")
 end
+
+# `knot_hvp` trait specialization — reads the carrier from the struct
+# field. The generic default `knot_hvp(::AbstractObjective, _) = nothing`
+# lives in `knot_hvp.jl`.
+knot_hvp(obj::KnotPointObjective, ::NamedTrajectory) = obj.knot_hvp
 
 # Implement AbstractObjective interface
 
