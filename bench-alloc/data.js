@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781073892749,
+  "lastUpdate": 1782904414555,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl alloc profile": [
@@ -87,6 +87,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "alloc_bilinear_N51_madnlp [alloc-count]",
             "value": 17397,
+            "unit": "allocs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "43344745+jack-champagne@users.noreply.github.com",
+            "name": "Jack Champagne",
+            "username": "jack-champagne"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "134c3ac47f0f8e862358ce52f4f0570dc3112ec7",
+          "message": "Merge pull request #118 from harmoniqs/chore/version-0.9.7\n\nchore: bump version to 0.9.7",
+          "timestamp": "2026-07-01T05:14:15-04:00",
+          "tree_id": "c722d301a8d064de5d9ab67e5bc8a1dff893683a",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/134c3ac47f0f8e862358ce52f4f0570dc3112ec7"
+        },
+        "date": 1782904411341,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "alloc_bilinear_N51_ipopt [alloc-total]",
+            "value": 13593046,
+            "unit": "bytes"
+          },
+          {
+            "name": "alloc_bilinear_N51_ipopt [alloc-count]",
+            "value": 26115,
+            "unit": "allocs"
+          },
+          {
+            "name": "alloc_bilinear_N51_madnlp [alloc-total]",
+            "value": 9980112,
+            "unit": "bytes"
+          },
+          {
+            "name": "alloc_bilinear_N51_madnlp [alloc-count]",
+            "value": 17185,
             "unit": "allocs"
           }
         ]
