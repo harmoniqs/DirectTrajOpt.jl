@@ -73,6 +73,21 @@ Base.@kwdef mutable struct IpoptOptions <: Solvers.AbstractSolverOptions
     recalc_y_feas_tol = 1.0e-6
     watchdog_shortened_iter_trigger = 0
     watchdog_trial_iter_max = 3
+
+    # Per-iteration user callback (solver-agnostic). A subtype of
+    # `DirectTrajOpt.AbstractIntermediateCallback` with signature
+    # `(cb)(primal::AbstractVector, iter::Integer) -> Bool`. The Ipopt extension
+    # wraps it at solve time so it receives the full NLP primal vector and the
+    # IPM iteration index each iteration; return `false` to stop the solver early
+    # (user-requested termination). This is the same contract the MadNLP backend
+    # honors via `MadNLPOptions.intermediate_callback`, so the same callback
+    # object runs unchanged under both backends. Left at `nothing` ⇒ no callback.
+    #
+    # Independent of and additive to the raw `callback::Union{Nothing,Function}`
+    # kwarg of `solve!` (the text-telemetry / checkpointing closure path): when
+    # both are set, every callback fires once per iteration and the solver
+    # continues iff all return `true`.
+    intermediate_callback::Any = nothing
 end
 
 @testitem "IpoptOptions: diverging_iterates_tol default matches Ipopt" begin

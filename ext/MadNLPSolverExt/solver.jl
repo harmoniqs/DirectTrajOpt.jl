@@ -200,8 +200,54 @@ end
 # ----------------------------------------------------------------------------
 
 
+"""
+    _MadNLPCallbackAdapter(inner)
+
+Wrap a `DirectTrajOpt.AbstractIntermediateCallback` so MadNLP can call it
+with its native `(solver, mode)` signature.
+
+The adapter:
+- **Filters mode to `UserCallbackRegular`.** MadNLP also invokes user
+  callbacks during feasibility restoration and robust mode; those phases
+  surface intermediate IPM state that's typically not meaningful to a
+  trajectory-level callback, so they're silently skipped (return `true`).
+  This makes `solver.cnt.k` monotonic from the callback's point of view.
+- **Translates `solver.x` → `MadNLP.variable(solver.x)`** to strip the
+  slack tail and hand back just the NLP primal.
+- **Forwards `solver.cnt.k`** as the iteration index.
+"""
+struct _MadNLPCallbackAdapter <: MadNLP.AbstractUserCallback
+    inner::DirectTrajOpt.AbstractIntermediateCallback
+end
+
+function (a::_MadNLPCallbackAdapter)(
+    solver::MadNLP.AbstractMadNLPSolver,
+    mode::MadNLP.AbstractUserCallbackStatus,
+)
+    mode isa MadNLP.UserCallbackRegular || return true
+    return a.inner(MadNLP.variable(solver.x), solver.cnt.k)
+end
+
 function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNLPOptions)
     ignored_options = [:eval_hessian]
+
+    # Auto-couple: an AbstractIntermediateCallback needs the full primal vector,
+    # which requires fixed_variable_treatment = RelaxBound. We only override when
+    # MadNLP's own conditional default (`kkt_system <: SparseCondensedKKTSystem ?
+    # RelaxBound : MakeParameter`) would otherwise pick `MakeParameter` and break
+    # the callback. When the user has selected a kkt_system whose default is
+    # already `RelaxBound`, MadNLP's if-one-liner gets to do its job untouched.
+    # Raw MadNLP callbacks are presumed to manage this themselves.
+    if options.intermediate_callback isa DirectTrajOpt.AbstractIntermediateCallback &&
+       options.fixed_variable_treatment === nothing
+        madnlp_default_is_relax_bound =
+            options.kkt_system isa Type &&
+            options.kkt_system <: MadNLP.SparseCondensedKKTSystem
+        if !madnlp_default_is_relax_bound
+            @info "Setting fixed_variable_treatment = MadNLP.RelaxBound for AbstractIntermediateCallback (MadNLP's kkt_system default would otherwise eliminate fixed vars from solver.x)"
+            optimizer.options[:fixed_variable_treatment] = MadNLP.RelaxBound
+        end
+    end
 
     for name in fieldnames(typeof(options))
         value = getfield(options, name)
@@ -221,6 +267,22 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
             hessian_approximation =
                 ((value == "compact_lbfgs") ? MadNLP.CompactLBFGS : hessian_approximation)
             optimizer.options[name] = hessian_approximation
+        elseif name == :intermediate_callback
+            if value isa DirectTrajOpt.AbstractIntermediateCallback
+                # Wrap solver-agnostic callbacks in the MadNLP-shaped adapter.
+                optimizer.options[name] = _MadNLPCallbackAdapter(value)
+            elseif value isa MadNLP.AbstractUserCallback
+                # Raw MadNLP callbacks pass through unwrapped.
+                optimizer.options[name] = value
+            else
+                throw(
+                    ArgumentError(
+                        "intermediate_callback must be a subtype of " *
+                        "`DirectTrajOpt.AbstractIntermediateCallback` or " *
+                        "`MadNLP.AbstractUserCallback`, got $(typeof(value))",
+                    ),
+                )
+            end
         else
             optimizer.options[name] = value
         end

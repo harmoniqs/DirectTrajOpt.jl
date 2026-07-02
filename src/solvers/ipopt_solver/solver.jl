@@ -107,9 +107,16 @@ function get_optimizer_and_variables(
         println("    variables set ($(round(time() - t_vars, digits=3))s)")
     end
 
-    # set callback function
-    if !isnothing(callback)
-        MOI.set(optimizer, Ipopt.CallbackFunction(), callback(optimizer))
+    # set callback function — compose the raw `callback` (text telemetry /
+    # checkpointing factory closure) with an AbstractIntermediateCallback
+    # installed via `options.intermediate_callback`. Ipopt accepts a single
+    # CallbackFunction, so they're merged: every callback fires once per IPM
+    # iteration and the solve continues iff all return true (false ⇒
+    # user-requested termination). No callback at all ⇒ nothing is set (the
+    # no-callback solve path is byte-for-byte unchanged).
+    cb_factory = _ipopt_callback_function(callback, options.intermediate_callback)
+    if !isnothing(cb_factory)
+        MOI.set(optimizer, Ipopt.CallbackFunction(), cb_factory(optimizer))
     end
 
     # add linear constraints
@@ -188,8 +195,47 @@ end
 # ----------------------------------------------------------------------------
 
 
+# Compose the raw `callback` factory and an AbstractIntermediateCallback (from
+# `IpoptOptions.intermediate_callback`) into a single Ipopt CallbackFunction
+# factory (`optimizer -> (state... -> Bool)`), or `nothing` if neither is set.
+# The agnostic callback is wrapped by `Callbacks.callback_intermediate_factory`,
+# which reconstructs the full primal each iteration — so the SAME callback object
+# runs under Ipopt and MadNLP with no backend-specific branching.
+function _ipopt_callback_function(callback, intermediate_callback)
+    factories = Function[]
+    isnothing(callback) || push!(factories, callback)
+    if !isnothing(intermediate_callback)
+        intermediate_callback isa DirectTrajOpt.AbstractIntermediateCallback || throw(
+            ArgumentError(
+                "IpoptOptions.intermediate_callback must be a subtype of " *
+                "`DirectTrajOpt.AbstractIntermediateCallback`, got " *
+                "$(typeof(intermediate_callback))",
+            ),
+        )
+        push!(
+            factories,
+            Callbacks.callback_factory(
+                Callbacks.callback_intermediate_factory(intermediate_callback),
+            ),
+        )
+    end
+    isempty(factories) && return nothing
+    length(factories) == 1 && return factories[1]
+    # Compose factories: build each per-optimizer closure once, then AND their
+    # per-iteration returns. The comprehension (not a short-circuiting generator)
+    # guarantees every callback runs each iteration regardless of order/result.
+    return function (optimizer)
+        closures = [factory(optimizer) for factory in factories]
+        return (optimizer_state...) ->
+            all(Bool[closure(optimizer_state...) for closure in closures])
+    end
+end
+
+
 function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::IpoptOptions)
-    ignored_options = [:eval_hessian, :refine]
+    # intermediate_callback is wired separately (Ipopt.CallbackFunction), not an
+    # Ipopt string option — exclude it from the options dict like eval_hessian/refine.
+    ignored_options = [:eval_hessian, :refine, :intermediate_callback]
 
     for name in fieldnames(typeof(options))
         value = getfield(options, name)

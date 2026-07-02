@@ -1,0 +1,86 @@
+name: Alloc Profile
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'benchmark/alloc_profile.jl'
+      - 'benchmark/problem_utils.jl'
+      - 'benchmark/Project.toml'
+      - '.github/workflows/alloc-profile.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  alloc-profile:
+    name: Alloc profile (Ipopt + MadNLP)
+    runs-on: ubuntu-latest
+    # Profile.Allocs has high per-allocation overhead that doesn't scale down
+    # with sample_rate — each Ipopt/MadNLP solve under sampling takes ~30-40
+    # min on GH Actions runners even at max_iter=30. Two solves + startup =
+    # ~75 min on Julia 1.11, but ~90+ min on Julia 1.12 (it overran a 90 min
+    # cap), so 120 min gives a real cushion on the slower runtime.
+    timeout-minutes: 120
+    permissions:
+      actions: write
+      # contents: write so github-action-benchmark can auto-push the time-series
+      # to gh-pages (gated to main below); pull-requests: write for its
+      # regression alert comments.
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12'
+          arch: x64
+
+      - uses: julia-actions/cache@v3
+
+      - name: Instantiate benchmark environment
+        run: julia --project=benchmark -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Run alloc profile
+        env:
+          BENCHMARK_RUNNER: github-actions
+        run: |
+          julia --project=benchmark -t auto -e '
+            using TestItemRunner
+            TestItemRunner.run_tests("benchmark/"; filter = ti -> occursin("alloc_profile", ti.filename))
+          '
+
+      - name: Generate alloc-profile report
+        if: always()
+        run: julia --project=benchmark benchmark/alloc_report.jl
+
+      - name: Upload alloc-profile artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: alloc-profile-${{ github.event.pull_request.number || github.ref_name }}-${{ github.sha }}
+          path: benchmark/results/allocs/
+          retention-days: 90
+
+      # Publish to /bench-alloc on gh-pages — per-release series for each solver's
+      # total sampled allocations, with 120% regression alerts. This workflow only
+      # runs on v* tags and PRs; save-data-file / auto-push gated to tag refs so
+      # PR runs render a comparison only.
+      - name: Publish alloc profile to gh-pages
+        if: success() && hashFiles('benchmark/results/allocs/bench.json') != ''
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: DirectTrajOpt.jl alloc profile
+          tool: customSmallerIsBetter
+          output-file-path: benchmark/results/allocs/bench.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: bench-alloc
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: false
+          save-data-file: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          auto-push: ${{ startsWith(github.ref, 'refs/tags/v') }}
