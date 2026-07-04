@@ -5,6 +5,9 @@ on:
       - main
     tags: ['*']
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
   workflow_dispatch:
 concurrency:
   # Skip intermediate builds: always.
