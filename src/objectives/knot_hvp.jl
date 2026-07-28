@@ -8,10 +8,19 @@ export knot_hvp
 # ----------------------------------------------------------------------------- #
 
 """
-    abstract type KnotHVP
+    const KnotHVP = AbstractLossStructure
 
 Capability carrier for **declarable, matrix-free per-knot
 Hessian-vector products** on `KnotPointObjective` and other objectives.
+
+Since the capability was generalized into a declared *loss structure*
+(value + gradient + HVP from one payload), `KnotHVP` is an **alias** for
+[`AbstractLossStructure`](@ref) rather than an abstract type of its own.
+The alias is what keeps that generalization additive: the concrete
+carriers below remain subtypes, every `isa KnotHVP` test still holds, and
+no downstream dispatch site needs editing. Both carriers inherit the
+loss-structure verbs' not-handled fallback and keep their
+automatic-differentiation gradient exactly as before.
 
 This is the matrix-free sibling of [`get_full_hessian`](@ref). An
 objective that knows its per-knot Hessian's structure (a constant
@@ -42,7 +51,7 @@ consumer that sees `nothing` must fall back to its existing path
 (`get_full_hessian` for the standard CPU sparse pipeline, or whatever
 matrix-free fallback the consumer chooses).
 """
-abstract type KnotHVP end
+const KnotHVP = AbstractLossStructure
 
 """
     ConstantLowRankHVP(A::Matrix{Float64}, core::Symbol) <: KnotHVP
@@ -183,6 +192,22 @@ knot_hvp(::AbstractObjective, ::NamedTrajectory) = nothing
 
     # NullObjective
     @test knot_hvp(NullObjective(), traj) === nothing
+
+    # ...and the generalization keeps every one of them on today's path: all three
+    # loss-structure verbs decline for each (there is nothing declared to handle
+    # them), so the declared-versus-AD branch always picks AD.
+    z = randn(3)
+    v = randn(3)
+    g = zeros(3)
+    Hv = zeros(3)
+    for obj in (kpo, quadreg, mt, gobj, composite, NullObjective())
+        cap = knot_hvp(obj, traj)
+        @test loss_structure_value(cap, z, nothing) === NOT_HANDLED
+        @test loss_structure_gradient!(g, cap, z, nothing) === NOT_HANDLED
+        @test loss_structure_hvp!(Hv, cap, z, v, nothing) === NOT_HANDLED
+    end
+    @test all(iszero, g)
+    @test all(iszero, Hv)
 end
 
 @testitem "KnotHVP — ConstantLowRankHVP round-trips via KnotPointObjective" begin
