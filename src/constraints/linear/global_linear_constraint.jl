@@ -92,8 +92,8 @@ end
 
     gdim = length(traj.global_components[:g])
     # one row: g[1] - g[2] = 0
-    A = spzeros(1, gdim);
-    A[1, 1] = 1.0;
+    A = spzeros(1, gdim)
+    A[1, 1] = 1.0
     A[1, 2] = -1.0
     con = GlobalLinearConstraint(:g, A, [0.0])
 
@@ -120,8 +120,8 @@ end
 
     gdim = length(traj.global_components[:g])
     # -0.1 ≤ g[1] - g[2] ≤ 0.1
-    A = spzeros(1, gdim);
-    A[1, 1] = 1.0;
+    A = spzeros(1, gdim)
+    A[1, 1] = 1.0
     A[1, 2] = -1.0
     con = GlobalLinearConstraint(:g, A, [-0.1], [0.1])
 
@@ -208,8 +208,8 @@ end
     gdim = length(traj.global_components[:g])
     # Only a lower bound: g[1] - g[2] ≥ 0.2, upper side is +Inf (must be skipped,
     # emitting a lone GreaterThan and no LessThan).
-    A = spzeros(1, gdim);
-    A[1, 1] = 1.0;
+    A = spzeros(1, gdim)
+    A[1, 1] = 1.0
     A[1, 2] = -1.0
     con = GlobalLinearConstraint(:g, A, [0.2], [Inf])
 
@@ -236,8 +236,8 @@ end
 
     gdim = length(traj.global_components[:g])
     # Two-arg equality form: g[1] + g[2] = 1.0.
-    A = spzeros(1, gdim);
-    A[1, 1] = 1.0;
+    A = spzeros(1, gdim)
+    A[1, 1] = 1.0
     A[1, 2] = 1.0
     con = GlobalLinearConstraint(:g, A, [1.0])
     @test con.lb == con.ub == [1.0]

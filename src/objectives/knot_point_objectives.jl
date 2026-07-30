@@ -184,6 +184,12 @@ end
 function gradient!(∇::AbstractVector, obj::KnotPointObjective, traj::NamedTrajectory)
     fill!(∇, 0.0)
 
+    # Declared-versus-AD: resolved ONCE, outside the knot loop. A declared loss
+    # structure supplies `∇ℓ` analytically; anything else (no carrier, the
+    # curvature-only carriers, the escape hatch) returns the not-handled token and
+    # falls to ForwardDiff exactly as before.
+    structure = knot_hvp(obj, traj)
+
     for (i, k) in enumerate(obj.times)
         zₖ = traj[k]
         # Extract relevant variables and their components
@@ -193,9 +199,14 @@ function gradient!(∇::AbstractVector, obj::KnotPointObjective, traj::NamedTraj
         # Get indices for this knot point
         knot_indices = slice(k, x_comps, traj.dim)
 
-        # Compute gradient directly into view of the gradient vector
+        # Compute gradient directly into view of the gradient vector. The view is
+        # already zeroed by the `fill!` above, so the declared verb's ACCUMULATE
+        # semantics and ForwardDiff's overwrite land the same values.
         ∇_view = @view ∇[knot_indices]
-        ForwardDiff.gradient!(∇_view, x -> obj.ℓ(x, obj.params[i]), x_vals)
+        if loss_structure_gradient!(∇_view, structure, x_vals, obj.params[i]) ===
+           NOT_HANDLED
+            ForwardDiff.gradient!(∇_view, x -> obj.ℓ(x, obj.params[i]), x_vals)
+        end
 
         # Scale by weight
         ∇_view .*= obj.Qs[i]

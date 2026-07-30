@@ -339,6 +339,7 @@ end
 # Additional objectives
 # ----------------------------------------------------------------------------- #
 
+include("knot_loss_structure.jl")
 include("knot_hvp.jl")
 include("knot_point_objectives.jl")
 include("global_objectives.jl")
