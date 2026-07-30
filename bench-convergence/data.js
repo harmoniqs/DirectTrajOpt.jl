@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782899310047,
+  "lastUpdate": 1785450099406,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl convergence": [
@@ -294,6 +294,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "xgate_convergence_madnlp_N51 [alloc]",
             "value": 4468126288,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [iters]",
+            "value": 30,
+            "unit": "iterations"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [infidelity]",
+            "value": 3.086420008457935e-14,
+            "unit": "infidelity"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "41800392+gennadiryan@users.noreply.github.com",
+            "name": "Gennadi Ryan",
+            "username": "gennadiryan"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0cd7923e79376e6bf26c3532246169addbc4a424",
+          "message": "Merge pull request #121 from harmoniqs/amico/s322-declared-loss-structure-hook\n\nGeneralize the KnotHVP capability into a declared loss structure (#120)",
+          "timestamp": "2026-07-30T17:39:23-04:00",
+          "tree_id": "55345abf26025c1a4e3e9215e85fe3e108a72e79",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/0cd7923e79376e6bf26c3532246169addbc4a424"
+        },
+        "date": 1785450097378,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "xgate_convergence_ipopt_N51 [wall]",
+            "value": 19.34668908,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [alloc]",
+            "value": 4520098912,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [iters]",
+            "value": 22,
+            "unit": "iterations"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [infidelity]",
+            "value": 4.429490108037726e-11,
+            "unit": "infidelity"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [wall]",
+            "value": 18.777289488,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [alloc]",
+            "value": 4636043672,
             "unit": "bytes"
           },
           {
