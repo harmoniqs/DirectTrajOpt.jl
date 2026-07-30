@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782904414555,
+  "lastUpdate": 1785455039195,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl alloc profile": [
@@ -131,6 +131,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "alloc_bilinear_N51_madnlp [alloc-count]",
             "value": 17185,
+            "unit": "allocs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "41800392+gennadiryan@users.noreply.github.com",
+            "name": "Gennadi Ryan",
+            "username": "gennadiryan"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0cd7923e79376e6bf26c3532246169addbc4a424",
+          "message": "Merge pull request #121 from harmoniqs/amico/s322-declared-loss-structure-hook\n\nGeneralize the KnotHVP capability into a declared loss structure (#120)",
+          "timestamp": "2026-07-30T17:39:23-04:00",
+          "tree_id": "55345abf26025c1a4e3e9215e85fe3e108a72e79",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/0cd7923e79376e6bf26c3532246169addbc4a424"
+        },
+        "date": 1785455036285,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "alloc_bilinear_N51_ipopt [alloc-total]",
+            "value": 14130928,
+            "unit": "bytes"
+          },
+          {
+            "name": "alloc_bilinear_N51_ipopt [alloc-count]",
+            "value": 26293,
+            "unit": "allocs"
+          },
+          {
+            "name": "alloc_bilinear_N51_madnlp [alloc-total]",
+            "value": 10234648,
+            "unit": "bytes"
+          },
+          {
+            "name": "alloc_bilinear_N51_madnlp [alloc-count]",
+            "value": 17376,
             "unit": "allocs"
           }
         ]
