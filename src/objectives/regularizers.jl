@@ -371,11 +371,8 @@ end
     times = [1, 3, 4, 6]
     NU_OBJ = QuadraticRegularizer(:u, nu_traj, R_vec; baseline = baseline, times = times)
 
-    J_expected = sum(
-        0.5 *
-        Δts[t] *
-        dot(nu_traj.u[:, t] - baseline[:, t], R_vec .* (nu_traj.u[:, t] - baseline[:, t])) for t ∈ times
-    )
+    Δv(t) = nu_traj.u[:, t] - baseline[:, t]
+    J_expected = sum(0.5 * Δts[t] * dot(Δv(t), R_vec .* Δv(t)) for t ∈ times)
     @test objective_value(NU_OBJ, nu_traj) ≈ J_expected
 
     # Finite-difference parity for the gradient and the full Hessian with the
