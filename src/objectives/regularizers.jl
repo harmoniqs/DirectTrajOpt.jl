@@ -16,7 +16,23 @@ Computes:
 J = \\sum_{k \\in \\text{times}} \\frac{1}{2} (v_k - v_\\text{baseline})^T R (v_k - v_\\text{baseline}) \\Delta t
 ```
 
-Gradients and Hessians are computed analytically.
+The single Δt weight makes this a Riemann sum of the time integral
+``\\frac{1}{2}\\int (v - v_\\text{baseline})^T R (v - v_\\text{baseline}) dt``,
+so the value is a property of the trajectory being penalised and not of the
+number of knots used to discretise it.
+
+Gradients and Hessians are computed analytically. Because the value is linear
+in each Δt, ``\\partial^2 J / \\partial \\Delta t^2`` is identically zero and is
+not declared in the Hessian structure.
+
+!!! warning "Migration: the meaning of `R` changed"
+    Versions up to and including v0.9.8 weighted each knot by Δt² rather than
+    the single Δt documented above (issue #122). That made the penalty fall off
+    as 1/N under grid refinement — 32× weaker across a 25 → 800 knot sweep for
+    a fixed continuous pulse — so any hand-tuned `R` was tuned against a
+    grid-dependent quantity. On a uniform grid the old value is reproduced
+    exactly by passing `R * Δt`; problems with tuned regularisation weights
+    should be re-tuned.
 
 # Fields
 - `name::Symbol`: Name of the variable to regularize
@@ -83,8 +99,8 @@ function objective_value(reg::QuadraticRegularizer, traj::NamedTrajectory)
         vₖ = zₖ[reg.name]
         Δv = vₖ - reg.baseline[:, t]
         Δt = zₖ.timestep
-        rₖ = Δt .* Δv
-        J += 0.5 * rₖ' * (reg.R .* rₖ)
+        # single Δt weight: the Riemann sum of ½ Δvᵀ R Δv over time
+        J += 0.5 * Δt * Δv' * (reg.R .* Δv)
     end
     return J
 end
@@ -98,14 +114,14 @@ function gradient!(∇::AbstractVector, reg::QuadraticRegularizer, traj::NamedTr
         Δvₖ = vₖ - reg.baseline[:, t]
         Δtₖ = zₖ.timestep
 
-        # Gradient w.r.t. variable
-        ∇v = Δtₖ^2 .* (reg.R .* Δvₖ)
+        # ∂J/∂v_k = Δt_k · R ⊙ Δv_k
+        ∇v = Δtₖ .* (reg.R .* Δvₖ)
         v_indices = slice(t, v_comps, traj.dim)
         ∇[v_indices] .+= ∇v
 
-        # Gradient w.r.t. timestep (if variable)
+        # ∂J/∂Δt_k = ½ Δv_kᵀ R Δv_k  (if the timestep is a variable)
         if traj.timestep isa Symbol
-            ∇Δt = Δvₖ' * (reg.R .* Δvₖ) * Δtₖ
+            ∇Δt = 0.5 * Δvₖ' * (reg.R .* Δvₖ)
             Δt_indices = slice(t, Δt_comps, traj.dim)
             ∇[Δt_indices] .+= ∇Δt
         end
@@ -131,8 +147,9 @@ function hessian_structure(reg::QuadraticRegularizer, traj::NamedTrajectory)
         # ∂²J/∂Δt∂v
         structure[v_indices, Δt_index] .= 1.0
 
-        # ∂²J/∂Δt²
-        structure[Δt_index, Δt_index] = 1.0
+        # No ∂²J/∂Δt² entry: with the single-Δt weight the objective is linear
+        # in each Δt, so that second derivative is identically zero and must
+        # not be declared as a structural nonzero.
     end
 
     return structure
@@ -153,14 +170,15 @@ function get_full_hessian(reg::QuadraticRegularizer, traj::NamedTrajectory)
 
         rₖ = zₖ[reg.name] - reg.baseline[:, t]
 
-        # ∂²J/∂v² = Δt² * R
-        ∂²J[v_indices, v_indices] = Δt^2 * spdiagm(reg.R)
+        # ∂²J/∂v² = Δt * R
+        ∂²J[v_indices, v_indices] = Δt * spdiagm(reg.R)
 
-        # ∂²J/∂Δt∂v = Δt * R * (v - baseline)
-        ∂²J[v_indices, Δt_index] = 2 * Δt * reg.R .* rₖ
+        # ∂²J/∂Δt∂v = R ⊙ (v - baseline)
+        ∂²J[v_indices, Δt_index] = reg.R .* rₖ
 
-        # ∂²J/∂Δt² = (v - baseline)' * R * (v - baseline)
-        ∂²J[Δt_index, Δt_index] = dot(rₖ, reg.R .* rₖ)
+        # ∂²J/∂Δt² = 0 — the value is linear in Δt, so there is no
+        # timestep-timestep term. Deliberately not stored (see
+        # `hessian_structure`, which declares no entry for it).
     end
 
     return ∂²J
@@ -329,6 +347,7 @@ end
 @testitem "testing QuadraticRegularizer" begin
     include("../../test/test_utils.jl")
     using DirectTrajOpt.Objectives
+    using LinearAlgebra
 
     _, traj = bilinear_dynamics_and_trajectory()
 
@@ -336,4 +355,99 @@ end
     OBJ = QuadraticRegularizer(:u, traj, R)
 
     test_objective(OBJ, traj, atol = 1e-5)
+
+    # The value is the single-Δt Riemann sum documented in the docstring.
+    # Checked at non-uniform timesteps, with a nonzero baseline and a subset
+    # of times, so a per-knot Δt mix-up cannot hide behind a uniform grid.
+    Δts = [0.05, 0.11, 0.17, 0.23, 0.07, 0.13]
+    nu_traj = NamedTrajectory(
+        (x = randn(2, 6), u = randn(3, 6), Δt = reshape(Δts, 1, 6));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+
+    R_vec = [0.3, 1.7, 0.9]
+    baseline = randn(3, 6)
+    times = [1, 3, 4, 6]
+    NU_OBJ = QuadraticRegularizer(:u, nu_traj, R_vec; baseline = baseline, times = times)
+
+    J_expected = sum(
+        0.5 *
+        Δts[t] *
+        dot(nu_traj.u[:, t] - baseline[:, t], R_vec .* (nu_traj.u[:, t] - baseline[:, t])) for t ∈ times
+    )
+    @test objective_value(NU_OBJ, nu_traj) ≈ J_expected
+
+    # Finite-difference parity for the gradient and the full Hessian with the
+    # timestep as a decision variable — this is where the ∂Δt and ∂v∂Δt terms
+    # live, and a uniform grid with a zero baseline cannot exercise them.
+    test_objective(NU_OBJ, nu_traj, atol = 1e-5)
+end
+
+@testitem "QuadraticRegularizer objective is invariant to knot count" begin
+    include("../../test/test_utils.jl")
+    using DirectTrajOpt.Objectives
+
+    # One fixed continuous pulse, discretised at knot counts spanning 32×.
+    # Because the objective is the Δt-weighted Riemann sum of ½ uᵀRu, its value
+    # is a property of the pulse, not of the grid: refining the grid must not
+    # change the penalty. Under the Δt² weighting this same sweep fell off as
+    # 1/N (32× weaker at N=800 than at N=25), silently weakening the penalty
+    # exactly as the degrees of freedom grew.
+    T_final = 1.0
+    σ = 0.2
+    pulse(t) = exp(-((t - T_final / 2) / σ)^2) * sin(2π * t / T_final)
+
+    function objective_at(N)
+        Δt = T_final / N
+        ts = ((0:(N-1)) .+ 0.5) .* Δt
+        traj = NamedTrajectory(
+            (x = zeros(1, N), u = reshape(pulse.(ts), 1, N), Δt = fill(Δt, 1, N));
+            controls = (:u, :Δt),
+            timestep = :Δt,
+        )
+        return objective_value(QuadraticRegularizer(:u, traj, 1.0), traj)
+    end
+
+    Ns = (25, 100, 400, 800)
+    Js = objective_at.(Ns)
+
+    # Invariance across the sweep, to 1%
+    @test all(isapprox.(Js, Js[end], rtol = 1e-2))
+
+    # ...and the invariant value is the time integral it claims to be:
+    # ½∫₀ᵀ u(t)² dt, evaluated here by an independent fine midpoint rule.
+    N_ref = 20_000
+    Δt_ref = T_final / N_ref
+    ts_ref = ((0:(N_ref-1)) .+ 0.5) .* Δt_ref
+    J_exact = 0.5 * Δt_ref * sum(pulse.(ts_ref) .^ 2)
+    @test all(isapprox.(Js, J_exact, rtol = 1e-2))
+end
+
+@testitem "QuadraticRegularizer Hessian structure declares no Δt-Δt entry" begin
+    include("../../test/test_utils.jl")
+    using DirectTrajOpt.Objectives
+    using SparseArrays
+    using TrajectoryIndexingUtils
+
+    _, traj = bilinear_dynamics_and_trajectory()
+    OBJ = QuadraticRegularizer(:u, traj, 1.0)
+
+    S = DirectTrajOpt.Objectives.hessian_structure(OBJ, traj)
+    H = DirectTrajOpt.Objectives.get_full_hessian(OBJ, traj)
+
+    # Under the single-Δt weighting the objective is linear in each Δt, so
+    # ∂²J/∂Δt² is identically zero — declaring it would reserve a structural
+    # nonzero that can never be nonzero.
+    Δt_comp = traj.components[traj.timestep][1]
+    for k ∈ OBJ.times
+        Δt_index = index(k, Δt_comp, traj.dim)
+        @test iszero(S[Δt_index, Δt_index])
+        @test iszero(H[Δt_index, Δt_index])
+    end
+
+    # The declared structure must still cover every nonzero the Hessian
+    # actually produces — a solver only writes into declared entries.
+    rows, cols, _ = findnz(H)
+    @test all(!iszero(S[i, j]) for (i, j) ∈ zip(rows, cols))
 end
