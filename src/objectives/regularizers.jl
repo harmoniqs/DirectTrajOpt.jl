@@ -394,31 +394,43 @@ end
     T_final = 1.0
     σ = 0.2
     pulse(t) = exp(-((t - T_final / 2) / σ)^2) * sin(2π * t / T_final)
+    dpulse(t) = ForwardDiff.derivative(pulse, t)
 
-    function objective_at(N)
+    function objective_at(N, name)
         Δt = T_final / N
         ts = ((0:(N-1)) .+ 0.5) .* Δt
         traj = NamedTrajectory(
-            (x = zeros(1, N), u = reshape(pulse.(ts), 1, N), Δt = fill(Δt, 1, N));
+            (
+                x = zeros(1, N),
+                u = reshape(pulse.(ts), 1, N),
+                du = reshape(dpulse.(ts), 1, N),
+                Δt = fill(Δt, 1, N),
+            );
             controls = (:u, :Δt),
             timestep = :Δt,
         )
-        return objective_value(QuadraticRegularizer(:u, traj, 1.0), traj)
+        return objective_value(QuadraticRegularizer(name, traj, 1.0), traj)
     end
 
     Ns = (25, 100, 400, 800)
-    Js = objective_at.(Ns)
 
-    # Invariance across the sweep, to 1%
-    @test all(isapprox.(Js, Js[end], rtol = 1e-2))
+    # Both a control and its derivative are checked: regularising `du` is as
+    # common as regularising `u`, and a caller sweeping knot count needs the
+    # penalty on either to be a property of the pulse rather than of the grid.
+    for (name, f) ∈ ((:u, pulse), (:du, dpulse))
+        Js = [objective_at(N, name) for N ∈ Ns]
 
-    # ...and the invariant value is the time integral it claims to be:
-    # ½∫₀ᵀ u(t)² dt, evaluated here by an independent fine midpoint rule.
-    N_ref = 20_000
-    Δt_ref = T_final / N_ref
-    ts_ref = ((0:(N_ref-1)) .+ 0.5) .* Δt_ref
-    J_exact = 0.5 * Δt_ref * sum(pulse.(ts_ref) .^ 2)
-    @test all(isapprox.(Js, J_exact, rtol = 1e-2))
+        # Invariance across the sweep, to 1%
+        @test all(isapprox.(Js, Js[end], rtol = 1e-2))
+
+        # ...and the invariant value is the time integral it claims to be:
+        # ½∫₀ᵀ f(t)² dt, evaluated here by an independent fine midpoint rule.
+        N_ref = 20_000
+        Δt_ref = T_final / N_ref
+        ts_ref = ((0:(N_ref-1)) .+ 0.5) .* Δt_ref
+        J_exact = 0.5 * Δt_ref * sum(f.(ts_ref) .^ 2)
+        @test all(isapprox.(Js, J_exact, rtol = 1e-2))
+    end
 end
 
 @testitem "QuadraticRegularizer Hessian structure declares no Δt-Δt entry" begin
