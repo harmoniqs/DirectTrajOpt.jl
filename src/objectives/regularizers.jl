@@ -30,9 +30,10 @@ not declared in the Hessian structure.
     the single Δt documented above (issue #122). That made the penalty fall off
     as 1/N under grid refinement — 32× weaker across a 25 → 800 knot sweep for
     a fixed continuous pulse — so any hand-tuned `R` was tuned against a
-    grid-dependent quantity. On a uniform grid the old value is reproduced
-    exactly by passing `R * Δt`; problems with tuned regularisation weights
-    should be re-tuned.
+    grid-dependent quantity. On a uniform grid the old *value* is reproduced
+    exactly by passing `R * Δt` — but not the old `∂J/∂Δt`, so this is not a
+    drop-in substitution when the timestep is a decision variable. Problems
+    with tuned regularisation weights should be re-tuned.
 
 # Fields
 - `name::Symbol`: Name of the variable to regularize
@@ -107,7 +108,13 @@ end
 
 function gradient!(∇::AbstractVector, reg::QuadraticRegularizer, traj::NamedTrajectory)
     v_comps = traj.components[reg.name]
-    Δt_comps = traj.components[traj.timestep]
+    # Defensive, matching LinearRegularizer: `NamedTrajectory.timestep` is typed
+    # `Symbol` in the current NamedTrajectories, so this is always true and the
+    # branch folds away. It guards the `traj.components[traj.timestep]` lookup,
+    # which would be a NamedTuple indexed by a Float64 if fixed timesteps ever
+    # come back.
+    free_time = traj.timestep isa Symbol
+    Δt_comps = free_time ? traj.components[traj.timestep] : ()
     for t ∈ reg.times
         zₖ = traj[t]
         vₖ = zₖ[reg.name]
@@ -120,7 +127,7 @@ function gradient!(∇::AbstractVector, reg::QuadraticRegularizer, traj::NamedTr
         ∇[v_indices] .+= ∇v
 
         # ∂J/∂Δt_k = ½ Δv_kᵀ R Δv_k  (if the timestep is a variable)
-        if traj.timestep isa Symbol
+        if free_time
             ∇Δt = 0.5 * Δvₖ' * (reg.R .* Δvₖ)
             Δt_indices = slice(t, Δt_comps, traj.dim)
             ∇[Δt_indices] .+= ∇Δt
@@ -135,17 +142,23 @@ function hessian_structure(reg::QuadraticRegularizer, traj::NamedTrajectory)
     structure = spzeros(Z_dim, Z_dim)
 
     v_comps = traj.components[reg.name]
-    Δt_comp = traj.components[traj.timestep][1]
+    free_time = traj.timestep isa Symbol
+    Δt_comp = free_time ? traj.components[traj.timestep][1] : 0
 
     for k ∈ reg.times
         v_indices = slice(k, v_comps, traj.dim)
-        Δt_index = index(k, Δt_comp, traj.dim)
 
-        # ∂²J/∂v²
-        structure[v_indices, v_indices] .= 1.0
+        # ∂²J/∂v² = Δt · diag(R). R is a vector of per-component weights, so this
+        # block is diagonal; declaring the full d×d block would reserve d(d-1)/2
+        # structural nonzeros per knot that can never be nonzero.
+        for v_index ∈ v_indices
+            structure[v_index, v_index] = 1.0
+        end
 
-        # ∂²J/∂Δt∂v
-        structure[v_indices, Δt_index] .= 1.0
+        # ∂²J/∂Δt∂v, only when the timestep is a decision variable.
+        if free_time
+            structure[v_indices, index(k, Δt_comp, traj.dim)] .= 1.0
+        end
 
         # No ∂²J/∂Δt² entry: with the single-Δt weight the objective is linear
         # in each Δt, so that second derivative is identically zero and must
@@ -160,28 +173,32 @@ function get_full_hessian(reg::QuadraticRegularizer, traj::NamedTrajectory)
     ∂²J = spzeros(Z_dim, Z_dim)
 
     v_comps = traj.components[reg.name]
-    Δt_comp = traj.components[traj.timestep][1]
+    free_time = traj.timestep isa Symbol
+    Δt_comp = free_time ? traj.components[traj.timestep][1] : 0
 
     for t ∈ reg.times
         zₖ = traj[t]
         Δt = zₖ.timestep
         v_indices = slice(t, v_comps, traj.dim)
-        Δt_index = index(t, Δt_comp, traj.dim)
 
-        rₖ = zₖ[reg.name] - reg.baseline[:, t]
-
-        # ∂²J/∂v² = Δt * R
+        # ∂²J/∂v² = Δt * R. Present whether or not Δt is a decision variable —
+        # a fixed timestep is still a factor in the value.
         ∂²J[v_indices, v_indices] = Δt * spdiagm(reg.R)
 
-        # ∂²J/∂Δt∂v = R ⊙ (v - baseline)
-        ∂²J[v_indices, Δt_index] = reg.R .* rₖ
+        # ∂²J/∂Δt∂v = R ⊙ (v - baseline), only when the timestep is a decision
+        # variable. Unlike LinearRegularizer, this objective cannot return early
+        # for fixed timesteps: the ∂²J/∂v² block above survives.
+        if free_time
+            rₖ = zₖ[reg.name] - reg.baseline[:, t]
+            ∂²J[v_indices, index(t, Δt_comp, traj.dim)] = reg.R .* rₖ
+        end
 
         # ∂²J/∂Δt² = 0 — the value is linear in Δt, so there is no
         # timestep-timestep term. Deliberately not stored (see
         # `hessian_structure`, which declares no entry for it).
     end
 
-    return ∂²J
+    return dropzeros!(∂²J)
 end
 
 # ============================================================================ #
@@ -433,7 +450,7 @@ end
     end
 end
 
-@testitem "QuadraticRegularizer Hessian structure declares no Δt-Δt entry" begin
+@testitem "QuadraticRegularizer Hessian structure declares exactly the nonzeros" begin
     include("../../test/test_utils.jl")
     using DirectTrajOpt.Objectives
     using SparseArrays
@@ -455,8 +472,38 @@ end
         @test iszero(H[Δt_index, Δt_index])
     end
 
-    # The declared structure must still cover every nonzero the Hessian
-    # actually produces — a solver only writes into declared entries.
+    # The declared structure must cover every nonzero the Hessian actually
+    # produces — the evaluator writes only into declared entries, so anything
+    # undeclared is silently dropped from the solver's Hessian.
     rows, cols, _ = findnz(H)
     @test all(!iszero(S[i, j]) for (i, j) ∈ zip(rows, cols))
+
+    # ...and the converse: the structure must not over-declare either. R is a
+    # vector of per-component weights, so ∂²J/∂v² is diagonal; declaring the
+    # dense d×d block would reserve d(d-1)/2 entries per knot that can never be
+    # nonzero. Checked on a deterministic trajectory whose weights and residuals
+    # are all nonzero, so every declared entry is genuinely realised — with a
+    # zero weight or a zero residual component the entry would be absent from H
+    # while still (legitimately) declared, and this direction would flake.
+    N = 4
+    exact_traj = NamedTrajectory(
+        (
+            x = ones(2, N),
+            u = reshape(collect(1.0:(3N)), 3, N),
+            Δt = fill(0.1, 1, N),
+        );
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+    EXACT_OBJ = QuadraticRegularizer(
+        :u,
+        exact_traj,
+        [0.3, 1.7, 0.9];
+        baseline = fill(-1.0, 3, N),
+    )
+
+    S_exact = DirectTrajOpt.Objectives.hessian_structure(EXACT_OBJ, exact_traj)
+    H_exact = DirectTrajOpt.Objectives.get_full_hessian(EXACT_OBJ, exact_traj)
+
+    @test Set(zip(findnz(S_exact)[1:2]...)) == Set(zip(findnz(H_exact)[1:2]...))
 end
