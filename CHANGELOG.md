@@ -36,13 +36,6 @@ Changes before v0.9.8 are not recorded here — see the
 
 ### Fixed
 
-- `QuadraticRegularizer` no longer errors on trajectories with a fixed timestep.
-  `gradient!`, `hessian_structure` and `get_full_hessian` looked up
-  `traj.components[traj.timestep]` unconditionally; when `timestep` is a `Float64`
-  rather than a `Symbol` that indexes a `NamedTuple` with a float, raising a
-  `MethodError`. The `∂²J/∂v²` block is still emitted in that case — a fixed Δt is
-  a factor in the value — while the timestep gradient and cross terms are skipped.
-
 - `QuadraticRegularizer`'s `hessian_structure` no longer over-declares the
   control–control block. `R` is a vector of per-component weights, so `∂²J/∂v²` is
   diagonal, but the full `d × d` block was declared — reserving `d(d-1)/2`
@@ -50,3 +43,14 @@ Changes before v0.9.8 are not recorded here — see the
 
 - Corrected drifted comments on the `QuadraticRegularizer` Hessian blocks, which
   stated factors the adjacent code did not apply.
+
+### Internal
+
+- `QuadraticRegularizer`'s `gradient!`, `hessian_structure` and `get_full_hessian`
+  now guard the `traj.components[traj.timestep]` lookup behind
+  `traj.timestep isa Symbol`, as `LinearRegularizer` already did. This is
+  defensive only: `NamedTrajectory.timestep` is typed `Symbol` in the current
+  NamedTrajectories, so a fixed timestep is not currently representable and the
+  branch folds away. The `∂²J/∂v²` block is emitted either way — a fixed Δt would
+  still be a factor in the value — so, unlike `LinearRegularizer`, these methods
+  cannot simply return early.
