@@ -136,7 +136,7 @@ end
 Create a terminal objective that operates on multiple variables concatenated together.
 
 This is useful for objectives that need to access multiple state variables at the final
-timestep, such as coherent fidelity objectives.
+knot point, such as coherent fidelity objectives.
 
 # Arguments
 - `ℓ::Function`: Loss function taking concatenated values from all named variables

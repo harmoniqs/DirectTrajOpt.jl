@@ -254,7 +254,7 @@ end
     function callback_rollout_fidelity_factory(problem::DirectTrajOptProblem, system::Any, fid_fn::Function, fidelities::Union{Nothing, Dict{Int32, <:Real}}=nothing; fid_thresh=nothing, freq=1)
 
 A callback factory returning a callback that computes the rollout fidelity associated with an intermediate trajectory via `fid_fn(problem.trajectory, system)`, once every `freq` iterations, and stops the solver in its tracks if `!(fid_thresh isa Nothing) && fid >= fid_thresh`.
-This is particularly useful for the early stages of a solve, when dynamics constraints are yet to be satisfied, during which time changes in the objective are a poor proxy for the true infidelity of the system at its final timestep.
+This is particularly useful for the early stages of a solve, when dynamics constraints are yet to be satisfied, during which time changes in the objective are a poor proxy for the true infidelity of the system at its final knot point.
 
 # Warnings:
 - This callback expects that it be called after `_callback_update_trajectory`

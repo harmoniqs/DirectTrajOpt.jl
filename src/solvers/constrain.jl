@@ -53,7 +53,7 @@ function (con::EqualityConstraint)(
             error("EqualityConstraint: times must be set for a non-global variable")
 
         if con.values isa Matrix{Float64}
-            # Per-timestep values: column k → timestep ts[k]
+            # Per-knot values: column k → knot ts[k]
             @assert size(con.values, 1) == traj.dims[name] (
                 "Matrix row dimension ($(size(con.values, 1))) must match variable dimension ($(traj.dims[name])) for $name"
             )
@@ -144,7 +144,7 @@ function (con::BoundsConstraint)(
             @assert all(lb .<= ub) "Lower bounds must be <= upper bounds"
         end
 
-        # Apply bounds at each time step (only for selected subcomponents)
+        # Apply bounds at each knot (only for selected subcomponents)
         for t ∈ ts
             indices = slice(t, traj.components[name][subcomps], traj.dim)
             for (i, (lb_i, ub_i)) ∈ zip(indices, zip(lb[subcomps], ub[subcomps]))

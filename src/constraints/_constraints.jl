@@ -98,14 +98,14 @@ function hessian_of_lagrangian! end
 """
     get_full_jacobian(constraint, traj::NamedTrajectory)
 
-Assemble the full sparse Jacobian matrix from compact per-timestep blocks.
+Assemble the full sparse Jacobian matrix from compact per-knot blocks.
 """
 function get_full_jacobian end
 
 """
     get_full_hessian(constraint, traj::NamedTrajectory)
 
-Assemble the full sparse Hessian matrix from compact per-timestep blocks.
+Assemble the full sparse Hessian matrix from compact per-knot blocks.
 """
 function get_full_hessian end
 

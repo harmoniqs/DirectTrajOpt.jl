@@ -9,7 +9,7 @@ export L1SlackConstraint
 
 Linear constraint tying a slack variable to the absolute value of another variable.
 
-For each timestep `k` and component `i`, enforces:
+For each knot point `k` and component `i`, enforces:
 ```math
 v_{k,i} \\leq s_{k,i}, \\quad -v_{k,i} \\leq s_{k,i}
 \\quad \\Longleftrightarrow \\quad |v_{k,i}| \\leq s_{k,i}

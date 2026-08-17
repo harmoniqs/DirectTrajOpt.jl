@@ -20,7 +20,7 @@ For pre-allocated optimization, see Piccolissimo.OptimizedNonlinearKnotPointCons
 - `equality::Bool`: If true, g(x) = 0; if false, g(x) ≤ 0
 - `times::Vector{Int}`: Time indices where constraint is applied
 - `params::Vector`: Parameters for each time index (e.g., time-varying targets)
-- `g_dim::Int`: Dimension of constraint output at each time step
+- `g_dim::Int`: Dimension of constraint output at each knot
 - `var_dim::Int`: Combined dimension of all constrained variables
 - `dim::Int`: Total constraint dimension (g_dim * length(times))
 """
@@ -56,7 +56,7 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
     # Keyword Arguments
     - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
     - `times::AbstractVector{Int}=1:traj.N`: Time indices at which the constraint is enforced.
-    - `params::AbstractVector=fill(nothing, length(times))`: Parameters for each time step (e.g., time-varying targets).
+    - `params::AbstractVector=fill(nothing, length(times))`: Parameters for each knot (e.g., time-varying targets).
 
     # Examples
     ```julia
@@ -216,10 +216,10 @@ function (constraint::NonlinearKnotPointConstraint)(
     # Extract the relevant variable values from the knot point
     x_vals = vcat([zₖ[name] for name in constraint.var_names]...)
 
-    # Find which index this timestep corresponds to in constraint.times
+    # Find which index this knot corresponds to in constraint.times
     time_idx = findfirst(==(k), constraint.times)
     if isnothing(time_idx)
-        error("Timestep $k not in constraint times $(constraint.times)")
+        error("Knot point $k not in constraint times $(constraint.times)")
     end
 
     δ[:] = constraint.g(x_vals, constraint.params[time_idx])
@@ -428,7 +428,7 @@ end
 
     g(x) = [norm(x) - 1.0]
 
-    # Only constrain first and last time steps
+    # Only constrain first and last knots
     times = [1, traj.N]
 
     NLC = NonlinearKnotPointConstraint(g, [:x], traj; times = times, equality = false)
