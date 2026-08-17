@@ -35,7 +35,7 @@ function (con::EqualityConstraint)(
         @assert name ∈ traj.global_names "Global variable $name not found in trajectory"
         @assert length(con.values) == traj.global_dims[name] "Value dimension mismatch for global variable $name"
 
-        indices = traj.dim * traj.N .+ traj.global_components[name]
+        indices = traj.dim * traj.K .+ traj.global_components[name]
 
         for (i, val) ∈ zip(indices, con.values)
             MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
@@ -111,7 +111,7 @@ function (con::BoundsConstraint)(
             @assert all(lb .<= ub) "Lower bounds must be <= upper bounds"
         end
 
-        indices = traj.dim * traj.N .+ traj.global_components[name]
+        indices = traj.dim * traj.K .+ traj.global_components[name]
 
         for (i, (lb_i, ub_i)) ∈ zip(indices, zip(lb, ub))
             MOI.add_constraints(opt, vars[i], MOI.GreaterThan(lb_i))
@@ -168,9 +168,9 @@ function (con::AllEqualConstraint)(
     comp_idx = con.component_index
     @assert comp_idx <= traj.dims[var_name] "Component index $comp_idx exceeds variable dimension"
 
-    # All timesteps 1:N-1 must equal timestep N
-    indices = [index(k, traj.components[var_name][comp_idx], traj.dim) for k ∈ 1:(traj.N-1)]
-    bar_index = index(traj.N, traj.components[var_name][comp_idx], traj.dim)
+    # All timesteps 1:K-1 must equal timestep K
+    indices = [index(k, traj.components[var_name][comp_idx], traj.dim) for k ∈ 1:(traj.K-1)]
+    bar_index = index(traj.K, traj.components[var_name][comp_idx], traj.dim)
 
     x_minus_val = MOI.ScalarAffineTerm(-1.0, vars[bar_index])
     for i ∈ indices
@@ -237,9 +237,9 @@ function (con::TotalConstraint)(
     comp_idx = con.component_index
     @assert comp_idx <= traj.dims[var_name] "Component index $comp_idx exceeds variable dimension"
 
-    # For timestep variables, sum only first N-1 (last knot point has no duration after it)
-    # For other variables, sum all N values
-    time_indices = (var_name == traj.timestep) ? (1:(traj.N-1)) : (1:traj.N)
+    # For timestep variables, sum only first K-1 (last knot point has no duration after it)
+    # For other variables, sum all K values
+    time_indices = (var_name == traj.timestep) ? (1:(traj.K-1)) : (1:traj.K)
     indices = [index(k, traj.components[var_name][comp_idx], traj.dim) for k ∈ time_indices]
 
     MOI.add_constraints(
@@ -265,7 +265,7 @@ function (con::SymmetryConstraint)(
     # Get component indices for the variable
     component_indices = [
         slice(t, traj.components[con.var_name], traj.dim)[con.component_indices] for
-        t ∈ 1:traj.N
+        t ∈ 1:traj.K
     ]
 
     if con.even
@@ -274,8 +274,8 @@ function (con::SymmetryConstraint)(
             reduce(
                 vcat,
                 [
-                    collect(zip(component_indices[[idx, traj.N - idx + 1]]...)) for
-                    idx = 1:(traj.N÷2)
+                    collect(zip(component_indices[[idx, traj.K - idx + 1]]...)) for
+                    idx = 1:(traj.K÷2)
                 ],
             ),
         )
@@ -285,8 +285,8 @@ function (con::SymmetryConstraint)(
             reduce(
                 vcat,
                 [
-                    collect(zip(component_indices[[idx, traj.N - idx + 1]]...)) for
-                    idx = 1:(traj.N÷2)
+                    collect(zip(component_indices[[idx, traj.K - idx + 1]]...)) for
+                    idx = 1:(traj.K÷2)
                 ],
             ),
         )
@@ -295,14 +295,14 @@ function (con::SymmetryConstraint)(
     # Add timestep symmetry if requested and timestep exists
     if con.include_timestep && traj.timestep isa Symbol
         time_indices =
-            [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.N]
+            [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.K]
         even_pairs = vcat(
             even_pairs,
-            [(time_indices[idx], time_indices[traj.N+1-idx]) for idx ∈ 1:(traj.N÷2)],
+            [(time_indices[idx], time_indices[traj.K+1-idx]) for idx ∈ 1:(traj.K÷2)],
         )
     end
 
-    # Add even symmetry constraints: x[t] = x[N-t+1]
+    # Add even symmetry constraints: x[t] = x[K-t+1]
     for (i1, i2) in even_pairs
         MOI.add_constraints(
             opt,
@@ -314,7 +314,7 @@ function (con::SymmetryConstraint)(
         )
     end
 
-    # Add odd symmetry constraints: x[t] = -x[N-t+1]
+    # Add odd symmetry constraints: x[t] = -x[K-t+1]
     for (i1, i2) in odd_pairs
         MOI.add_constraints(
             opt,
@@ -340,7 +340,7 @@ function (con::GlobalLinearConstraint)(
         ":$(con.name) has dim $(length(g))",
     )
 
-    base = traj.dim * traj.N                       # global vars follow the knot vars
+    base = traj.dim * traj.K                       # global vars follow the knot vars
     nrows = size(con.A, 1)
 
     # Bucket the sparse entries by row (CSC is column-major, so collect once).
@@ -387,8 +387,8 @@ function (con::TimeConsistencyConstraint)(
     @assert timestep_name isa Symbol "Trajectory must have a timestep variable"
     @assert timestep_name ∈ traj.names "Timestep variable $timestep_name not found in trajectory"
 
-    # For each k = 1:N-1, add constraint: t_{k+1} - t_k - Δt_k = 0
-    for k = 1:(traj.N-1)
+    # For each k = 1:K-1, add constraint: t_{k+1} - t_k - Δt_k = 0
+    for k = 1:(traj.K-1)
         t_k = index(k, traj.components[time_name][1], traj.dim)
         t_k1 = index(k+1, traj.components[time_name][1], traj.dim)
         Δt_k = index(k, traj.components[timestep_name][1], traj.dim)
@@ -430,7 +430,7 @@ end
     MOI.set(optimizer, MOI.NLPBlock(), block_data)
     MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    data_dim = traj.dim * traj.N
+    data_dim = traj.dim * traj.K
     variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
     MOI.set(
         optimizer,

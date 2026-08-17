@@ -40,7 +40,7 @@ using TestItems
             u -> [norm(u) - 1.0],
             :u,
             traj;
-            times = 2:(traj.N-1),
+            times = 2:(traj.K-1),
             equality = false,
         )
 

@@ -28,7 +28,7 @@ not declared in the Hessian structure.
 !!! warning "Migration: the meaning of `R` changed"
     Versions up to and including v0.9.8 weighted each knot by Δt² rather than
     the single Δt documented above (issue #122). That made the penalty fall off
-    as 1/N under grid refinement — 32× weaker across a 25 → 800 knot sweep for
+    as 1/K under grid refinement — 32× weaker across a 25 → 800 knot sweep for
     a fixed continuous pulse — so any hand-tuned `R` was tuned against a
     grid-dependent quantity. On a uniform grid the old value is reproduced
     exactly by passing `R * Δt`; problems with tuned regularisation weights
@@ -46,8 +46,8 @@ QuadraticRegularizer(
     name::Symbol,
     traj::NamedTrajectory,
     R::Union{Real, AbstractVector{<:Real}};
-    baseline::AbstractMatrix{<:Real}=zeros(traj.dims[name], traj.N),
-    times::AbstractVector{Int}=1:traj.N
+    baseline::AbstractMatrix{<:Real}=zeros(traj.dims[name], traj.K),
+    times::AbstractVector{Int}=1:traj.K
 )
 ```
 """
@@ -62,8 +62,8 @@ function QuadraticRegularizer(
     name::Symbol,
     traj::NamedTrajectory,
     R::AbstractVector{<:Real};
-    baseline::AbstractMatrix{<:Real} = zeros(traj.dims[name], traj.N),
-    times::AbstractVector{Int} = 1:traj.N,
+    baseline::AbstractMatrix{<:Real} = zeros(traj.dims[name], traj.K),
+    times::AbstractVector{Int} = 1:traj.K,
 )
     @assert length(R) == traj.dims[name]
 
@@ -131,7 +131,7 @@ function gradient!(∇::AbstractVector, reg::QuadraticRegularizer, traj::NamedTr
 end
 
 function hessian_structure(reg::QuadraticRegularizer, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     structure = spzeros(Z_dim, Z_dim)
 
     v_comps = traj.components[reg.name]
@@ -156,7 +156,7 @@ function hessian_structure(reg::QuadraticRegularizer, traj::NamedTrajectory)
 end
 
 function get_full_hessian(reg::QuadraticRegularizer, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     ∂²J = spzeros(Z_dim, Z_dim)
 
     v_comps = traj.components[reg.name]
@@ -218,7 +218,7 @@ LinearRegularizer(
     name::Symbol,
     traj::NamedTrajectory,
     R::Union{Real, AbstractVector{<:Real}};
-    times::AbstractVector{Int}=1:traj.N
+    times::AbstractVector{Int}=1:traj.K
 )
 ```
 """
@@ -232,7 +232,7 @@ function LinearRegularizer(
     name::Symbol,
     traj::NamedTrajectory,
     R::AbstractVector{<:Real};
-    times::AbstractVector{Int} = 1:traj.N,
+    times::AbstractVector{Int} = 1:traj.K,
 )
     @assert length(R) == traj.dims[name]
     return LinearRegularizer(name, Vector{Float64}(R), Vector{Int}(times))
@@ -287,7 +287,7 @@ function gradient!(∇::AbstractVector, reg::LinearRegularizer, traj::NamedTraje
 end
 
 function hessian_structure(reg::LinearRegularizer, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     structure = spzeros(Z_dim, Z_dim)
 
     if !(traj.timestep isa Symbol)
@@ -309,7 +309,7 @@ function hessian_structure(reg::LinearRegularizer, traj::NamedTrajectory)
 end
 
 function get_full_hessian(reg::LinearRegularizer, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     ∂²J = spzeros(Z_dim, Z_dim)
 
     if !(traj.timestep isa Symbol)
@@ -389,22 +389,22 @@ end
     # Because the objective is the Δt-weighted Riemann sum of ½ uᵀRu, its value
     # is a property of the pulse, not of the grid: refining the grid must not
     # change the penalty. Under the Δt² weighting this same sweep fell off as
-    # 1/N (32× weaker at N=800 than at N=25), silently weakening the penalty
+    # 1/K (32× weaker at K=800 than at K=25), silently weakening the penalty
     # exactly as the degrees of freedom grew.
     T_final = 1.0
     σ = 0.2
     pulse(t) = exp(-((t - T_final / 2) / σ)^2) * sin(2π * t / T_final)
     dpulse(t) = ForwardDiff.derivative(pulse, t)
 
-    function objective_at(N, name)
-        Δt = T_final / N
-        ts = ((0:(N-1)) .+ 0.5) .* Δt
+    function objective_at(K, name)
+        Δt = T_final / K
+        ts = ((0:(K-1)) .+ 0.5) .* Δt
         traj = NamedTrajectory(
             (
-                x = zeros(1, N),
-                u = reshape(pulse.(ts), 1, N),
-                du = reshape(dpulse.(ts), 1, N),
-                Δt = fill(Δt, 1, N),
+                x = zeros(1, K),
+                u = reshape(pulse.(ts), 1, K),
+                du = reshape(dpulse.(ts), 1, K),
+                Δt = fill(Δt, 1, K),
             );
             controls = (:u, :Δt),
             timestep = :Δt,
@@ -412,22 +412,22 @@ end
         return objective_value(QuadraticRegularizer(name, traj, 1.0), traj)
     end
 
-    Ns = (25, 100, 400, 800)
+    Ks = (25, 100, 400, 800)
 
     # Both a control and its derivative are checked: regularising `du` is as
     # common as regularising `u`, and a caller sweeping knot count needs the
     # penalty on either to be a property of the pulse rather than of the grid.
     for (name, f) ∈ ((:u, pulse), (:du, dpulse))
-        Js = [objective_at(N, name) for N ∈ Ns]
+        Js = [objective_at(K, name) for K ∈ Ks]
 
         # Invariance across the sweep, to 1%
         @test all(isapprox.(Js, Js[end], rtol = 1e-2))
 
         # ...and the invariant value is the time integral it claims to be:
         # ½∫₀ᵀ f(t)² dt, evaluated here by an independent fine midpoint rule.
-        N_ref = 20_000
-        Δt_ref = T_final / N_ref
-        ts_ref = ((0:(N_ref-1)) .+ 0.5) .* Δt_ref
+        K_ref = 20_000
+        Δt_ref = T_final / K_ref
+        ts_ref = ((0:(K_ref-1)) .+ 0.5) .* Δt_ref
         J_exact = 0.5 * Δt_ref * sum(f.(ts_ref) .^ 2)
         @test all(isapprox.(Js, J_exact, rtol = 1e-2))
     end

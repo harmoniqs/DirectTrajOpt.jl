@@ -132,7 +132,7 @@ function hessian_structure(
     traj::NamedTrajectory;
     verbose::Bool = false,
 )
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     structure = spzeros(Z_dim, Z_dim)
     for (i, sub_obj) in enumerate(obj.objectives)
         t_sub = time()
@@ -147,7 +147,7 @@ function hessian_structure(
 end
 
 function get_full_hessian(obj::CompositeObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     ∂²L = spzeros(Z_dim, Z_dim)
     for (sub_obj, weight) in zip(obj.objectives, obj.weights)
         ∂²L .+= weight * get_full_hessian(sub_obj, traj)
@@ -220,12 +220,12 @@ function gradient!(∇::AbstractVector, ::NullObjective, ::NamedTrajectory)
 end
 
 function hessian_structure(::NullObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     return spzeros(Z_dim, Z_dim)
 end
 
 function get_full_hessian(::NullObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     return spzeros(Z_dim, Z_dim)
 end# ----------------------------------------------------------------------------- #
 #                        Test Objective Utility                                #
@@ -278,8 +278,8 @@ function test_objective(
     ∇ = zeros(Z_dim)
     gradient!(∇, obj, traj)
     ∇_fd = FiniteDiff.finite_difference_gradient(Z⃗_vec) do Z⃗
-        traj_data = Z⃗[1:(traj.dim*traj.N)]
-        global_data = Z⃗[(traj.dim*traj.N+1):end]
+        traj_data = Z⃗[1:(traj.dim*traj.K)]
+        global_data = Z⃗[(traj.dim*traj.K+1):end]
         traj_wrapped =
             NamedTrajectory(traj; datavec = traj_data, global_data = global_data)
         return objective_value(obj, traj_wrapped)
@@ -310,8 +310,8 @@ function test_objective(
     ∂²J = get_full_hessian(obj, traj)
 
     ∂²J_fd = FiniteDiff.finite_difference_hessian(Z⃗_vec) do Z⃗
-        traj_data = Z⃗[1:(traj.dim*traj.N)]
-        global_data = Z⃗[(traj.dim*traj.N+1):end]
+        traj_data = Z⃗[1:(traj.dim*traj.K)]
+        global_data = Z⃗[(traj.dim*traj.K+1):end]
         traj_wrapped =
             NamedTrajectory(traj; datavec = traj_data, global_data = global_data)
         return objective_value(obj, traj_wrapped)

@@ -9,7 +9,7 @@ Objective that minimizes total trajectory duration.
 
 Computes:
 ```math
-J = D \\sum_{k=1}^{N-1} \\Delta t_k
+J = D \\sum_{k=1}^{K-1} \\Delta t_k
 ```
 
 # Fields
@@ -43,7 +43,7 @@ end
 
 function objective_value(obj::MinimumTimeObjective, traj::NamedTrajectory)
     duration = 0.0
-    for k = 1:(traj.N-1)
+    for k = 1:(traj.K-1)
         duration += traj[k].timestep
     end
     return obj.D * duration
@@ -54,7 +54,7 @@ function gradient!(∇::AbstractVector, obj::MinimumTimeObjective, traj::NamedTr
 
     @assert traj.timestep isa Symbol "MinimumTimeObjective requires variable timestep"
 
-    for k = 1:(traj.N-1)
+    for k = 1:(traj.K-1)
         zₖ = traj[k]
         Δt_comps = zₖ.components[traj.timestep]
         Δt_indices = slice(k, Δt_comps, traj.dim)
@@ -66,11 +66,11 @@ end
 
 function hessian_structure(obj::MinimumTimeObjective, traj::NamedTrajectory)
     # Linear objective has no Hessian
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     return spzeros(Z_dim, Z_dim)
 end
 
 function get_full_hessian(obj::MinimumTimeObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     return spzeros(Z_dim, Z_dim)
 end

@@ -38,7 +38,7 @@ KnotPointObjective(
     names::Union{Symbol, AbstractVector{Symbol}},
     traj::NamedTrajectory,
     params::AbstractVector;
-    times::AbstractVector{Int}=1:traj.N,
+    times::AbstractVector{Int}=1:traj.K,
     Qs::AbstractVector{Float64}=ones(length(times)),
     knot_hvp::Union{Nothing, KnotHVP}=nothing,
 )
@@ -50,10 +50,10 @@ For multiple variables: `ℓ(x, u, p)` where each argument corresponds to a vari
 # Examples
 ```julia
 # Single variable
-obj = KnotPointObjective((x, _) -> norm(x)^2, :x, traj, fill(nothing, traj.N))
+obj = KnotPointObjective((x, _) -> norm(x)^2, :x, traj, fill(nothing, traj.K))
 
 # Multiple variables - concatenated
-obj = KnotPointObjective((xu, _) -> xu[1]^2 + xu[2]^2, [:x, :u], traj, fill(nothing, traj.N))
+obj = KnotPointObjective((xu, _) -> xu[1]^2 + xu[2]^2, [:x, :u], traj, fill(nothing, traj.K))
 
 # With parameters and weights
 obj = KnotPointObjective(
@@ -76,7 +76,7 @@ function KnotPointObjective(
     names::AbstractVector{Symbol},
     traj::NamedTrajectory,
     params::AbstractVector;
-    times::AbstractVector{Int} = 1:traj.N,
+    times::AbstractVector{Int} = 1:traj.K,
     Qs::AbstractVector{Float64} = ones(length(times)),
     knot_hvp::Union{Nothing,KnotHVP} = nothing,
 )
@@ -97,7 +97,7 @@ function KnotPointObjective(
     ℓ::Function,
     names::AbstractVector{Symbol},
     traj::NamedTrajectory;
-    times::AbstractVector{Int} = 1:traj.N,
+    times::AbstractVector{Int} = 1:traj.K,
     kwargs...,
 )
     # No params version - create dummy params
@@ -127,7 +127,7 @@ function TerminalObjective(
     Q::Float64 = 1.0,
     kwargs...,
 )
-    return KnotPointObjective(ℓ, name, traj; Qs = [Q], times = [traj.N], kwargs...)
+    return KnotPointObjective(ℓ, name, traj; Qs = [Q], times = [traj.K], kwargs...)
 end
 
 """
@@ -153,7 +153,7 @@ function TerminalObjective(
     Q::Float64 = 1.0,
     kwargs...,
 )
-    return KnotPointObjective(ℓ, names, traj; Qs = [Q], times = [traj.N], kwargs...)
+    return KnotPointObjective(ℓ, names, traj; Qs = [Q], times = [traj.K], kwargs...)
 end
 
 function Base.show(io::IO, obj::KnotPointObjective)
@@ -217,7 +217,7 @@ end
 
 function hessian_structure(obj::KnotPointObjective, traj::NamedTrajectory)
 
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
 
     structure = spzeros(Z_dim, Z_dim)
 
@@ -233,7 +233,7 @@ end
 
 function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
 
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
 
     ∂²L = spzeros(Z_dim, Z_dim)
 
@@ -264,7 +264,7 @@ end
 
     L(a) = norm(a)^2  # Use quadratic for non-zero Hessian
     Qs = [1.0, 2.0]
-    times = [1, traj.N]
+    times = [1, traj.K]
 
     OBJ = KnotPointObjective(L, :u, traj, times = times, Qs = Qs)
 
@@ -279,7 +279,7 @@ end
 
     L(x, p) = norm(x)^2 + p  # Use quadratic for non-zero Hessian
     Qs = [1.0, 2.0]
-    times = [1, traj.N]
+    times = [1, traj.K]
     params = [1.0, 2.0]
 
     OBJ = KnotPointObjective(L, :u, traj, params; times = times, Qs = Qs)

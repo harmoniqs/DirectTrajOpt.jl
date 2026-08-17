@@ -47,7 +47,7 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
             global_names::AbstractVector{Symbol},
             traj::NamedTrajectory,
             params::AbstractVector;
-            times::AbstractVector{Int}=1:traj.N,
+            times::AbstractVector{Int}=1:traj.K,
             equality::Bool=true
         )
 
@@ -59,7 +59,7 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
         global_names::AbstractVector{Symbol},
         traj::NamedTrajectory,
         params::AbstractVector;
-        times::AbstractVector{Int} = 1:traj.N,
+        times::AbstractVector{Int} = 1:traj.K,
         equality::Bool = true,
     )
         @assert length(params) == length(times) "params must have the same length as times"
@@ -76,7 +76,7 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
         # Create test vector combining knot point and global data
         Z⃗ = vec(traj)
         x_slice_test = slice(1, x_comps, traj.dim)
-        offset_global_comps = traj.dim * traj.N .+ global_comps
+        offset_global_comps = traj.dim * traj.K .+ global_comps
         xg_test = vcat(Z⃗[x_slice_test], Z⃗[offset_global_comps])
 
         @assert g(xg_test, params[1]) isa AbstractVector{<:Real}
@@ -103,7 +103,7 @@ function NonlinearGlobalKnotPointConstraint(
     names::AbstractVector{Symbol},
     global_names::AbstractVector{Symbol},
     traj::NamedTrajectory;
-    times::AbstractVector{Int} = 1:traj.N,
+    times::AbstractVector{Int} = 1:traj.K,
     kwargs...,
 )
     params = [nothing for _ in times]
@@ -172,13 +172,13 @@ function CommonInterface.eval_jacobian(
     constraint::NonlinearGlobalKnotPointConstraint,
     traj::NamedTrajectory,
 )
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     ∂g_full = spzeros(constraint.dim, Z_dim)
 
     x_comps = vcat([traj.components[name] for name in constraint.var_names]...)
     global_comps =
         vcat([traj.global_components[name] for name in constraint.global_names]...)
-    offset_global_comps = traj.dim * traj.N .+ global_comps
+    offset_global_comps = traj.dim * traj.K .+ global_comps
 
     @views for (i, t) ∈ enumerate(constraint.times)
         # Rows: constraint equations for this timestep
@@ -214,13 +214,13 @@ function CommonInterface.eval_hessian_of_lagrangian(
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     μ∂²g_full = spzeros(Z_dim, Z_dim)
 
     x_comps = vcat([traj.components[name] for name in constraint.var_names]...)
     global_comps =
         vcat([traj.global_components[name] for name in constraint.global_names]...)
-    offset_global_comps = traj.dim * traj.N .+ global_comps
+    offset_global_comps = traj.dim * traj.K .+ global_comps
 
     @views for (i, t) ∈ enumerate(constraint.times)
         # Combine knot point and global data
@@ -269,7 +269,7 @@ end
         return [norm(u) - 1.0; norm(u) * norm(g) - 1.0]
     end
 
-    times = 1:traj.N
+    times = 1:traj.K
 
     NLC = NonlinearGlobalKnotPointConstraint(
         g_fn,

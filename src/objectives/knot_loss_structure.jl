@@ -242,8 +242,8 @@ end
 
     d = length(traj.components[:u])
     Q = 2.5
-    Z_dim = traj.dim * traj.N + traj.global_dim
-    knot_indices = slice(traj.N, traj.components[:u], traj.dim)
+    Z_dim = traj.dim * traj.K + traj.global_dim
+    knot_indices = slice(traj.K, traj.components[:u], traj.dim)
 
     # Declared ⇒ the declared branch runs (and the Qs scaling still applies).
     obj_declared =
@@ -257,7 +257,7 @@ end
     obj_ad = TerminalObjective(x -> norm(x)^2, :u, traj; Q = Q)
     ∇ad = zeros(Z_dim)
     gradient!(∇ad, obj_ad, traj)
-    @test ∇ad[knot_indices] ≈ Q .* (2 .* traj[traj.N][:u])
+    @test ∇ad[knot_indices] ≈ Q .* (2 .* traj[traj.K][:u])
 
     # A carrier that DECLINES (returns the sentinel) also falls to AD, unchanged —
     # the existing carriers keep their AD gradient by design (AC6).

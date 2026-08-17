@@ -55,7 +55,7 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
 
     # Keyword Arguments
     - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
-    - `times::AbstractVector{Int}=1:traj.N`: Time indices at which the constraint is enforced.
+    - `times::AbstractVector{Int}=1:traj.K`: Time indices at which the constraint is enforced.
     - `params::AbstractVector=fill(nothing, length(times))`: Parameters for each time step (e.g., time-varying targets).
 
     # Examples
@@ -79,7 +79,7 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
         traj::NamedTrajectory,
         params::AbstractVector;
         equality::Bool = true,
-        times::AbstractVector{Int} = 1:traj.N,
+        times::AbstractVector{Int} = 1:traj.K,
     )
         @assert length(params) == length(times) "params must have the same length as times"
 
@@ -111,7 +111,7 @@ function NonlinearKnotPointConstraint(
     g::Function,
     names::AbstractVector{Symbol},
     traj::NamedTrajectory;
-    times::AbstractVector{Int} = 1:traj.N,
+    times::AbstractVector{Int} = 1:traj.K,
     kwargs...,
 )
     num_vars = length(names)
@@ -255,7 +255,7 @@ Compute and return the full Jacobian using automatic differentiation.
     K::NonlinearKnotPointConstraint,
     traj::NamedTrajectory,
 )
-    ∂K = spzeros(K.dim, traj.dim * traj.N + traj.global_dim)
+    ∂K = spzeros(K.dim, traj.dim * traj.K + traj.global_dim)
     x_comps = vcat([traj.components[name] for name ∈ K.var_names]...)
     for (i, k) ∈ enumerate(K.times)
         ForwardDiff.jacobian!(
@@ -277,7 +277,7 @@ Compute and return the full Hessian of the Lagrangian using automatic differenti
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    μ∂²K = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
+    μ∂²K = spzeros(traj.dim * traj.K + traj.global_dim, traj.dim * traj.K + traj.global_dim)
     x_comps = vcat([traj.components[name] for name ∈ K.var_names]...)
 
     for (i, k) ∈ enumerate(K.times)
@@ -304,7 +304,7 @@ end
 
     g(a) = [norm(a) - 1.0]
 
-    NLC = NonlinearKnotPointConstraint(g, :u, traj; times = 1:traj.N, equality = false)
+    NLC = NonlinearKnotPointConstraint(g, :u, traj; times = 1:traj.K, equality = false)
 
     # Test Jacobian and Hessian against finite differences
     test_constraint(NLC, traj; atol = 1e-1, show_jacobian_diff = true)
@@ -370,14 +370,14 @@ end
     include("../../../test/test_utils.jl")
 
     # Create trajectory with 3 variables
-    N = 10
+    K = 10
     x_dim = 2
     u_dim = 1
     a_dim = 1  # Additional variable
     Δt = 0.1
 
     traj = NamedTrajectory(
-        (x = randn(x_dim, N), u = randn(u_dim, N), a = randn(a_dim, N), Δt = fill(Δt, N));
+        (x = randn(x_dim, K), u = randn(u_dim, K), a = randn(a_dim, K), Δt = fill(Δt, K));
         controls = (:u, :a),
         timestep = :Δt,
     )
@@ -429,7 +429,7 @@ end
     g(x) = [norm(x) - 1.0]
 
     # Only constrain first and last time steps
-    times = [1, traj.N]
+    times = [1, traj.K]
 
     NLC = NonlinearKnotPointConstraint(g, [:x], traj; times = times, equality = false)
 

@@ -17,7 +17,7 @@ function remove_slack_variables!(prob::DirectTrajOptProblem)
 end
 
 function get_num_variables(prob::DirectTrajOptProblem)
-    n_vars = prob.trajectory.dim * prob.trajectory.N
+    n_vars = prob.trajectory.dim * prob.trajectory.K
 
     for global_vars_i ∈ values(prob.trajectory.global_data)
         n_global_vars = length(global_vars_i)
@@ -49,7 +49,7 @@ function get_nonlinear_constraints(prob)
         end
     end
 
-    n_dynamics_constraints = dynamics_dim * (prob.trajectory.N - 1)
+    n_dynamics_constraints = dynamics_dim * (prob.trajectory.K - 1)
 
     nl_cons = fill(MOI.NLPBoundsPair(0.0, 0.0), n_dynamics_constraints)
 
@@ -214,7 +214,7 @@ end
     prob = DirectTrajOptProblem(traj, J, integrators)
 
     @test traj.global_dim == 0
-    @test Solvers.get_num_variables(prob) == traj.dim * traj.N
+    @test Solvers.get_num_variables(prob) == traj.dim * traj.K
 end
 
 @testitem "get_num_variables with globals" setup=[DTOTestHelpers] begin
@@ -224,7 +224,7 @@ end
     prob = DirectTrajOptProblem(traj, J, integrators)
 
     @test traj.global_dim > 0
-    @test Solvers.get_num_variables(prob) == traj.dim * traj.N + traj.global_dim
+    @test Solvers.get_num_variables(prob) == traj.dim * traj.K + traj.global_dim
 end
 
 @testitem "get_nonlinear_constraints — dynamics only" setup=[DTOTestHelpers] begin
@@ -256,7 +256,7 @@ end
         u -> [norm(u) - 1.0],
         :u,
         traj;
-        times = 2:(traj.N-1),
+        times = 2:(traj.K-1),
         equality = false,
     )
     prob =
@@ -280,7 +280,7 @@ end
         u -> [norm(u) - 0.5],
         :u,
         traj;
-        times = 2:(traj.N-1),
+        times = 2:(traj.K-1),
         equality = true,
     )
     prob =

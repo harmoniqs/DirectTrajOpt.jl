@@ -47,13 +47,13 @@ Return the sparsity pattern of the integrator's Jacobian as a sparse matrix with
 ones at every potentially nonzero entry. Used by the solver to pre-allocate structure.
 """
 function get_jacobian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
-    N = traj.N
+    K = traj.K
     x_dim = integrator.x_dim
     z_dim = traj.dim
     F_dim = integrator.dim
-    Z_dim = z_dim * N + traj.global_dim
+    Z_dim = z_dim * K + traj.global_dim
     ∂F = spzeros(F_dim, Z_dim)
-    for k = 1:(N-1)
+    for k = 1:(K-1)
         ∂F[slice(k, x_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
     end
     return ∂F
@@ -66,11 +66,11 @@ Return the sparsity pattern of the integrator's Hessian of the Lagrangian as a s
 matrix with ones at every potentially nonzero entry.
 """
 function get_hessian_of_lagrangian_structure(::AbstractIntegrator, traj::NamedTrajectory)
-    N = traj.N
+    K = traj.K
     z_dim = traj.dim
-    Z_dim = z_dim * N + traj.global_dim
+    Z_dim = z_dim * K + traj.global_dim
     μ∂²F = spzeros(Z_dim, Z_dim)
-    for k = 1:(N-1)
+    for k = 1:(K-1)
         μ∂²F[slice(k, 1:2z_dim, z_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
     end
     return μ∂²F

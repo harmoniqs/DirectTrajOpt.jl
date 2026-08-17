@@ -29,7 +29,7 @@ ODE solver (Tsit5) on the normalized interval `[0, 1]`.
 - `spline_order::Int`: Control interpolation order (0 or 1)
 - `x_dim::Int`: Dimension of the state vector
 - `u_dim::Int`: Dimension of the control vector
-- `dim::Int`: Total constraint dimension `x_dim * (N - 1)`
+- `dim::Int`: Total constraint dimension `x_dim * (K - 1)`
 
 # Constructor
 ```julia
@@ -77,8 +77,8 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         solve_kwargs = (;),
     ) where {F<:Function}
 
-        N = traj.N
-        @assert N > 1 "Trajectory must have at least two timesteps."
+        K = traj.K
+        @assert K > 1 "Trajectory must have at least two timesteps."
 
         x_dim = traj.dims[x]
         u_dim = traj.dims[u]
@@ -116,7 +116,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
 
         prob_template = ODEProblem(f!, zeros(x_dim), (0.0, 1.0), p_template)
 
-        dim = x_dim * (N - 1)
+        dim = x_dim * (K - 1)
 
         solve_kwargs_nt = (; solve_kwargs...)
 
@@ -148,7 +148,7 @@ function evaluate!(
     traj::NamedTrajectory;
     kwargs...,
 )
-    for k = 1:(traj.N-1)
+    for k = 1:(traj.K-1)
         xₖ = traj[k][B.x_name]
         xₖ₊₁ = traj[k+1][B.x_name]
         uₖ = traj[k][B.u_name]
@@ -172,8 +172,8 @@ end
 # Jacobian methods
 
 @views function eval_jacobian(B::TimeDependentBilinearIntegrator, traj::NamedTrajectory)
-    ∂B = spzeros(B.dim, traj.dim * traj.N + traj.global_dim)
-    for k = 1:(traj.N-1)
+    ∂B = spzeros(B.dim, traj.dim * traj.K + traj.global_dim)
+    for k = 1:(traj.K-1)
         ForwardDiff.jacobian!(
             ∂B[slice(k, B.x_dim), slice(k, 1:2traj.dim, traj.dim)],
             zz -> begin
@@ -209,9 +209,9 @@ function eval_hessian_of_lagrangian(
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    μ∂²B = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
+    μ∂²B = spzeros(traj.dim * traj.K + traj.global_dim, traj.dim * traj.K + traj.global_dim)
 
-    for k = 1:(traj.N-1)
+    for k = 1:(traj.K-1)
         μₖ = μ[slice(k, B.x_dim)]
 
         μ∂²Bₖ = ForwardDiff.hessian(

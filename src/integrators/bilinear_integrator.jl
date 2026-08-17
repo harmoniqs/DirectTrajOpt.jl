@@ -29,7 +29,7 @@ bilinear systems where the system matrix depends linearly on the control input.
 - `u_name::Symbol`: Control variable name
 - `x_dim::Int`: Dimension of state variable
 - `var_dim::Int`: Combined dimension of all variables this integrator depends on (2*x_dim + u_dim + 1)
-- `dim::Int`: Total constraint dimension (x_dim * (N-1))
+- `dim::Int`: Total constraint dimension (x_dim * (K-1))
 - `∂fs::Vector{SparseMatrixCSC{Float64, Int}}`: Pre-allocated compact Jacobian storage (x_dim × var_dim per timestep)
 - `μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}}`: Pre-allocated compact Hessian storage (var_dim × var_dim per timestep)
 
@@ -69,13 +69,13 @@ struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
     function BilinearIntegrator(G::Function, x::Symbol, u::Symbol, traj::NamedTrajectory)
         x_dim = traj.dims[x]
         u_dim = traj.dims[u]
-        N = traj.N
+        K = traj.K
 
         # Variables: [xₖ, uₖ, Δtₖ, xₖ₊₁]
         var_dim = x_dim + u_dim + 1 + x_dim  # = 2*x_dim + u_dim + 1
 
         # Total constraint dimension
-        dim = x_dim * (N - 1)
+        dim = x_dim * (K - 1)
 
         # Define f function: constraint is f(xₖ₊₁, xₖ, uₖ, Δtₖ) = 0
         f = (xₖ₊₁, xₖ, uₖ, Δtₖ) -> xₖ₊₁ - expv(Δtₖ, G(uₖ), xₖ)
@@ -96,7 +96,7 @@ end
 # -------------------------------------------------------------------------------- #
 
 function evaluate!(δ::AbstractVector, B::BilinearIntegrator, traj::NamedTrajectory)
-    for k = 1:(traj.N-1)
+    for k = 1:(traj.K-1)
         xₖ = traj[k][B.x_name]
         xₖ₊₁ = traj[k+1][B.x_name]
         uₖ = traj[k][B.u_name]
@@ -109,8 +109,8 @@ end
 # Jacobian methods
 
 @views function eval_jacobian(B::AbstractBilinearIntegrator, traj::NamedTrajectory)
-    ∂B = spzeros(B.dim, traj.dim * traj.N + traj.global_dim)
-    for k = 1:(traj.N-1)
+    ∂B = spzeros(B.dim, traj.dim * traj.K + traj.global_dim)
+    for k = 1:(traj.K-1)
         ForwardDiff.jacobian!(
             ∂B[slice(k, B.x_dim), slice(k, 1:2traj.dim, traj.dim)],
             zz -> begin
@@ -137,9 +137,9 @@ function eval_hessian_of_lagrangian(
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    μ∂²B = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
+    μ∂²B = spzeros(traj.dim * traj.K + traj.global_dim, traj.dim * traj.K + traj.global_dim)
 
-    for k = 1:(traj.N-1)
+    for k = 1:(traj.K-1)
         μₖ = μ[slice(k, B.x_dim)]
 
         μ∂²Bₖ = ForwardDiff.hessian(

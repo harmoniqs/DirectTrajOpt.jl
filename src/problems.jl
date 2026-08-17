@@ -70,7 +70,7 @@ function DirectTrajOptProblem(
             Recommended: Add explicit bounds when creating the trajectory:
               NamedTrajectory(...; Δt_bounds=(min, max))
             Example:
-              NamedTrajectory(qtraj, N; Δt_bounds=(1e-3, 0.5))
+              NamedTrajectory(qtraj, K; Δt_bounds=(1e-3, 0.5))
 
             Or use timesteps_all_equal=true in problem options to fix timesteps.
             """ maxlog=1
@@ -147,10 +147,10 @@ Extract and create constraints from a NamedTrajectory's initial, final, and boun
 
 # Details
 The function automatically handles time indices based on which constraints are specified:
-- If both initial and final constraints exist for a component, bounds apply to interior points (2:N-1)
-- If only initial exists, bounds apply from second point onward (2:N)
-- If only final exists, bounds apply up to second-to-last point (1:N-1)
-- If neither exist, bounds apply to all time points (1:N)
+- If both initial and final constraints exist for a component, bounds apply to interior points (2:K-1)
+- If only initial exists, bounds apply from second point onward (2:K)
+- If only final exists, bounds apply up to second-to-last point (1:K-1)
+- If neither exist, bounds apply to all time points (1:K)
 """
 function get_trajectory_constraints(traj::NamedTrajectory)
 
@@ -166,20 +166,20 @@ function get_trajectory_constraints(traj::NamedTrajectory)
     # add final equality constraints
     for (name, val) ∈ pairs(traj.final)
         label = "final value of $name"
-        eq_con = EqualityConstraint(name, [traj.N], val; label = label)
+        eq_con = EqualityConstraint(name, [traj.K], val; label = label)
         push!(cons, eq_con)
     end
 
     # add bounds constraints
     for (name, bound) ∈ pairs(traj.bounds)
         if name ∈ keys(traj.initial) && name ∈ keys(traj.final)
-            ts = 2:(traj.N-1)
+            ts = 2:(traj.K-1)
         elseif name ∈ keys(traj.initial) && !(name ∈ keys(traj.final))
-            ts = 2:traj.N
+            ts = 2:traj.K
         elseif name ∈ keys(traj.final) && !(name ∈ keys(traj.initial))
-            ts = 1:(traj.N-1)
+            ts = 1:(traj.K-1)
         else
-            ts = 1:traj.N
+            ts = 1:traj.K
         end
         con_label = "bounds on $name"
         bounds_con = BoundsConstraint(name, ts, bound; label = con_label)
@@ -214,7 +214,7 @@ function show_problem_details(io::IO, prob::DirectTrajOptProblem)
 
     # --- Trajectory section ---
     println(io, "  Trajectory")
-    println(io, "    Timesteps: ", traj.N)
+    println(io, "    Timesteps: ", traj.K)
     println(io, "    Duration:  ", round(get_duration(traj), sigdigits = 6))
     println(io, "    Knot dim:  ", traj.dim)
     vars = join(["$n ($(traj.dims[n]))" for n in traj.names], ", ")

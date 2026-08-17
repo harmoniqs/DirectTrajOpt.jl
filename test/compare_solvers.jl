@@ -10,7 +10,7 @@ using DirectTrajOpt
 # const MadNLPSolverExt =
 #     [mod for mod in reverse(Base.loaded_modules_order) if Symbol(mod) == :MadNLPSolverExt][1]
 
-function get_seeded_trajectory(seed; N = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
+function get_seeded_trajectory(seed; K = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
     Random.seed!(seed)
 
     Gx = sparse(Float64[
@@ -39,8 +39,8 @@ function get_seeded_trajectory(seed; N = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
 
     G(u) = ω * G_drift + sum(u .* G_drives)
 
-    u_initial = u_bound * (2rand(2, N) .- 1)
-    x_initial = 2rand(4, N) .- 1
+    u_initial = u_bound * (2rand(2, K) .- 1)
+    x_initial = 2rand(4, K) .- 1
 
     x_init = [1.0, 0.0, 0.0, 0.0]
     x_goal = [0.0, 1.0, 0.0, 0.0]
@@ -49,9 +49,9 @@ function get_seeded_trajectory(seed; N = 10, Δt = 0.1, u_bound = 0.1, ω = 0.1)
         (
             x = x_initial,
             u = u_initial,
-            du = randn(2, N),
-            ddu = randn(2, N),
-            Δt = fill(Δt, N),
+            du = randn(2, K),
+            ddu = randn(2, K),
+            Δt = fill(Δt, K),
         );
         controls = (:ddu, :Δt),
         timestep = :Δt,
@@ -82,7 +82,7 @@ function get_ipopt_traj(seed)
         u -> [norm(u) - 1.0],
         :u,
         traj;
-        times = 2:(traj.N-1),
+        times = 2:(traj.K-1),
         equality = false,
     )
 
@@ -116,7 +116,7 @@ function get_madnlp_traj(seed)
         u -> [norm(u) - 1.0],
         :u,
         traj;
-        times = 2:(traj.N-1),
+        times = 2:(traj.K-1),
         equality = false,
     )
 

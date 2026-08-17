@@ -37,7 +37,7 @@ end
         var_name::Symbol,
         slack_name::Symbol,
         traj::NamedTrajectory;
-        times::AbstractVector{Int}=1:traj.N,
+        times::AbstractVector{Int}=1:traj.K,
         label="L1 slack constraint: |var_name| ≤ slack_name"
     )
 
@@ -47,7 +47,7 @@ function L1SlackConstraint(
     var_name::Symbol,
     slack_name::Symbol,
     traj::NamedTrajectory;
-    times::AbstractVector{Int} = 1:traj.N,
+    times::AbstractVector{Int} = 1:traj.K,
     label = "L1 slack constraint: |$var_name| ≤ $slack_name",
 )
     @assert var_name ∈ traj.names "Variable $var_name not found in trajectory"
@@ -95,7 +95,7 @@ end
     solve!(prob; max_iter = 100)
 
     # Verify slack constraint: s_du ≥ |du| at solution
-    for t = 1:traj.N
+    for t = 1:traj.K
         du = prob.trajectory[t][:du]
         s_du = prob.trajectory[t][:s_du]
         @test all(s_du .>= abs.(du) .- 1e-6)

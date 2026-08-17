@@ -73,7 +73,7 @@ function gradient!(∇::AbstractVector, obj::GlobalObjective, traj::NamedTraject
     g_vals = vcat(
         [traj.global_data[traj.global_components[name]] for name in obj.global_names]...,
     )
-    offset = traj.dim * traj.N
+    offset = traj.dim * traj.K
     global_indices =
         vcat([offset .+ traj.global_components[name] for name in obj.global_names]...)
 
@@ -87,11 +87,11 @@ function gradient!(∇::AbstractVector, obj::GlobalObjective, traj::NamedTraject
 end
 
 function hessian_structure(obj::GlobalObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     structure = spzeros(Z_dim, Z_dim)
 
     # Get global indices
-    offset = traj.dim * traj.N
+    offset = traj.dim * traj.K
     global_indices =
         vcat([offset .+ traj.global_components[name] for name in obj.global_names]...)
 
@@ -102,7 +102,7 @@ function hessian_structure(obj::GlobalObjective, traj::NamedTrajectory)
 end
 
 function get_full_hessian(obj::GlobalObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     ∂²L = spzeros(Z_dim, Z_dim)
 
     # Extract global components
@@ -111,7 +111,7 @@ function get_full_hessian(obj::GlobalObjective, traj::NamedTrajectory)
     )
 
     # Get global indices
-    offset = traj.dim * traj.N
+    offset = traj.dim * traj.K
     global_indices =
         vcat([offset .+ traj.global_components[name] for name in obj.global_names]...)
 
@@ -163,7 +163,7 @@ function GlobalKnotPointObjective(
     global_names::Union{AbstractVector{Symbol},Nothing},
     traj::NamedTrajectory,
     params::AbstractVector;
-    times::AbstractVector{Int} = 1:traj.N,
+    times::AbstractVector{Int} = 1:traj.K,
     Qs::AbstractVector{Float64} = ones(length(times)),
 )
     @assert length(Qs) == length(times) "Qs must have the same length as times"
@@ -189,7 +189,7 @@ function GlobalKnotPointObjective(
     names::AbstractVector{Symbol},
     global_names::Union{AbstractVector{Symbol},Nothing},
     traj::NamedTrajectory;
-    times::AbstractVector{Int} = 1:traj.N,
+    times::AbstractVector{Int} = 1:traj.K,
     kwargs...,
 )
     params = [nothing for _ in times]
@@ -238,7 +238,7 @@ function gradient!(∇::AbstractVector, obj::GlobalKnotPointObjective, traj::Nam
     fill!(∇, 0.0)
 
     # Pre-compute global indices
-    global_offset = traj.dim * traj.N
+    global_offset = traj.dim * traj.K
     global_indices = vcat(
         [global_offset .+ traj.global_components[name] for name in obj.global_names]...,
     )
@@ -275,11 +275,11 @@ function gradient!(∇::AbstractVector, obj::GlobalKnotPointObjective, traj::Nam
 end
 
 function hessian_structure(obj::GlobalKnotPointObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     structure = spzeros(Z_dim, Z_dim)
 
     # Pre-compute global indices
-    global_offset = traj.dim * traj.N
+    global_offset = traj.dim * traj.K
     global_indices = vcat(
         [global_offset .+ traj.global_components[name] for name in obj.global_names]...,
     )
@@ -301,11 +301,11 @@ function hessian_structure(obj::GlobalKnotPointObjective, traj::NamedTrajectory)
 end
 
 function get_full_hessian(obj::GlobalKnotPointObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = traj.dim * traj.K + traj.global_dim
     ∂²L = spzeros(Z_dim, Z_dim)
 
     # Pre-compute global indices
-    global_offset = traj.dim * traj.N
+    global_offset = traj.dim * traj.K
     global_indices = vcat(
         [global_offset .+ traj.global_components[name] for name in obj.global_names]...,
     )
@@ -354,7 +354,7 @@ end
     )
 
 Create a terminal (final time) objective that includes both knot point and global variables.
-This is a convenience wrapper around GlobalKnotPointObjective with times=[traj.N] and Qs=[Q].
+This is a convenience wrapper around GlobalKnotPointObjective with times=[traj.K] and Qs=[Q].
 
 # Arguments
 - `ℓ::Function`: Objective function mapping concatenated [knot_vars; global_vars] → scalar
@@ -385,7 +385,7 @@ function TerminalObjective(
         global_names_vec,
         traj;
         Qs = [Q],
-        times = [traj.N],
+        times = [traj.K],
     )
 end
 
@@ -422,7 +422,7 @@ end
         [:u],
         nothing,  # Auto-detect globals
         traj;
-        times = [1, traj.N],
+        times = [1, traj.K],
         Qs = [1.0, 2.0],
     )
 
@@ -435,7 +435,7 @@ end
         [:u],
         [:g],  # Explicitly specify
         traj;
-        times = [1, traj.N],
+        times = [1, traj.K],
         Qs = [1.0, 2.0],
     )
 
@@ -458,7 +458,7 @@ end
     end
 
     Qs = [1.0, 2.0]
-    times = [1, traj.N]
+    times = [1, traj.K]
     params = [nothing, nothing]
 
     OBJ = GlobalKnotPointObjective(

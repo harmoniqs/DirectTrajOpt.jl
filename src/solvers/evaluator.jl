@@ -119,7 +119,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         # Build Jacobian structure from integrators
         t_jac = time()
         ∂g =
-            spzeros(0, prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim)
+            spzeros(0, prob.trajectory.dim * prob.trajectory.K + prob.trajectory.global_dim)
 
         for (i, integrator) in enumerate(prob.integrators)
             t_int = time()
@@ -151,8 +151,8 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         # Build Hessian structure from integrators
         t_hess = time()
         hessian = spzeros(
-            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
-            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
+            prob.trajectory.dim * prob.trajectory.K + prob.trajectory.global_dim,
+            prob.trajectory.dim * prob.trajectory.K + prob.trajectory.global_dim,
         )
 
         for (i, integrator) in enumerate(prob.integrators)
@@ -227,7 +227,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         jacobian_constraint_row_offsets = copy(constraint_offsets)
 
         # Pre-compute linear index maps for O(1) lookup (replaces Dict with array indexing)
-        n_vars = prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim
+        n_vars = prob.trajectory.dim * prob.trajectory.K + prob.trajectory.global_dim
         jacobian_ncols = n_vars
         hessian_ncols = n_vars
 
@@ -472,7 +472,7 @@ The returned trajectory shares all structural metadata (components, dims,
 bounds, names, etc.) with `evaluator.trajectory` (= `prob.trajectory`).
 """
 @inline function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
-    n_traj = evaluator.trajectory.dim * evaluator.trajectory.N
+    n_traj = evaluator.trajectory.dim * evaluator.trajectory.K
     copyto!(evaluator._cached_traj.datavec, 1, Z⃗, 1, n_traj)
     n_global = evaluator.trajectory.global_dim
     if n_global > 0
@@ -671,7 +671,7 @@ end
         u -> [norm(u) - 1.0],
         :u,
         traj;
-        times = 2:(traj.N-1),
+        times = 2:(traj.K-1),
         equality = false,
     )
 
@@ -702,8 +702,8 @@ end
         Z⃗ -> begin
             traj_wrap = NamedTrajectory(
                 evaluator.trajectory;
-                datavec = Z⃗[1:(evaluator.trajectory.dim*evaluator.trajectory.N)],
-                global_data = Z⃗[(evaluator.trajectory.dim*evaluator.trajectory.N+1):end],
+                datavec = Z⃗[1:(evaluator.trajectory.dim*evaluator.trajectory.K)],
+                global_data = Z⃗[(evaluator.trajectory.dim*evaluator.trajectory.K+1):end],
             )
 
             # Evaluate integrators
@@ -745,7 +745,7 @@ end
     ∂ĝ = dense(
         ∂ĝ_values,
         ∂ĝ_structure,
-        (evaluator.n_constraints, evaluator.trajectory.dim * evaluator.trajectory.N),
+        (evaluator.n_constraints, evaluator.trajectory.dim * evaluator.trajectory.K),
     )
 
     ∂g_finitediff = FiniteDiff.finite_difference_jacobian(ĝ, traj.datavec)
@@ -768,7 +768,7 @@ end
     MOI.eval_hessian_lagrangian(evaluator, ∂²ℒ_values, traj.datavec, σ, μ)
 
     n_vars =
-        evaluator.trajectory.dim * evaluator.trajectory.N + evaluator.trajectory.global_dim
+        evaluator.trajectory.dim * evaluator.trajectory.K + evaluator.trajectory.global_dim
 
     ∂²ℒ_I = [i for (i, j) ∈ ∂²ℒ_structure]
     ∂²ℒ_J = [j for (i, j) ∈ ∂²ℒ_structure]

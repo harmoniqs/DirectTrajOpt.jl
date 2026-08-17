@@ -117,7 +117,7 @@ Removes any existing `BoundsConstraint` on `name` to avoid MOI conflicts.
 # Arguments
 - `constraints::Vector{<:AbstractConstraint}`: mutable constraint list
 - `name::Symbol`: trajectory variable name to pin
-- `values::AbstractMatrix{Float64}`: size `(var_dim, N)` — column `k` pins timestep `k`
+- `values::AbstractMatrix{Float64}`: size `(var_dim, K)` — column `k` pins timestep `k`
 
 # Keyword Arguments
 - `times::AbstractVector{Int}`: timesteps to pin (default: `1:size(values, 2)`)
@@ -249,8 +249,8 @@ end
     J += MinimumTimeObjective(traj)
 
     # Test global equality constraint
-    # g has dimension N (10 by default in test_utils)
-    g_value = fill(0.5, traj.N)
+    # g has dimension K (10 by default in test_utils)
+    g_value = fill(0.5, traj.K)
     global_con = GlobalEqualityConstraint(:g, g_value)
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [global_con])
@@ -330,7 +330,7 @@ end
     solve!(prob; max_iter = 100)
 
     # Pinned values should have zero drift
-    for t = 1:traj.N
+    for t = 1:traj.K
         @test prob.trajectory[t][:u] ≈ u_ref[:, t] atol=1e-10
     end
 end

@@ -275,14 +275,14 @@ end
         [:u],
         [:g],
         traj;
-        times = 2:(traj.N-1),
+        times = 2:(traj.K-1),
         equality = false,
     )
     prob =
         DirectTrajOptProblem(traj, J, integrators; constraints = AbstractConstraint[g_ug])
     solve!(prob; options = DirectTrajOpt.MadNLPOptions(max_iter = 50), verbose = false)
 
-    for k = 2:(traj.N-1)
+    for k = 2:(traj.K-1)
         u = traj[k][:u]
         g = traj.global_data[traj.global_components[:g]]
         @test norm(u) * (1.0 + norm(g)) <= 2.0 + 1e-5

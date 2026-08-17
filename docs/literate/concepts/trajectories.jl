@@ -225,7 +225,7 @@ u_data = traj.u           # Get all controls (1 × N matrix)
 x_final = traj.x[:, end]  # Get final state
 
 # ### Metadata
-println("Number of time steps: ", traj.N)
+println("Number of time steps: ", traj.K)
 println("State dimension: ", traj.dims.x)
 println("Control dimension: ", traj.dims.u)
 println("Total dimension: ", traj.dim)

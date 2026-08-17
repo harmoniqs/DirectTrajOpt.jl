@@ -14,8 +14,8 @@ Commonly used for trajectory duration constraints.
 - `label::String`: Constraint label
 
 # Note
-When applied to the trajectory's timestep variable, only the first N-1 timesteps are summed
-(the last knot point has no duration after it). For other variables, all N values are summed.
+When applied to the trajectory's timestep variable, only the first K-1 timesteps are summed
+(the last knot point has no duration after it). For other variables, all K values are summed.
 """
 struct TotalConstraint <: AbstractLinearConstraint
     var_name::Symbol
@@ -31,7 +31,7 @@ Constraint that the total trajectory duration equals a target value.
 The trajectory's timestep variable is inferred when applied.
 
 # Note
-Duration is computed as the sum of the first N-1 timesteps, since the final knot point
+Duration is computed as the sum of the first K-1 timesteps, since the final knot point
 represents the end state and has no duration after it.
 """
 function DurationConstraint(value::Float64; label = "duration constraint of $value")
@@ -76,13 +76,13 @@ end
     include("../../../test/test_utils.jl")
 
     # Create trajectory with a custom variable to sum
-    N = 10
+    K = 10
     traj = NamedTrajectory(
         (
-            x = rand(2, N),
-            u = rand(1, N),
-            w = rand(1, N),  # Custom variable to sum
-            Δt = fill(0.1, N),
+            x = rand(2, K),
+            u = rand(1, K),
+            w = rand(1, K),  # Custom variable to sum
+            Δt = fill(0.1, K),
         );
         controls = (:u, :w),
         timestep = :Δt,
@@ -110,6 +110,6 @@ end
     solve!(prob; max_iter = 100)
 
     # Verify sum equals target
-    w_vals = [prob.trajectory[t][:w][1] for t = 1:prob.trajectory.N]
+    w_vals = [prob.trajectory[t][:w][1] for t = 1:prob.trajectory.K]
     @test abs(sum(w_vals) - target_sum) < 1e-6
 end

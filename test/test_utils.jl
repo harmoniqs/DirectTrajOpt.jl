@@ -111,7 +111,7 @@ function named_trajectory_type_1(; free_time = true)
 end
 
 function bilinear_dynamics_and_trajectory(;
-    N::Int = 10,
+    K::Int = 10,
     Δt::Float64 = 0.1,
     u_bound::Float64 = 0.1,
     ω::Float64 = 0.1,
@@ -144,8 +144,8 @@ function bilinear_dynamics_and_trajectory(;
 
     G(u) = ω * Gz + sum(u .* G_drives)
 
-    u_initial = u_bound * (2rand(2, N) .- 1)
-    x_initial = 2rand(4, N) .- 1
+    u_initial = u_bound * (2rand(2, K) .- 1)
+    x_initial = 2rand(4, K) .- 1
 
     x_init = [1.0, 0.0, 0.0, 0.0]
     x_goal = [0.0, 1.0, 0.0, 0.0]
@@ -154,9 +154,9 @@ function bilinear_dynamics_and_trajectory(;
         (
             x = x_initial,
             u = u_initial,
-            du = randn(2, N),
-            ddu = randn(2, N),
-            Δt = fill(Δt, N),
+            du = randn(2, K),
+            ddu = randn(2, K),
+            Δt = fill(Δt, K),
         );
         controls = (:ddu, :Δt),
         timestep = :Δt,
@@ -171,7 +171,7 @@ function bilinear_dynamics_and_trajectory(;
     end
 
     if add_global
-        traj = add_component(traj, :g, randn(N), type = :global)
+        traj = add_component(traj, :g, randn(K), type = :global)
     end
 
     return G, traj

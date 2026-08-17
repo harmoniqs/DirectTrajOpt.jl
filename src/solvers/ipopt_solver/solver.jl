@@ -152,7 +152,7 @@ end
 
 
 function set_variables!(optimizer::AbstractOptimizer, traj::NamedTrajectory)
-    data_dim = traj.dim * traj.N
+    data_dim = traj.dim * traj.K
 
     # add variables
     variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
@@ -282,7 +282,7 @@ end
         u -> [norm(u) - 1.0],
         :u,
         traj;
-        times = 2:(traj.N-1),
+        times = 2:(traj.K-1),
         equality = false,
     )
 
@@ -327,7 +327,7 @@ end
         [:u],
         [:g],
         traj;
-        times = 2:(traj.N-1),
+        times = 2:(traj.K-1),
         equality = false,
     )
 
@@ -337,7 +337,7 @@ end
     solve!(prob; max_iter = 100)
 
     # Verify constraint is satisfied at each timestep
-    for k = 2:(traj.N-1)
+    for k = 2:(traj.K-1)
         u = traj[k][:u]
         g = traj.global_data[traj.global_components[:g]]
         @test norm(u) * (1.0 + norm(g)) <= 2.0 + 1e-6

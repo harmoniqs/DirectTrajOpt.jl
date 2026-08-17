@@ -56,12 +56,12 @@ end
     using NamedTrajectories
 
     # Create trajectory with both t and Δt
-    N = 10
+    K = 10
     Δt_val = 0.1
-    times = range(0, step = Δt_val, length = N)
+    times = range(0, step = Δt_val, length = K)
 
     traj = NamedTrajectory(
-        (x = rand(2, N), u = rand(1, N), Δt = fill(Δt_val, N), t = collect(times));
+        (x = rand(2, K), u = rand(1, K), Δt = fill(Δt_val, K), t = collect(times));
         controls = (:u, :Δt),
         timestep = :Δt,
         bounds = (u = (-1.0, 1.0),),
@@ -78,7 +78,7 @@ end
     # Verify time consistency: t_{k+1} = t_k + Δt_k
     t = prob.trajectory.t
     Δt = prob.trajectory.Δt
-    for k = 1:(N-1)
+    for k = 1:(K-1)
         @test abs(t[k+1] - t[k] - Δt[k]) < 1e-8
     end
 end
@@ -88,15 +88,15 @@ end
     using NamedTrajectories
 
     # Create trajectory with inconsistent t and Δt initially
-    N = 10
+    K = 10
     Δt_val = 0.5
 
     traj = NamedTrajectory(
         (
-            x = rand(2, N),
-            u = rand(1, N),
-            Δt = fill(Δt_val, N),
-            t = cumsum(rand(N)),  # Random times - inconsistent!
+            x = rand(2, K),
+            u = rand(1, K),
+            Δt = fill(Δt_val, K),
+            t = cumsum(rand(K)),  # Random times - inconsistent!
         );
         controls = (:u, :Δt, :t),  # t is also a control to be optimized
         timestep = :Δt,
@@ -116,7 +116,7 @@ end
     # Verify time consistency is enforced
     t = prob.trajectory.t
     Δt = prob.trajectory.Δt
-    for k = 1:(N-1)
+    for k = 1:(K-1)
         @test abs(t[k+1] - t[k] - Δt[k]) < 1e-6
     end
 

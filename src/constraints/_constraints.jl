@@ -162,7 +162,7 @@ function test_constraint(
     ĝ =
         Z⃗ -> begin
             # Split into datavec and global_data
-            datavec_size = traj.dim * traj.N
+            datavec_size = traj.dim * traj.K
             Z_traj = NamedTrajectory(
                 traj;
                 datavec = Z⃗[1:datavec_size],

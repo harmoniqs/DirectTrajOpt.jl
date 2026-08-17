@@ -62,7 +62,7 @@ end
 
     Δts = [
         prob.trajectory[t].data[prob.trajectory.components[timestep_var]][1] for
-        t = 1:prob.trajectory.N
+        t = 1:prob.trajectory.K
     ]
 
     # All timesteps should be equal to the last one
@@ -73,13 +73,13 @@ end
     include("../../../test/test_utils.jl")
 
     # Create trajectory with a custom variable to constrain
-    N = 10
+    K = 10
     traj = NamedTrajectory(
         (
-            x = rand(2, N),
-            u = rand(1, N),
-            a = rand(1, N),  # Custom variable
-            Δt = fill(0.1, N),
+            x = rand(2, K),
+            u = rand(1, K),
+            a = rand(1, K),  # Custom variable
+            Δt = fill(0.1, K),
         );
         controls = (:u, :a),
         timestep = :Δt,
@@ -106,6 +106,6 @@ end
     solve!(prob; max_iter = 100)
 
     # Verify all 'a' values are equal
-    a_vals = [prob.trajectory[t][:a][1] for t = 1:prob.trajectory.N]
+    a_vals = [prob.trajectory[t][:a][1] for t = 1:prob.trajectory.K]
     @test all(abs.(a_vals .- a_vals[end]) .< 1e-6)
 end

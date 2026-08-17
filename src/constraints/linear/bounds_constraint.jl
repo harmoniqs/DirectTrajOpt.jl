@@ -113,13 +113,13 @@ end
 
     # Test symmetric scalar bounds (use ddu which has no automatic constraints)
     ddu_bound = 0.5
-    bounds_con = BoundsConstraint(:ddu, 1:traj.N, ddu_bound)
+    bounds_con = BoundsConstraint(:ddu, 1:traj.K, ddu_bound)
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [bounds_con])
     solve!(prob; max_iter = 100)
 
     # Verify bounds are satisfied
-    for t = 1:traj.N
+    for t = 1:traj.K
         ddu = prob.trajectory[t][:ddu]
         @test all(ddu .>= -ddu_bound - 1e-6)
         @test all(ddu .<= ddu_bound + 1e-6)
@@ -146,13 +146,13 @@ end
     du_dim = traj.dims[:du]
     lb = fill(-0.3, du_dim)
     ub = fill(0.7, du_dim)
-    bounds_con = BoundsConstraint(:du, 1:traj.N, (lb, ub))
+    bounds_con = BoundsConstraint(:du, 1:traj.K, (lb, ub))
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [bounds_con])
     solve!(prob; max_iter = 100)
 
     # Verify bounds are satisfied
-    for t = 1:traj.N
+    for t = 1:traj.K
         du = prob.trajectory[t][:du]
         @test all(du .>= lb .- 1e-6)
         @test all(du .<= ub .+ 1e-6)
@@ -177,13 +177,13 @@ end
     # Test bounds on only first component of state
     # Avoid timestep 1 where x has an initial constraint from traj.initial
     x_bound = 0.8
-    bounds_con = BoundsConstraint(:x, 2:traj.N, x_bound; subcomponents = 1:1)
+    bounds_con = BoundsConstraint(:x, 2:traj.K, x_bound; subcomponents = 1:1)
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [bounds_con])
     solve!(prob; max_iter = 100)
 
     # Verify bounds are satisfied on first component only
-    for t = 2:traj.N
+    for t = 2:traj.K
         x = prob.trajectory[t][:x]
         @test x[1] >= -x_bound - 1e-6
         @test x[1] <= x_bound + 1e-6

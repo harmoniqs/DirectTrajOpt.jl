@@ -5,13 +5,13 @@ export SymmetricControlConstraint
     struct SymmetryConstraint <: AbstractLinearConstraint
 
 Constraint enforcing symmetry in trajectory variables across time.
-Even symmetry: x[t] = x[N-t+1]
-Odd symmetry: x[t] = -x[N-t+1]
+Even symmetry: x[t] = x[K-t+1]
+Odd symmetry: x[t] = -x[K-t+1]
 
 # Fields
 - `var_name::Symbol`: Variable name to constrain
 - `component_indices::Vector{Int}`: Which components of the variable
-- `even::Bool`: True for even symmetry (x[t] = x[N-t+1]), false for odd (-x[t] = x[N-t+1])
+- `even::Bool`: True for even symmetry (x[t] = x[K-t+1]), false for odd (-x[t] = x[K-t+1])
 - `include_timestep::Bool`: Whether to also enforce even symmetry on timesteps
 - `label::String`: Constraint label
 """
@@ -78,21 +78,21 @@ end
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [sym_constraint])
     solve!(prob; max_iter = 100)
 
-    # Verify even symmetry: u[t] = u[N-t+1]
-    N = prob.trajectory.N
-    for t = 1:(N÷2)
+    # Verify even symmetry: u[t] = u[K-t+1]
+    K = prob.trajectory.K
+    for t = 1:(K÷2)
         u_t = prob.trajectory[t][:u][1]
-        u_mirror = prob.trajectory[N-t+1][:u][1]
+        u_mirror = prob.trajectory[K-t+1][:u][1]
         @test abs(u_t - u_mirror) < 1e-6
     end
 
     # Verify timestep symmetry
     timestep_var = prob.trajectory.timestep
     if timestep_var isa Symbol
-        for t = 1:(N÷2)
+        for t = 1:(K÷2)
             Δt_t = prob.trajectory[t].data[prob.trajectory.components[timestep_var]][1]
             Δt_mirror =
-                prob.trajectory[N-t+1].data[prob.trajectory.components[timestep_var]][1]
+                prob.trajectory[K-t+1].data[prob.trajectory.components[timestep_var]][1]
             @test abs(Δt_t - Δt_mirror) < 1e-6
         end
     end
@@ -114,19 +114,19 @@ end
     J += QuadraticRegularizer(:du, traj, 1.0)
     J += MinimumTimeObjective(traj)
 
-    # Test odd symmetry constraint on control (u[t] = -u[N-t+1])
+    # Test odd symmetry constraint on control (u[t] = -u[K-t+1])
     sym_constraint =
         SymmetricControlConstraint(:u, [1]; even = false, include_timestep = false)
 
     prob = DirectTrajOptProblem(traj, J, integrators; constraints = [sym_constraint])
     solve!(prob; max_iter = 200)
 
-    # Verify odd symmetry: u[t] = -u[N-t+1]
-    N = prob.trajectory.N
-    for t = 1:(N÷2)
+    # Verify odd symmetry: u[t] = -u[K-t+1]
+    K = prob.trajectory.K
+    for t = 1:(K÷2)
         u_t = prob.trajectory[t][:u][1]
-        u_mirror = prob.trajectory[N-t+1][:u][1]
-        @test abs(u_t + u_mirror) < 1e-6  # u[t] + u[N-t+1] = 0
+        u_mirror = prob.trajectory[K-t+1][:u][1]
+        @test abs(u_t + u_mirror) < 1e-6  # u[t] + u[K-t+1] = 0
     end
 end
 
@@ -134,12 +134,12 @@ end
     include("../../../test/test_utils.jl")
 
     # Create trajectory with multi-dimensional control
-    N = 10
+    K = 10
     traj = NamedTrajectory(
         (
-            x = rand(2, N),
-            u = rand(2, N),  # 2D control
-            Δt = fill(0.1, N),
+            x = rand(2, K),
+            u = rand(2, K),  # 2D control
+            Δt = fill(0.1, K),
         );
         controls = :u,
         timestep = :Δt,
@@ -166,10 +166,10 @@ end
     solve!(prob; max_iter = 100)
 
     # Verify even symmetry on both components
-    N = prob.trajectory.N
-    for t = 1:(N÷2)
+    K = prob.trajectory.K
+    for t = 1:(K÷2)
         u_t = prob.trajectory[t][:u]
-        u_mirror = prob.trajectory[N-t+1][:u]
+        u_mirror = prob.trajectory[K-t+1][:u]
         @test all(abs.(u_t .- u_mirror) .< 1e-6)
     end
 end

@@ -13,7 +13,7 @@ This enforces smoothness by relating a variable to its derivative.
 - `ẋ_name::Symbol`: Derivative variable name
 - `x_dim::Int`: Dimension of variable
 - `var_dim::Int`: Combined dimension (2*x_dim + 1 for xₖ, ẋₖ, Δtₖ, xₖ₊₁)
-- `dim::Int`: Total constraint dimension (x_dim * (N-1))
+- `dim::Int`: Total constraint dimension (x_dim * (K-1))
 - `∂fs::Vector{SparseMatrixCSC{Float64, Int}}`: Compact Jacobian storage
 - `μ∂²fs::Vector{SparseMatrixCSC{Float64, Int}}`: Compact Hessian storage
 
@@ -33,13 +33,13 @@ struct DerivativeIntegrator{F} <: AbstractIntegrator
 
     function DerivativeIntegrator(x::Symbol, ẋ::Symbol, traj::NamedTrajectory)
         x_dim = traj.dims[x]
-        N = traj.N
+        K = traj.K
 
         # Variables: [xₖ, ẋₖ, Δtₖ, xₖ₊₁]
         var_dim = 2*x_dim + 1 + x_dim  # = 3*x_dim + 1
 
         # Total constraint dimension
-        dim = x_dim * (N - 1)
+        dim = x_dim * (K - 1)
 
         # Define f function: constraint is f(xₖ₊₁, xₖ, ẋₖ, Δtₖ) = 0
         f = (xₖ₊₁, xₖ, ẋₖ, Δtₖ) -> xₖ₊₁ - xₖ - Δtₖ * ẋₖ
@@ -53,7 +53,7 @@ function Base.show(io::IO, D::DerivativeIntegrator)
 end
 
 function evaluate!(δ::AbstractVector, D::DerivativeIntegrator, traj::NamedTrajectory)
-    for k = 1:(traj.N-1)
+    for k = 1:(traj.K-1)
         xₖ = traj[k][D.x_name]
         xₖ₊₁ = traj[k+1][D.x_name]
         ẋₖ = traj[k][D.ẋ_name]
@@ -66,8 +66,8 @@ end
 # Jacobian methods
 
 @views function eval_jacobian(D::DerivativeIntegrator, traj::NamedTrajectory)
-    ∂D = spzeros(D.dim, traj.dim * traj.N + traj.global_dim)
-    for k = 1:(traj.N-1)
+    ∂D = spzeros(D.dim, traj.dim * traj.K + traj.global_dim)
+    for k = 1:(traj.K-1)
         ForwardDiff.jacobian!(
             ∂D[slice(k, D.x_dim), slice(k, 1:2traj.dim, traj.dim)],
             zz -> begin
@@ -92,9 +92,9 @@ function eval_hessian_of_lagrangian(
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    μ∂²D = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
+    μ∂²D = spzeros(traj.dim * traj.K + traj.global_dim, traj.dim * traj.K + traj.global_dim)
 
-    for k = 1:(traj.N-1)
+    for k = 1:(traj.K-1)
         μₖ = μ[slice(k, D.x_dim)]
 
         μ∂²Dₖ = ForwardDiff.hessian(
