@@ -21,7 +21,7 @@ For pre-allocated optimization, see Piccolissimo.OptimizedNonlinearGlobalKnotPoi
 - `times::Vector{Int}`: Time indices where constraint is applied
 - `equality::Bool`: If true, g(x, globals) = 0; if false, g(x, globals) ≤ 0
 - `params::Vector`: Parameters for each time index
-- `g_dim::Int`: Dimension of constraint output at each time step
+- `g_dim::Int`: Dimension of constraint output at each knot
 - `var_dim::Int`: Combined dimension of knot point variables
 - `global_dim::Int`: Combined dimension of global variables
 - `combined_dim::Int`: var_dim + global_dim
@@ -181,7 +181,7 @@ function CommonInterface.eval_jacobian(
     offset_global_comps = traj.dim * traj.N .+ global_comps
 
     @views for (i, t) ∈ enumerate(constraint.times)
-        # Rows: constraint equations for this timestep
+        # Rows: constraint equations for this knot
         row_range = slice(i, constraint.g_dim)
 
         # Combine knot point and global data
@@ -247,7 +247,7 @@ function CommonInterface.eval_hessian_of_lagrangian(
         μ∂²g_full[offset_global_comps, knot_range] .+=
             μ∂²g_compact[(constraint.var_dim+1):end, 1:constraint.var_dim]
 
-        # Global × Global block (accumulated across timesteps)
+        # Global × Global block (accumulated across knots)
         μ∂²g_full[offset_global_comps, offset_global_comps] .+=
             μ∂²g_compact[(constraint.var_dim+1):end, (constraint.var_dim+1):end]
     end

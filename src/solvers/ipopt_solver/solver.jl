@@ -337,7 +337,7 @@ end
 
     solve!(prob; max_iter = 100)
 
-    # Verify constraint is satisfied at each timestep
+    # Verify constraint is satisfied at each knot
     for k = 2:(traj.N-1)
         u = traj[k][:u]
         g = traj.global_data[traj.global_components[:g]]

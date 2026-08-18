@@ -78,7 +78,7 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
     ) where {F<:Function}
 
         N = traj.N
-        @assert N > 1 "Trajectory must have at least two timesteps."
+        @assert N > 1 "Trajectory must have at least two knot points."
 
         x_dim = traj.dims[x]
         u_dim = traj.dims[u]
