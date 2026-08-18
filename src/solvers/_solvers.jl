@@ -6,6 +6,7 @@ export AbstractIntermediateCallback
 export _solve
 export _solve_with_kwargs
 export solve!
+export SolveStats
 
 import MathOptInterface as MOI
 import Ipopt
@@ -71,6 +72,7 @@ end
 
 include("constrain.jl")
 include("evaluator.jl")
+include("solve_stats.jl")
 include("solve.jl")
 
 

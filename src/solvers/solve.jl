@@ -199,9 +199,13 @@ function DirectTrajOpt.solve!(
     callback = nothing,
     kwargs...,
 )
-    DirectTrajOpt._solve(prob, options; verbose = verbose, callback = callback, kwargs...)
-
-    return nothing
+    return DirectTrajOpt._solve(
+        prob,
+        options;
+        verbose = verbose,
+        callback = callback,
+        kwargs...,
+    )
 end
 
 

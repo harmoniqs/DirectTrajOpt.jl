@@ -39,11 +39,12 @@ function DirectTrajOpt._solve(
     optimizer, variables =
         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
+    t_solve = time()
     MOI.optimize!(optimizer)
 
     update_trajectory!(prob, optimizer, variables)
 
-    return nothing
+    return Solvers._solve_stats(optimizer, variables, :ipopt, t_solve)
 end
 
 
