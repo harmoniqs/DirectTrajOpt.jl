@@ -400,7 +400,12 @@ end
     # enforced) — one :t equality either way, now with the pinned payload.
     N = traj.N
     traj2 = NamedTrajectory(
-        (x = randn(4, N), u = randn(2, N), t = collect(0.1:0.1:(0.1N)), Δt = fill(0.1, 1, N));
+        (
+            x = randn(4, N),
+            u = randn(2, N),
+            t = collect(0.1:0.1:(0.1N)),
+            Δt = fill(0.1, 1, N),
+        );
         controls = (:u, :Δt),
         timestep = :Δt,
         initial = (x = zeros(4), u = zeros(2), t = [0.0]),
