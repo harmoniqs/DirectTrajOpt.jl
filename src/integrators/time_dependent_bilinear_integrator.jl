@@ -267,3 +267,32 @@ end
 
     test_integrator(B, traj, test_equality = false, atol = 1e-3)
 end
+
+@testitem "testing TimeDependentBilinearIntegrator with zero-order hold" begin
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_time = true)
+
+    B = TimeDependentBilinearIntegrator((a, t) -> G(a), :x, :u, :t, traj; spline_order = 0)
+
+    @test B.spline_order == 0
+    @test B.u_dim == traj.dims[:u]
+    @test sprint(show, B) isa String
+
+    test_integrator(B, traj, test_equality = false, atol = 1e-3)
+end
+
+@testitem "TimeDependentBilinearIntegrator rejects unsupported spline orders" begin
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_time = true)
+
+    @test_throws ErrorException TimeDependentBilinearIntegrator(
+        (a, t) -> G(a),
+        :x,
+        :u,
+        :t,
+        traj;
+        spline_order = 2,
+    )
+end
