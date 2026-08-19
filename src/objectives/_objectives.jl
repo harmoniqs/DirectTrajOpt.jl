@@ -397,3 +397,46 @@ include("regularizers.jl")
 end
 
 end
+
+@testitem "coverage: NullObjective full surface" setup = [DTOTestHelpers] begin
+    _, traj = bilinear_dynamics_and_trajectory(add_global = true)
+    null = NullObjective()
+
+    # value, gradient, hessian structure, full hessian — all zero-surface
+    @test objective_value(null, traj) == 0.0
+    ∇ = randn(length(traj.datavec) + traj.global_dim)
+    gradient!(∇, null, traj)
+    @test all(iszero, ∇)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    @test nnz(hessian_structure(null, traj)) == 0
+    @test nnz(get_full_hessian(null, traj)) == 0
+    @test size(get_full_hessian(null, traj)) == (Z_dim, Z_dim)
+
+    # show
+    @test sprint(show, null) == "NullObjective"
+
+    # arithmetic keeps it a no-op passenger
+    quad = QuadraticRegularizer(:u, traj, 1.0)
+    comp = null + quad
+    @test objective_value(comp, traj) == objective_value(quad, traj)
+    @test sprint(show, comp) isa String
+end
+
+@testitem "coverage: objective arithmetic — obj * Real and show(CompositeObjective)" setup =
+    [DTOTestHelpers] begin
+    _, traj = bilinear_dynamics_and_trajectory()
+    quad = QuadraticRegularizer(:u, traj, 2.0)
+
+    # both multiplication orders
+    left = 0.5 * quad
+    right = quad * 0.5
+    @test objective_value(left, traj) ≈ objective_value(right, traj)
+    @test 2 * objective_value(quad, traj) ≈ objective_value(quad * 2, traj)
+
+    # show renders the composite with weights
+    comp = 1.5 * quad + 0.25 * QuadraticRegularizer(:x, traj, 1.0)
+    s = sprint(show, comp)
+    @test occursin("CompositeObjective (2 terms)", s)
+    @test occursin("1.5", s)
+    @test occursin("0.25", s)
+end

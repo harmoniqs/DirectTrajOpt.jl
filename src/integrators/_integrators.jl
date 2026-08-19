@@ -242,3 +242,21 @@ function test_integrator(
 end
 
 end
+
+@testitem "coverage: test_integrator globals + verbose diff paths" setup = [DTOTestHelpers] begin
+    # a global-carrying trajectory exercises the global_data mutation/restore
+    # paths inside the harness's finite-differencing closures
+    G, traj = bilinear_dynamics_and_trajectory(add_global = true)
+    integ = BilinearIntegrator(G, :x, :u, traj)
+
+    # verbose printing branches (show_jacobian_diff / show_hessian_diff)
+    test_integrator(integ, traj; show_jacobian_diff = true, show_hessian_diff = true)
+
+    # and the globals-free path with both equality modes
+    G0, traj0 = bilinear_dynamics_and_trajectory()
+    integ0 = BilinearIntegrator(G0, :x, :u, traj0)
+    test_integrator(integ0, traj0; test_equality = false, atol = 1e-4)
+
+    # the gauss_newton branch (masked comparison + its verbose printing)
+    test_integrator(integ0, traj0; gauss_newton = true, show_hessian_diff = true)
+end
