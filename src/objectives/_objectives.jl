@@ -397,6 +397,7 @@ include("regularizers.jl")
 end
 
 @testitem "coverage: NullObjective full surface" setup = [DTOTestHelpers] begin
+    using DirectTrajOpt.Objectives: hessian_structure
     _, traj = bilinear_dynamics_and_trajectory(add_global = true)
     null = NullObjective()
 

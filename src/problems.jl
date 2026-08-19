@@ -364,9 +364,9 @@ end
     [DTOTestHelpers] begin
     N = 6
     traj = NamedTrajectory(
-        (x = randn(4, N), u = randn(2, N));
-        controls = :u,
-        timestep = 0.1,
+        (x = randn(4, N), u = randn(2, N), Δt = fill(0.1, 1, N));
+        controls = (:u, :Δt),
+        timestep = :Δt,
         bounds = (x = (-10.0, 10.0),),
         final = (x = zeros(4),),
     )
