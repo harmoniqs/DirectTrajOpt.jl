@@ -484,7 +484,9 @@ end
     prob_plain = DirectTrajOptProblem(plain, NullObjective(), AbstractIntegrator[])
     s_plain = sprint(show, prob_plain)
     @test occursin("Controls:  Δt", s_plain)
-    @test occursin("Constraints: (none)", s_plain)
+    # the default Δt bounds injection guarantees a BoundsConstraint even on a
+    # minimal trajectory — "Constraints: (none)" is unreachable via construction
+    @test occursin("BoundsConstraint: \"bounds on Δt\"", s_plain)
     @test occursin("Dynamics (0 integrators)", s_plain)
 end
 

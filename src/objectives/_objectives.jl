@@ -394,6 +394,7 @@ include("regularizers.jl")
     val3 = objective_value(obj3, traj)
     val_combo = objective_value(obj_combo, traj)
     @test val_combo ≈ 2.0 * val1 + 0.5 * val2 + val3
+end
 
 @testitem "coverage: NullObjective full surface" setup = [DTOTestHelpers] begin
     _, traj = bilinear_dynamics_and_trajectory(add_global = true)
@@ -438,4 +439,4 @@ end
     @test occursin("0.25", s)
 end
 end
-end
+
