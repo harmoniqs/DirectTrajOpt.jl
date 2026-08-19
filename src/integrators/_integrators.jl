@@ -256,6 +256,9 @@ end
     integ0 = BilinearIntegrator(G0, :x, :u, traj0)
     test_integrator(integ0, traj0; test_equality = false, atol = 1e-4)
 
+    # atol == 0 selects the relative-tolerance norm branches
+    test_integrator(integ0, traj0; test_equality = false, atol = 0.0, rtol = 1e-3)
+
     # the gauss_newton branch (masked comparison + its verbose printing)
     test_integrator(integ0, traj0; gauss_newton = true, show_hessian_diff = true)
 end

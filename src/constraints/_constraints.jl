@@ -254,4 +254,22 @@ include("nonlinear/knot_point_constraint.jl")
 include("nonlinear/global_constraint.jl")
 include("nonlinear/global_knot_point_constraint.jl")
 
+@testitem "coverage: test_constraint norm-based comparison branches" setup =
+    [DTOTestHelpers] begin
+    # A tiny trajectory keeps the verbose diff output short.
+    traj = NamedTrajectory(
+        (x = randn(2, 3), u = randn(1, 3), Δt = fill(0.1, 3));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+
+    NLC = NonlinearKnotPointConstraint(x -> [norm(x) - 1.0], :x, traj)
+
+    # norm-based Jacobian/Hessian checks: atol > 0 paths
+    test_constraint(NLC, traj; test_equality = false, atol = 1e-3)
+
+    # norm-based checks with atol == 0: relative-tolerance paths
+    test_constraint(NLC, traj; test_equality = false, atol = 0.0, rtol = 1e-3)
+end
+
 end
