@@ -315,7 +315,7 @@ end
 @testitem "DirectTrajOptProblem — default Δt bounds injected when missing" setup =
     [DTOTestHelpers] begin
     N = 5
-    comps = (x = randn(4, N), u = randn(2, N), Δt = fill(0.1, N))
+    comps = (x = randn(4, N), u = randn(2, N), Δt = fill(0.1, 1, N))
     traj = NamedTrajectory(
         comps;
         controls = (:u, :Δt),
@@ -337,7 +337,7 @@ end
 @testitem "DirectTrajOptProblem — default Δt bounds with global components" setup =
     [DTOTestHelpers] begin
     N = 5
-    comps = (x = randn(4, N), u = randn(2, N), Δt = fill(0.1, N))
+    comps = (x = randn(4, N), u = randn(2, N), Δt = fill(0.1, 1, N))
     gcomps = (g = randn(2),)
     traj = NamedTrajectory(
         comps,
@@ -400,7 +400,7 @@ end
     # enforced) — one :t equality either way, now with the pinned payload.
     N = traj.N
     traj2 = NamedTrajectory(
-        (x = randn(4, N), u = randn(2, N), t = collect(0.1:0.1:(0.1N)), Δt = fill(0.1, N));
+        (x = randn(4, N), u = randn(2, N), t = collect(0.1:0.1:(0.1N)), Δt = fill(0.1, 1, N));
         controls = (:u, :Δt),
         timestep = :Δt,
         initial = (x = zeros(4), u = zeros(2), t = [0.0]),
