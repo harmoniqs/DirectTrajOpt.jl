@@ -318,7 +318,6 @@ end
     traj_before = deepcopy(prob.trajectory.data)
     solve!(prob; max_iter = 2, print_level = 0, verbose = false)
     @test prob.trajectory.data != traj_before
-end
 
 @testitem "coverage: remove_slack_variables! strips L1 slack components" setup =
     [DTOTestHelpers] begin
@@ -418,4 +417,5 @@ end
         result = DirectTrajOpt._solve_with_kwargs(prob, _OrphanOptions())
         @test isnothing(result)
     end
+end
 end

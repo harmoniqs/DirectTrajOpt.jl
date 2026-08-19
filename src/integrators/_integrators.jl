@@ -241,7 +241,6 @@ function test_integrator(
     return ∂f, ∂f_autodiff, μ∂²f, μ∂²f_autodiff
 end
 
-end
 
 @testitem "coverage: test_integrator globals + verbose diff paths" setup = [DTOTestHelpers] begin
     # a global-carrying trajectory exercises the global_data mutation/restore
@@ -259,4 +258,5 @@ end
 
     # the gauss_newton branch (masked comparison + its verbose printing)
     test_integrator(integ0, traj0; gauss_newton = true, show_hessian_diff = true)
+end
 end
