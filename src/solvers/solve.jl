@@ -324,9 +324,9 @@ end
     [DTOTestHelpers] begin
     N = 5
     traj = NamedTrajectory(
-        (x = randn(4, N), u = randn(2, N), s_u = abs.(randn(2, N)););
-        controls = :u,
-        timestep = 0.1,
+        (x = randn(4, N), u = randn(2, N), Δt = fill(0.1, 1, N), s_u = abs.(randn(2, N)));
+        controls = (:u, :Δt),
+        timestep = :Δt,
         bounds = (s_u = (-Inf, Inf),),
     )
     l1 = L1SlackConstraint(:u, :s_u, traj)
@@ -344,6 +344,8 @@ end
 
 @testitem "coverage: get_nonlinear_constraints integrator field branches" setup =
     [DTOTestHelpers] begin
+    using DirectTrajOpt: Solvers
+    const get_nonlinear_constraints = Solvers.get_nonlinear_constraints
     # x_name branch (BilinearIntegrator) is the standard path
     G, traj = bilinear_dynamics_and_trajectory()
     prob = DirectTrajOptProblem(
