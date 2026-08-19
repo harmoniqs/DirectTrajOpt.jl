@@ -384,3 +384,29 @@ end
     @test length(g_eq_cons_after) == 1
     @test g_eq_cons_after[1].values ≈ fill(0.5, g_dim)
 end
+
+@testitem "coverage: fix_global_variable! keeps unrelated constraints" setup =
+    [DTOTestHelpers] begin
+    _, traj = bilinear_dynamics_and_trajectory(add_global = true)
+
+    g_dim = length(traj.global_components[:g])
+    cons = AbstractConstraint[
+        GlobalBoundsConstraint(:g, 1.0),
+        BoundsConstraint(:u, 1:traj.N, 0.1),
+        EqualityConstraint(:u, [traj.N], [0.0, 0.0]),
+    ]
+
+    fix_global_variable!(cons, :g, zeros(g_dim))
+
+    # the :g bounds constraint was removed; the two trajectory-variable
+    # constraints survived the filter; the pinned global equality was
+    # appended (GlobalEqualityConstraint is a convenience constructor that
+    # returns an EqualityConstraint with is_global = true)
+    @test length(cons) == 3
+    @test !any(c -> c isa BoundsConstraint && c.is_global, cons)
+    @test count(c -> c isa BoundsConstraint && !c.is_global, cons) == 1
+    @test cons[end] isa EqualityConstraint
+    @test cons[end].is_global
+    @test cons[end].var_names == :g
+    @test cons[end].values == zeros(g_dim)
+end

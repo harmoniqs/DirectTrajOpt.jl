@@ -491,6 +491,8 @@ end
     @test occursin("Controls:  Δt", s_plain)
     # the default Δt bounds injection guarantees a BoundsConstraint even on a
     # minimal trajectory — "Constraints: (none)" is unreachable via construction
+    # (NamedTrajectories types `timestep` as a Symbol, so the injection always
+    # applies when the trajectory's own bounds lack the timestep)
     @test occursin("BoundsConstraint: \"bounds on Δt\"", s_plain)
     @test occursin("Dynamics (0 integrators)", s_plain)
 end
