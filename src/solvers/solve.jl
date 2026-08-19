@@ -322,7 +322,7 @@ end
 
 @testitem "coverage: remove_slack_variables! strips L1 slack components" setup =
     [DTOTestHelpers] begin
-    using DirectTrajOpt: remove_slack_variables!
+    using DirectTrajOpt.Solvers: remove_slack_variables!
     using DirectTrajOpt.Constraints: L1SlackConstraint
     N = 5
     traj = NamedTrajectory(
