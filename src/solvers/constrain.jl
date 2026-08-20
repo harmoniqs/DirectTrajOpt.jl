@@ -480,3 +480,72 @@ end
 
     @test traj_dist < 1e-4
 end
+
+@testitem "coverage: BoundsConstraint vector and tuple bound application" setup =
+    [DTOTestHelpers] begin
+    _, traj = bilinear_dynamics_and_trajectory(add_global = true)
+
+    n_vars = traj.dim * traj.N + traj.global_dim
+    g_dim = length(traj.global_components[:g])
+
+    function apply_to_fresh_optimizer(con)
+        opt = Ipopt.Optimizer()
+        vars = MOI.add_variables(opt, n_vars)
+        con(opt, vars, traj)
+        return opt
+    end
+
+    n_greater_than(opt) =
+        MOI.get(opt, MOI.NumberOfConstraints{MOI.VariableIndex,MOI.GreaterThan{Float64}}())
+    n_less_than(opt) =
+        MOI.get(opt, MOI.NumberOfConstraints{MOI.VariableIndex,MOI.LessThan{Float64}}())
+
+    # Vector{Float64} bounds on a global variable: symmetric [-b, b] per component
+    b = 0.1 .+ 0.01 .* collect(1:g_dim)
+    opt = apply_to_fresh_optimizer(GlobalBoundsConstraint(:g, b))
+    @test n_greater_than(opt) == g_dim
+    @test n_less_than(opt) == g_dim
+
+    # (lb, ub) tuple bounds on a global variable
+    lb = fill(-0.2, g_dim)
+    ub = fill(0.3, g_dim)
+    opt = apply_to_fresh_optimizer(GlobalBoundsConstraint(:g, (lb, ub)))
+    @test n_greater_than(opt) == g_dim
+    @test n_less_than(opt) == g_dim
+
+    # Vector{Float64} bounds on a trajectory variable (du has dim 2)
+    du_dim = traj.dims[:du]
+    opt = apply_to_fresh_optimizer(BoundsConstraint(:du, 1:traj.N, fill(0.4, du_dim)))
+    @test n_greater_than(opt) == du_dim * traj.N
+    @test n_less_than(opt) == du_dim * traj.N
+end
+
+@testitem "coverage: GlobalLinearConstraint skips feasible all-zero rows" setup =
+    [DTOTestHelpers] begin
+    using SparseArrays
+
+    _, traj = bilinear_dynamics_and_trajectory(add_global = true)
+
+    g_dim = length(traj.global_components[:g])
+    # Row 1 pins g[1] - g[2] = 0; row 2 is all zeros with 0 ∈ [lo, hi] —
+    # structurally feasible, so it is skipped (continue) rather than an error.
+    A = spzeros(2, g_dim)
+    A[1, 1] = 1.0
+    A[1, 2] = -1.0
+    con = GlobalLinearConstraint(:g, A, [0.0, -1.0], [0.0, 1.0])
+
+    # A mock optimizer: Ipopt's MOI wrapper does not implement
+    # NumberOfConstraints for affine-in-set constraints, and the functor only
+    # needs add_constraints.
+    opt = MOI.Utilities.MockOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+    )
+    vars = MOI.add_variables(opt, traj.dim * traj.N + traj.global_dim)
+    con(opt, vars, traj)
+
+    # Only the equality row was materialized (one affine-in-EqualTo constraint).
+    @test MOI.get(
+        opt,
+        MOI.NumberOfConstraints{MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64}}(),
+    ) == 1
+end

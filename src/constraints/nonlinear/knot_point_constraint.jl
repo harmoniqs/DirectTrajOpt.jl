@@ -311,14 +311,19 @@ end
 end
 
 @testitem "NonlinearKnotPointConstraint - single variable with vector syntax" begin
-    using DirectTrajOpt: CommonInterface
+    using DirectTrajOpt: CommonInterface, NonlinearKnotPointConstraint
+    using DirectTrajOpt: test_constraint
 
     include("../../../test/test_utils.jl")
 
     _, traj = bilinear_dynamics_and_trajectory()
 
-    # Test that [:u] syntax works the same as :u
-    g(a) = [norm(a) - 1.0]
+    # Test that [:u] syntax works the same as :u. The fixture is deliberately
+    # SMOOTH: the historical `norm(a) - 1.0` is kinky at zero, and a finite-
+    # difference Hessian across a kink is unstable — the test flaked on CI
+    # runners for exactly that reason (pre-existing; observed on main's own
+    # baseline run). The syntax-equivalence claim needs no kink.
+    g(a) = [sum(abs2, a) - 1.0]
 
     NLC1 = NonlinearKnotPointConstraint(g, :u, traj; equality = false)
     NLC2 = NonlinearKnotPointConstraint(g, [:u], traj; equality = false)
@@ -330,9 +335,9 @@ end
 
     @test δ1 ≈ δ2
 
-    # Test both with finite differences
-    test_constraint(NLC1, traj; atol = 1e-3)
-    test_constraint(NLC2, traj; atol = 1e-3)
+    # Test both with finite differences (smooth fixture: tight tolerances hold)
+    test_constraint(NLC1, traj; atol = 1e-6)
+    test_constraint(NLC2, traj; atol = 1e-6)
 end
 
 @testitem "NonlinearKnotPointConstraint - multiple variables concatenated" begin

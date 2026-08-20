@@ -67,3 +67,25 @@ end
     @test !isempty(stats.raw_status)
     @test stats.status isa MOI.TerminationStatusCode
 end
+
+@testitem "coverage: _solve_stats fallbacks when the optimizer lacks an API" setup =
+    [DTOTestHelpers] begin
+    using DirectTrajOpt.Solvers: _solve_stats
+
+    # A minimal stand-in optimizer: only TerminationStatus is supported, so
+    # the raw-status, objective-value, and barrier-iteration getters all
+    # take their fallbacks (string(status), NaN, -1).
+    struct _NoStatsOptimizer end
+    MOI.get(::_NoStatsOptimizer, ::MOI.TerminationStatus) = MOI.LOCALLY_SOLVED
+    MOI.get(::_NoStatsOptimizer, ::MOI.RawStatusString) = error("unsupported")
+    MOI.get(::_NoStatsOptimizer, ::MOI.ObjectiveValue) = error("unsupported")
+    MOI.get(::_NoStatsOptimizer, ::MOI.BarrierIterations) = error("unsupported")
+
+    stats = _solve_stats(_NoStatsOptimizer(), nothing, :mock, time())
+    @test stats.status === MOI.LOCALLY_SOLVED
+    @test stats.raw_status == string(MOI.LOCALLY_SOLVED)
+    @test isnan(stats.objective_value)
+    @test stats.iterations == -1
+    @test stats.solver === :mock
+    @test stats.solve_time_s >= 0
+end

@@ -532,3 +532,24 @@ end
     prob = DirectTrajOptProblem(traj, J, integrators)
     solve!(prob; max_iter = 5, eval_hessian = false, print_level = 0)
 end
+
+@testitem "solve! refine kwarg syncs adaptive_mu_globalization in _solve" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+    prob = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        [BilinearIntegrator(G, :x, :u, traj)],
+    )
+
+    # IpoptOptions computes adaptive_mu_globalization at construction; a
+    # refine= kwarg reaching _solve must re-sync the derived field.
+    opts = IpoptOptions(; max_iter = 3, print_level = 0)
+    @test opts.adaptive_mu_globalization == "obj-constr-filter"
+
+    stats = DirectTrajOpt._solve(prob, opts; refine = false, verbose = false)
+    @test stats isa Solvers.SolveStats
+    @test opts.refine == false
+    @test opts.adaptive_mu_globalization == "never-monotone-mode"
+end

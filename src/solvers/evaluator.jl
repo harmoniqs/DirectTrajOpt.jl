@@ -759,12 +759,6 @@ end
 
     ∂²ℒ_values = zeros(length(∂²ℒ_structure))
 
-    for (i, j) ∈ ∂²ℒ_structure
-        if j < i
-            println("Hessian index: (", i, ", ", j, ")")
-        end
-    end
-
     MOI.eval_hessian_lagrangian(evaluator, ∂²ℒ_values, traj.datavec, σ, μ)
 
     n_vars =
