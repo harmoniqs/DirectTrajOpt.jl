@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783028980131,
+  "lastUpdate": 1787332273708,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl benchmarks": [
@@ -995,6 +995,355 @@ window.BENCHMARK_DATA = {
           {
             "name": "evaluator_micro_bilinear_N51 / eval_objective [median]",
             "value": 200646,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "47730232+aarontrowbridge@users.noreply.github.com",
+            "name": "Aaron Trowbridge",
+            "username": "aarontrowbridge"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "110708d9aac3d6ba771c21830cd926a21021e47c",
+          "message": "fix(integrators): restore the multi-state BilinearIntegrator constructor (#139)\n\n* fix(integrators): restore the multi-state BilinearIntegrator constructor\n\nThe c9fdeb7 integrator refactor dropped the historical xs::AbstractVector{Symbol}\nconstructor, leaving every stacked-state caller — concretely Piccolo's exported\nVariationalKetIntegrator/VariationalUnitaryIntegrator (Piccolo #300) — with a\nMethodError on construction.\n\nAdditive restore following the codebase's existing multi-name convention\n(get_nonlinear_constraints already dispatches on x_names; Piccolissimo's\nexponential family carries it):\n\n- struct gains x_names::Vector{Symbol}; x_name::Symbol stays as the primary\n  (first) name, so existing field access keeps working\n- BilinearIntegrator(G, xs, u, traj) constructor; the single-name form\n  delegates via [x]\n- evaluate!/eval_jacobian/eval_hessian_of_lagrangian gather the stacked\n  state across all names (component ranges hoisted out of the ForwardDiff\n  closures)\n- get_nonlinear_constraints checks x_names before x_name so an integrator\n  carrying both fields sums the whole stack\n- test: split-component trajectory vs single-component reference — identical\n  residuals/Jacobians/Hessians on coinciding flat data + branch coverage\n\nFixes #138. Unblocks Piccolo #300 (variational integrator tests ride 2.0.3).\n\n* benchmark: pin HarmoniqsBenchmarks to v0.2.1 (DTO 0.10 compat + SolveStats)\n\nThe rev-pinned c38418c pin (compat DirectTrajOpt = 0.9 only) made both\nbenchmark CI suites unsatisfiable the moment DTO 0.10.0 hit General —\non this very PR, since its Project.toml declares 0.10. v0.2.1 widens\ncompat to 0.9/0.10 and wires the SolveStats return into\nbenchmark_solve!'s iteration counts (harmoniqs/HarmoniqsBenchmarks.jl#18).",
+          "timestamp": "2026-08-21T18:55:43+02:00",
+          "tree_id": "13b1ad8d8aa5ee30896b10f12cca37559439e2f0",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/110708d9aac3d6ba771c21830cd926a21021e47c"
+        },
+        "date": 1787332272223,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "bilinear_N51_ipopt [wall]",
+            "value": 1.491430216,
+            "unit": "s"
+          },
+          {
+            "name": "bilinear_N51_ipopt [alloc]",
+            "value": 4318456168,
+            "unit": "bytes"
+          },
+          {
+            "name": "bilinear_N51_ipopt [iters]",
+            "value": 57,
+            "unit": "iterations"
+          },
+          {
+            "name": "bilinear_N51_madnlp [wall]",
+            "value": 2.192956322,
+            "unit": "s"
+          },
+          {
+            "name": "bilinear_N51_madnlp [alloc]",
+            "value": 6699092272,
+            "unit": "bytes"
+          },
+          {
+            "name": "bilinear_N51_madnlp [iters]",
+            "value": 90,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N101_d16_ipopt [wall]",
+            "value": 7.520233163,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N101_d16_ipopt [alloc]",
+            "value": 31020145144,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N101_d16_ipopt [iters]",
+            "value": 6,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N101_d16_madnlp [wall]",
+            "value": 55.9360644,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N101_d16_madnlp [alloc]",
+            "value": 225313233696,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N101_d16_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N101_d4_ipopt [wall]",
+            "value": 0.534550853,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N101_d4_ipopt [alloc]",
+            "value": 1722050512,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N101_d4_ipopt [iters]",
+            "value": 11,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N101_d4_madnlp [wall]",
+            "value": 2.634601504,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N101_d4_madnlp [alloc]",
+            "value": 7053737504,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N101_d4_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N101_d8_ipopt [wall]",
+            "value": 8.056191018,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N101_d8_ipopt [alloc]",
+            "value": 32208683712,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N101_d8_ipopt [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N101_d8_madnlp [wall]",
+            "value": 7.868935594,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N101_d8_madnlp [alloc]",
+            "value": 31955404672,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N101_d8_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N25_d16_ipopt [wall]",
+            "value": 10.975087311,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N25_d16_ipopt [alloc]",
+            "value": 7626705880,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N25_d16_ipopt [iters]",
+            "value": 5,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N25_d16_madnlp [wall]",
+            "value": 13.446405945,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N25_d16_madnlp [alloc]",
+            "value": 51756327144,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N25_d16_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N25_d4_ipopt [wall]",
+            "value": 0.635619533,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N25_d4_ipopt [alloc]",
+            "value": 357071712,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N25_d4_ipopt [iters]",
+            "value": 0,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N25_d4_madnlp [wall]",
+            "value": 2.685467847,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N25_d4_madnlp [alloc]",
+            "value": 2222879024,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N25_d4_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N25_d8_ipopt [wall]",
+            "value": 0.007596808,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N25_d8_ipopt [alloc]",
+            "value": 22601216,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N25_d8_ipopt [iters]",
+            "value": 0,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N25_d8_madnlp [wall]",
+            "value": 2.056089522,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N25_d8_madnlp [alloc]",
+            "value": 8177629400,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N25_d8_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N51_d16_ipopt [wall]",
+            "value": 1.104382817,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N51_d16_ipopt [alloc]",
+            "value": 4518562000,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N51_d16_ipopt [iters]",
+            "value": 1,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N51_d16_madnlp [wall]",
+            "value": 31.140133855,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N51_d16_madnlp [alloc]",
+            "value": 112532564928,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N51_d16_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N51_d4_ipopt [wall]",
+            "value": 1.189099838,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N51_d4_ipopt [alloc]",
+            "value": 3434453600,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N51_d4_ipopt [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N51_d4_madnlp [wall]",
+            "value": 1.116697236,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N51_d4_madnlp [alloc]",
+            "value": 3321046616,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N51_d4_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N51_d8_ipopt [wall]",
+            "value": 2.296990438,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N51_d8_ipopt [alloc]",
+            "value": 9284381976,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N51_d8_ipopt [iters]",
+            "value": 28,
+            "unit": "iterations"
+          },
+          {
+            "name": "scaling_N51_d8_madnlp [wall]",
+            "value": 3.835441453,
+            "unit": "s"
+          },
+          {
+            "name": "scaling_N51_d8_madnlp [alloc]",
+            "value": 15722170280,
+            "unit": "bytes"
+          },
+          {
+            "name": "scaling_N51_d8_madnlp [iters]",
+            "value": 50,
+            "unit": "iterations"
+          },
+          {
+            "name": "evaluator_micro_bilinear_N51 / eval_constraint [median]",
+            "value": 850541,
+            "unit": "ns"
+          },
+          {
+            "name": "evaluator_micro_bilinear_N51 / eval_gradient [median]",
+            "value": 219500,
+            "unit": "ns"
+          },
+          {
+            "name": "evaluator_micro_bilinear_N51 / eval_hessian_lagrangian [median]",
+            "value": 16067535,
+            "unit": "ns"
+          },
+          {
+            "name": "evaluator_micro_bilinear_N51 / eval_jacobian [median]",
+            "value": 1590312,
+            "unit": "ns"
+          },
+          {
+            "name": "evaluator_micro_bilinear_N51 / eval_objective [median]",
+            "value": 189053,
             "unit": "ns"
           }
         ]
