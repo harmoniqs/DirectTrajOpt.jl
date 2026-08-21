@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785450099406,
+  "lastUpdate": 1787331698062,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl convergence": [
@@ -368,6 +368,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "xgate_convergence_madnlp_N51 [infidelity]",
             "value": 3.086420008457935e-14,
+            "unit": "infidelity"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "47730232+aarontrowbridge@users.noreply.github.com",
+            "name": "Aaron Trowbridge",
+            "username": "aarontrowbridge"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "110708d9aac3d6ba771c21830cd926a21021e47c",
+          "message": "fix(integrators): restore the multi-state BilinearIntegrator constructor (#139)\n\n* fix(integrators): restore the multi-state BilinearIntegrator constructor\n\nThe c9fdeb7 integrator refactor dropped the historical xs::AbstractVector{Symbol}\nconstructor, leaving every stacked-state caller — concretely Piccolo's exported\nVariationalKetIntegrator/VariationalUnitaryIntegrator (Piccolo #300) — with a\nMethodError on construction.\n\nAdditive restore following the codebase's existing multi-name convention\n(get_nonlinear_constraints already dispatches on x_names; Piccolissimo's\nexponential family carries it):\n\n- struct gains x_names::Vector{Symbol}; x_name::Symbol stays as the primary\n  (first) name, so existing field access keeps working\n- BilinearIntegrator(G, xs, u, traj) constructor; the single-name form\n  delegates via [x]\n- evaluate!/eval_jacobian/eval_hessian_of_lagrangian gather the stacked\n  state across all names (component ranges hoisted out of the ForwardDiff\n  closures)\n- get_nonlinear_constraints checks x_names before x_name so an integrator\n  carrying both fields sums the whole stack\n- test: split-component trajectory vs single-component reference — identical\n  residuals/Jacobians/Hessians on coinciding flat data + branch coverage\n\nFixes #138. Unblocks Piccolo #300 (variational integrator tests ride 2.0.3).\n\n* benchmark: pin HarmoniqsBenchmarks to v0.2.1 (DTO 0.10 compat + SolveStats)\n\nThe rev-pinned c38418c pin (compat DirectTrajOpt = 0.9 only) made both\nbenchmark CI suites unsatisfiable the moment DTO 0.10.0 hit General —\non this very PR, since its Project.toml declares 0.10. v0.2.1 widens\ncompat to 0.9/0.10 and wires the SolveStats return into\nbenchmark_solve!'s iteration counts (harmoniqs/HarmoniqsBenchmarks.jl#18).",
+          "timestamp": "2026-08-21T18:55:43+02:00",
+          "tree_id": "13b1ad8d8aa5ee30896b10f12cca37559439e2f0",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/110708d9aac3d6ba771c21830cd926a21021e47c"
+        },
+        "date": 1787331696374,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "xgate_convergence_ipopt_N51 [wall]",
+            "value": 20.002416119,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [alloc]",
+            "value": 4439579480,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [iters]",
+            "value": 20,
+            "unit": "iterations"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [infidelity]",
+            "value": 7.749301200732361e-11,
+            "unit": "infidelity"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [wall]",
+            "value": 19.270265802,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [alloc]",
+            "value": 4131373488,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [iters]",
+            "value": 23,
+            "unit": "iterations"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [infidelity]",
+            "value": 2.4343860260955807e-12,
             "unit": "infidelity"
           }
         ]
