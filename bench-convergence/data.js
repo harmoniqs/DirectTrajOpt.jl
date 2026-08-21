@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787331698062,
+  "lastUpdate": 1787333530628,
   "repoUrl": "https://github.com/harmoniqs/DirectTrajOpt.jl",
   "entries": {
     "DirectTrajOpt.jl convergence": [
@@ -432,6 +432,70 @@ window.BENCHMARK_DATA = {
           {
             "name": "xgate_convergence_madnlp_N51 [infidelity]",
             "value": 2.4343860260955807e-12,
+            "unit": "infidelity"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "47730232+aarontrowbridge@users.noreply.github.com",
+            "name": "Aaron Trowbridge",
+            "username": "aarontrowbridge"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "082c1462def9a809ed8fec979872abdfe54c5604",
+          "message": "release: v0.10.1 — multi-state BilinearIntegrator restore (#139) (#140)",
+          "timestamp": "2026-08-21T19:30:26+02:00",
+          "tree_id": "06d825b51ccbf1d029fa38dc6c616357c859dd9c",
+          "url": "https://github.com/harmoniqs/DirectTrajOpt.jl/commit/082c1462def9a809ed8fec979872abdfe54c5604"
+        },
+        "date": 1787333528650,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "xgate_convergence_ipopt_N51 [wall]",
+            "value": 16.579704121,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [alloc]",
+            "value": 4439531144,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [iters]",
+            "value": 20,
+            "unit": "iterations"
+          },
+          {
+            "name": "xgate_convergence_ipopt_N51 [infidelity]",
+            "value": 7.749323405192854e-11,
+            "unit": "infidelity"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [wall]",
+            "value": 15.358710286,
+            "unit": "s"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [alloc]",
+            "value": 4131379744,
+            "unit": "bytes"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [iters]",
+            "value": 23,
+            "unit": "iterations"
+          },
+          {
+            "name": "xgate_convergence_madnlp_N51 [infidelity]",
+            "value": 2.4334978476758806e-12,
             "unit": "infidelity"
           }
         ]
