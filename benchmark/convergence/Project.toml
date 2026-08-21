@@ -21,4 +21,4 @@ DirectTrajOpt = {path = "../.."}
 # convergence results are reproducible across CI re-runs. Bump this SHA
 # (and the local Manifest) when HBJ ships a new feature we want to use.
 # Drop in favor of `[compat]` once HBJ registers in General.
-HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "c38418cb7f932f2ff9a9c6c6eacf9a11ff1018c1"}
+HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "v0.2.1"}
