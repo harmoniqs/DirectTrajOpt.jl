@@ -33,13 +33,16 @@ function get_nonlinear_constraints(prob)
 
     # TODO: this is hacky as time integrator is being checked for, which should really bea linear constraint
     for integrator in prob.integrators
-        # Get the state dimension from the trajectory using the integrator's x_name, x_names, or t_name
-        if hasfield(typeof(integrator), :x_name)
-            dynamics_dim += prob.trajectory.dims[integrator.x_name]
-        elseif hasfield(typeof(integrator), :x_names)
+        # Get the state dimension from the trajectory using the integrator's x_names, x_name, or t_name
+        # (x_names first: an integrator carrying both — e.g. a multi-state
+        # BilinearIntegrator — must sum the whole stacked state, not just its
+        # primary name.)
+        if hasfield(typeof(integrator), :x_names)
             for x_name in integrator.x_names
                 dynamics_dim += prob.trajectory.dims[x_name]
             end
+        elseif hasfield(typeof(integrator), :x_name)
+            dynamics_dim += prob.trajectory.dims[integrator.x_name]
         elseif hasfield(typeof(integrator), :t_name)
             dynamics_dim += prob.trajectory.dims[integrator.t_name]
         else
@@ -348,7 +351,8 @@ end
     [DTOTestHelpers] begin
     using DirectTrajOpt: Solvers
     const get_nonlinear_constraints = Solvers.get_nonlinear_constraints
-    # x_name branch (BilinearIntegrator) is the standard path
+    # BilinearIntegrator carries both x_name and x_names; x_names wins (single-name:
+    # x_names = [x], same dimension)
     G, traj = bilinear_dynamics_and_trajectory()
     prob = DirectTrajOptProblem(
         traj,
@@ -357,6 +361,21 @@ end
     )
     nl = get_nonlinear_constraints(prob)
     @test !isempty(nl)
+
+    # x_name-only integrator: a minimal mock carrying only x_name
+    # (BilinearIntegrator now carries both fields and takes the x_names branch)
+    struct _XNameIntegrator <: DirectTrajOpt.Integrators.AbstractIntegrator
+        x_name::Symbol
+        dim::Int
+        x_dim::Int
+    end
+    x_only = _XNameIntegrator(:x, traj.dims[:x] * (traj.N - 1), traj.dims[:x])
+    prob_x = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        AbstractIntegrator[x_only],
+    )
+    @test !isempty(get_nonlinear_constraints(prob_x))
 
     # t_name-only integrator: a minimal mock carrying only t_name
     struct _TOnlyIntegrator <: DirectTrajOpt.Integrators.AbstractIntegrator
