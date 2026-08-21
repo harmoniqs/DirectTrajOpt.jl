@@ -9,6 +9,34 @@ Changes before v0.9.8 are not recorded here — see the
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-08-20
+
+### Added
+
+- **`solve!` returns `SolveStats`** — termination status (MOI code), raw status
+  string, NLP objective, IPM iterations, solve wall time, and solver symbol —
+  from both the Ipopt and MadNLP paths. Previously both paths ended in
+  `return nothing` after `MOI.optimize!`, discarding everything the solver
+  knew; callers re-parsed stdout or installed callbacks to learn whether a
+  solve converged. Additive in practice (code that ignored the return still
+  works). ([#133](https://github.com/harmoniqs/DirectTrajOpt.jl/pull/133))
+
+### Changed (behaviour — see the entry below for the headline)
+
+- Notation pass across docs and docstrings: "knot points" for N, "timestep"
+  reserved for the per-knot Δt. ([#131](https://github.com/harmoniqs/DirectTrajOpt.jl/pull/131))
+
+### Housekeeping
+
+- Coverage campaign: 86.45% → **99.45%** line coverage, 59 new tests; 2
+  unreachable debug branches removed; the historical vector-syntax
+  finite-difference test de-flaked at the root (its `norm(a) − 1.0` fixture
+  was kinky at zero — finite-difference Hessians across a kink are unstable;
+  replaced by a smooth fixture with a tighter tolerance).
+  ([#135](https://github.com/harmoniqs/DirectTrajOpt.jl/pull/135),
+  [#136](https://github.com/harmoniqs/DirectTrajOpt.jl/pull/136))
+
+
 ### Changed
 
 - **Behaviour change — `QuadraticRegularizer` now weights each knot by a single
