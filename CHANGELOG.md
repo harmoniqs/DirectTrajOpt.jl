@@ -9,6 +9,16 @@ Changes before v0.9.8 are not recorded here — see the
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-08-21
+
+### Added
+
+- **Multi-state `BilinearIntegrator` constructor restored** — `BilinearIntegrator(G, xs::AbstractVector{Symbol}, u, traj)` returns (fixes #138): the `c9fdeb7` integrator refactor had dropped the historical `xs` form, leaving every stacked-state caller — concretely Piccolo's exported `VariationalKetIntegrator`/`VariationalUnitaryIntegrator` (Piccolo #300) — with a `MethodError` on construction. The struct gains `x_names::Vector{Symbol}` (following the convention `get_nonlinear_constraints` and Piccolissimo's exponential family already use); `x_name::Symbol` remains as the primary (first) name so existing field access keeps working, and the single-state constructor delegates via `[x]`. `evaluate!`/`eval_jacobian`/`eval_hessian_of_lagrangian` gather the stacked state across all names; `get_nonlinear_constraints` checks `x_names` before `x_name` so an integrator carrying both fields sums the whole stack. Verified bit-equivalent against the single-component reference on coinciding flat data (residuals, Jacobians, Lagrangian Hessians).
+
+### Changed
+
+- Benchmark and convergence environments pin `HarmoniqsBenchmarks` at `v0.2.1` (was a stale rev whose `DirectTrajOpt = "0.9"` compat made both suites unsatisfiable once 0.10.0 reached General).
+
 ## [0.10.0] — 2026-08-20
 
 ### Added
