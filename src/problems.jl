@@ -89,10 +89,12 @@ function DirectTrajOptProblem(
         timestep_dim = traj.dims[timestep_var]
         new_bounds = merge(
             traj.bounds,
-            (; timestep_var => (
-                fill(dt_default_lo, timestep_dim),
-                fill(dt_default_hi, timestep_dim),
-            )),
+            (;
+                timestep_var => (
+                    fill(dt_default_lo, timestep_dim),
+                    fill(dt_default_hi, timestep_dim),
+                )
+            ),
         )
 
         # Extract component data
