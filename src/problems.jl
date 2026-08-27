@@ -63,24 +63,36 @@ function DirectTrajOptProblem(
     # Validate timestep bounds if trajectory has a timestep variable
     timestep_var = traj.timestep
     if timestep_var isa Symbol && !haskey(traj.bounds, timestep_var)
+        # Default window around the nominal step. Free per-knot timesteps with no
+        # duration anchor are ill-posed: the optimizer can spend the timestep
+        # freedom on the discretization error itself (measured: duration runaway
+        # and fidelity collapse on drift-dominated problems).
+        timestep_row = traj[timestep_var]
+        dt_nominal = first(timestep_row)
+        dt_default_lo = dt_nominal / 4
+        dt_default_hi = dt_nominal * 4
         @warn """
             Trajectory has timestep variable :$timestep_var but no bounds on it.
-            Adding default lower bound of 0 to prevent negative timesteps.
+            Applying default bounds around the nominal step: ($dt_default_lo, $dt_default_hi).
 
-            Recommended: Add explicit bounds when creating the trajectory:
-              NamedTrajectory(...; Δt_bounds=(min, max))
-            Example:
-              NamedTrajectory(qtraj, N; Δt_bounds=(1e-3, 0.5))
+            Free time is a modeling choice with three modes:
+              • uniform mesh, free duration — keep all timesteps equal to each other
+                and let their common value move (one scale degree of freedom);
+              • bounded per-knot free time — the recommended default, pass explicit
+                Δt_bounds to control the window;
+              • fixed time — pass equal bounds (lo == hi) to pin timesteps at data.
 
-            Or use timesteps_all_equal=true in problem options to fix timesteps.
+            Passing explicit bounds disables this default.
             """ maxlog=1
 
-        # Add lower bound of 0 to prevent negative timesteps
-        # Create new trajectory with updated bounds
+        # Create new trajectory with the default window applied
         timestep_dim = traj.dims[timestep_var]
         new_bounds = merge(
             traj.bounds,
-            (; timestep_var => (zeros(timestep_dim), fill(Inf, timestep_dim))),
+            (; timestep_var => (
+                fill(dt_default_lo, timestep_dim),
+                fill(dt_default_hi, timestep_dim),
+            )),
         )
 
         # Extract component data
@@ -328,10 +340,29 @@ end
     J = QuadraticRegularizer(:u, traj, 1.0)
     prob = DirectTrajOptProblem(traj, J, AbstractIntegrator[])
 
-    # a zero lower bound was added to prevent negative timesteps
+    # a default window around the nominal step is injected: unbounded free time is
+    # ill-posed (the optimizer can spend the timestep freedom on discretization error)
     @test haskey(prob.trajectory.bounds, :Δt)
-    @test prob.trajectory.bounds[:Δt][1] == [0.0]
-    @test prob.trajectory.bounds[:Δt][2] == [Inf]
+    @test prob.trajectory.bounds[:Δt][1] == [0.1 / 4]
+    @test prob.trajectory.bounds[:Δt][2] == [0.1 * 4]
+end
+
+@testitem "DirectTrajOptProblem — explicit Δt bounds win over defaults" setup =
+    [DTOTestHelpers] begin
+    N = 5
+    comps = (x = randn(4, N), u = randn(2, N), Δt = fill(0.1, 1, N))
+    traj = NamedTrajectory(
+        comps;
+        controls = (:u, :Δt),
+        timestep = :Δt,
+        bounds = (Δt = (0.05, 0.2),),
+        initial = (x = zeros(4), u = zeros(2)),
+        goal = (x = ones(4),),
+    )
+    J = QuadraticRegularizer(:u, traj, 1.0)
+    prob = DirectTrajOptProblem(traj, J, AbstractIntegrator[])
+    @test prob.trajectory.bounds[:Δt][1] == [0.05]
+    @test prob.trajectory.bounds[:Δt][2] == [0.2]
 end
 
 @testitem "DirectTrajOptProblem — default Δt bounds with global components" setup =
@@ -354,7 +385,7 @@ end
     prob = DirectTrajOptProblem(traj, J, AbstractIntegrator[])
 
     @test haskey(prob.trajectory.bounds, :Δt)
-    @test prob.trajectory.bounds[:Δt][1] == [0.0]
+    @test prob.trajectory.bounds[:Δt][1] == [0.1 / 4]
     # globals survive the bounds-injection reconstruction
     @test prob.trajectory.global_dim == 2
     @test prob.trajectory.global_data ≈ traj.global_data
