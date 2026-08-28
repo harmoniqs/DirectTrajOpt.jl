@@ -60,10 +60,11 @@ Changes before v0.9.8 are not recorded here — see the
   against using them weakened, silently. Any hand-tuned `R` was therefore tuned
   against a grid-dependent quantity.
 
-  On a uniform grid the old value is reproduced exactly by passing `R * Δt`, but
-  problems with tuned regularisation weights should be re-tuned rather than
-  rescaled — the point of the fix is that the old quantity was not a quadrature
-  of anything.
+  On a uniform grid the old *value* is reproduced exactly by passing `R * Δt` —
+  though not the old `∂J/∂Δt`, so that is not a drop-in substitution when the
+  timestep is a decision variable. Problems with tuned regularisation weights
+  should be re-tuned rather than rescaled — the point of the fix is that the old
+  quantity was not a quadrature of anything.
 
   The value, gradient, full Hessian and Hessian sparsity structure were updated
   together. `∂²J/∂Δt²` is now identically zero and is no longer declared as a
@@ -73,5 +74,21 @@ Changes before v0.9.8 are not recorded here — see the
 
 ### Fixed
 
+- `QuadraticRegularizer`'s `hessian_structure` no longer over-declares the
+  control–control block. `R` is a vector of per-component weights, so `∂²J/∂v²` is
+  diagonal, but the full `d × d` block was declared — reserving `d(d-1)/2`
+  structural nonzeros per knot that can never be nonzero.
+
 - Corrected drifted comments on the `QuadraticRegularizer` Hessian blocks, which
   stated factors the adjacent code did not apply.
+
+### Internal
+
+- `QuadraticRegularizer`'s `gradient!`, `hessian_structure` and `get_full_hessian`
+  now guard the `traj.components[traj.timestep]` lookup behind
+  `traj.timestep isa Symbol`, as `LinearRegularizer` already did. This is
+  defensive only: `NamedTrajectory.timestep` is typed `Symbol` in the current
+  NamedTrajectories, so a fixed timestep is not currently representable and the
+  branch folds away. The `∂²J/∂v²` block is emitted either way — a fixed Δt would
+  still be a factor in the value — so, unlike `LinearRegularizer`, these methods
+  cannot simply return early.
