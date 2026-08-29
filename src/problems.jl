@@ -62,7 +62,23 @@ function DirectTrajOptProblem(
 )
     # Validate timestep bounds if trajectory has a timestep variable
     timestep_var = traj.timestep
-    if timestep_var isa Symbol && !haskey(traj.bounds, timestep_var)
+    if traj.warp !== nothing
+        # Phase 1b (DTO#149): under a warp the timestep rows are DERIVED — the
+        # auto Δt ≥ 0 injection is structurally meaningless (it would also
+        # silently drop the warp by rebuilding the trajectory without it).
+        # Refuse to run it, with a pointer to the warp parameterization.
+        if timestep_var isa Symbol && !haskey(traj.bounds, timestep_var)
+            @info """
+                Time warp present: the timestep component :$timestep_var is DERIVED \
+                from the warp (NamedTrajectories#161), so the auto Δt ≥ 0 bound is \
+                skipped — it is never decision data, and the warp's monotonicity \
+                (validated at construction) keeps every derived Δt positive. \
+                Bound the warp parameter(s) instead — e.g. \
+                WarpParamBoundsConstraint(lo, hi) on the duration variable T \
+                (DirectTrajOpt#149).
+                """ maxlog = 1
+        end
+    elseif timestep_var isa Symbol && !haskey(traj.bounds, timestep_var)
         @warn """
             Trajectory has timestep variable :$timestep_var but no bounds on it.
             Adding default lower bound of 0 to prevent negative timesteps.
@@ -118,7 +134,100 @@ function DirectTrajOptProblem(
     traj_constraints = get_trajectory_constraints(traj)
     # Convert to AbstractConstraint vector to allow mixed types
     all_constraints = AbstractConstraint[constraints..., traj_constraints...]
+    traj.warp !== nothing &&
+        _assert_warp_compatible(traj, obj, integrators, all_constraints)
     return DirectTrajOptProblem(traj, obj, integrators, all_constraints)
+end
+
+"""
+    _assert_warp_compatible(traj, obj, integrators, constraints)
+
+Phase 1b (DTO#149) refusal pass: under a time warp the timestep rows are DERIVED
+(NeverTrajectories#161 — never decision data), so the per-knot time machinery of the
+free-Δt formulation is structurally meaningless. Refuse at construction, with pointer
+messages naming the warp-parameterization replacement.
+"""
+function _assert_warp_compatible(
+    traj::NamedTrajectory,
+    obj::AbstractObjective,
+    integrators::Vector{<:AbstractIntegrator},
+    constraints::Vector{<:AbstractConstraint},
+)
+    traj.warp === nothing && return
+    dt_name = traj.timestep
+    _resolves_to_timestep(name::Symbol) = name == :Δt || name == dt_name
+
+    for c in constraints
+        if c isa TimeConsistencyConstraint
+            throw(
+                ArgumentError(
+                    "TimeConsistencyConstraint is obsolete under a time warp: the timestep " *
+                    "rows are derived from the warp (NamedTrajectories#161), so " *
+                    "tₖ₊₁ = tₖ + Δtₖ holds by construction. Drop the constraint — physical " *
+                    "knot times are knot_times(traj.warp, traj.N). (DirectTrajOpt#149)",
+                ),
+            )
+        elseif c isa AllEqualConstraint && _resolves_to_timestep(c.var_name)
+            throw(
+                ArgumentError(
+                    "TimeStepsAllEqualConstraint (AllEqualConstraint on :$(c.var_name)) is " *
+                    "obsolete under a time warp: the uniform mesh is already built into the " *
+                    "warp lattice, and free duration is the single warp parameter T. Remove " *
+                    "the constraint and bound T instead (WarpParamBoundsConstraint). " *
+                    "(DirectTrajOpt#149)",
+                ),
+            )
+        elseif c isa TotalConstraint && _resolves_to_timestep(c.var_name)
+            throw(
+                ArgumentError(
+                    "TotalConstraint on the timestep is obsolete under a time warp: the " *
+                    "total duration IS the warp parameter T (never decision data per knot). " *
+                    "Pin T via WarpParamBoundsConstraint with lo == hi. (DirectTrajOpt#149)",
+                ),
+            )
+        elseif c isa SymmetryConstraint && c.include_timestep
+            throw(
+                ArgumentError(
+                    "SymmetryConstraint(include_timestep = true) is obsolete under a time " *
+                    "warp: the derived timestep is one lattice quantity, not per-knot " *
+                    "decision data. (DirectTrajOpt#149)",
+                ),
+            )
+        elseif (c isa BoundsConstraint || c isa EqualityConstraint) &&
+               _resolves_to_timestep(c.var_names)
+            throw(
+                ArgumentError(
+                    "bounds/initial/final on the derived timestep component :$dt_name are " *
+                    "meaningless under a time warp — Δt is never decision data. The warp's " *
+                    "monotonicity enforces Δt > 0; bound the warp parameter(s) instead " *
+                    "(WarpParamBoundsConstraint). (DirectTrajOpt#149)",
+                ),
+            )
+        elseif c isa NonlinearKnotPointConstraint && dt_name in c.var_names
+            throw(
+                ArgumentError(
+                    "nonlinear constraint on the derived timestep :$dt_name is meaningless " *
+                    "under a time warp — it has no packed decision column. (DirectTrajOpt#149)",
+                ),
+            )
+        end
+    end
+
+    # objectives that read the derived timestep as a variable
+    sub_objs = obj isa CompositeObjective ? obj.objectives : [obj]
+    for o in sub_objs
+        if (o isa KnotPointObjective || o isa GlobalKnotPointObjective) &&
+           dt_name in o.var_names
+            throw(
+                ArgumentError(
+                    "objective on the derived timestep :$dt_name is meaningless under a " *
+                    "time warp — it has no packed decision column. Use " *
+                    "MinimumTimeObjective (D·T under a warp). (DirectTrajOpt#149)",
+                ),
+            )
+        end
+    end
+    return nothing
 end
 
 function DirectTrajOptProblem(
@@ -495,6 +604,107 @@ end
     # applies when the trajectory's own bounds lack the timestep)
     @test occursin("BoundsConstraint: \"bounds on Δt\"", s_plain)
     @test occursin("Dynamics (0 integrators)", s_plain)
+end
+
+# ============================================================================ #
+# Phase 1b (DTO#149): obsolete time machinery refuses under a warp
+# ============================================================================ #
+
+@testitem "obsolete time machinery refuses under a time warp (pointer messages)" begin
+    include("../test/test_utils.jl")
+    using NamedTrajectories
+    using Logging
+    using Test
+
+    traj = warped_derivative_trajectory(N = 6, T = 1.0)
+    D = DerivativeIntegrator(:u, :du, traj)
+    J = QuadraticRegularizer(:u, traj, 1.0)
+
+    # TimeStepsAllEqualConstraint: the uniform mesh is built into the warp lattice
+    @test_throws ArgumentError DirectTrajOptProblem(
+        traj,
+        J,
+        [D];
+        constraints = AbstractConstraint[TimeStepsAllEqualConstraint()],
+    )
+
+    # TimeConsistencyConstraint, user-supplied
+    @test_throws ArgumentError DirectTrajOptProblem(
+        traj,
+        J,
+        [D];
+        constraints = AbstractConstraint[TimeConsistencyConstraint()],
+    )
+
+    # TimeConsistencyConstraint, auto-added because a :t component rides along
+    traj_t = NamedTrajectory(
+        (
+            x = randn(2, 6),
+            u = randn(1, 6),
+            t = collect(range(0, 1.0, length = 6)),
+            Δt = fill(0.2, 1, 6),
+        );
+        controls = (:u,),
+        timestep = :Δt,
+        warp = GlobalScale(1.0),
+    )
+    @test_throws ArgumentError DirectTrajOptProblem(
+        traj_t,
+        QuadraticRegularizer(:u, traj_t, 1.0),
+        AbstractIntegrator[],
+    )
+
+    # explicit bounds on the derived timestep: meaningless, refused with a pointer
+    traj_b = NamedTrajectory(
+        (x = randn(2, 6), u = randn(1, 6), Δt = fill(0.2, 1, 6));
+        controls = (:u,),
+        timestep = :Δt,
+        warp = GlobalScale(1.0),
+        bounds = (Δt = (0.01, 0.5),),
+    )
+    @test_throws ArgumentError DirectTrajOptProblem(
+        traj_b,
+        QuadraticRegularizer(:u, traj_b, 1.0),
+        [D],
+    )
+
+    # the auto Δt ≥ 0 injection refuses to run (and must NOT silently drop the
+    # warp by rebuilding the trajectory without it) — pointer message, warp kept
+    logs = Test.TestLogger()
+    prob = with_logger(logs) do
+        DirectTrajOptProblem(traj, J, [D])
+    end
+    @test prob.trajectory.warp === traj.warp
+    @test !haskey(prob.trajectory.bounds, :Δt)
+    @test any(logs.logs) do rec
+        rec.level == Logging.Info && occursin(r"warp|derived"i, rec.message)
+    end
+
+    # and the refusal messages carry the pointer to the warp parameterization
+    err = try
+        DirectTrajOptProblem(
+            traj,
+            J,
+            [D];
+            constraints = AbstractConstraint[TimeStepsAllEqualConstraint()],
+        )
+        nothing
+    catch e
+        e
+    end
+    @test err isa ArgumentError
+    @test occursin(r"warp"i, sprint(showerror, err))
+end
+
+@testitem "Bilinear-family integrators refuse warp trajectories (demotion arc)" begin
+    include("../test/test_utils.jl")
+    using NamedTrajectories
+    using Test
+
+    traj = warped_derivative_trajectory(N = 6, T = 1.0)
+    G(u) = [0.0 1.0; -0.1 0.0] + u[1] * [0.0 0.0; 0.1 0.0]
+
+    @test_throws ArgumentError BilinearIntegrator(G, :x, :u, traj)
 end
 
 end
