@@ -33,11 +33,7 @@ function DirectTrajOpt._solve(
     # on Julia 1.12 `kwargs` is a `Base.Pairs` — property access throws.)
     eval_hessian = get(kwargs, :eval_hessian, nothing)
     if eval_hessian !== nothing
-        setfield!(
-            options,
-            :hessian_approximation,
-            eval_hessian ? "exact" : "compact_lbfgs",
-        )
+        setfield!(options, :hessian_approximation, eval_hessian ? "exact" : "compact_lbfgs")
     end
 
     # Instantiate MadNLP.Optimizer <: MOI.AbstractOptimizer
