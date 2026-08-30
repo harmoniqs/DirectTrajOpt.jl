@@ -547,3 +547,19 @@ end
     @test opts.refine == false
     @test opts.adaptive_mu_globalization == "never-monotone-mode"
 end
+
+@testitem "solve! kwarg application warns loudly on unmatched options (Ipopt convention)" setup=[
+    DTOTestHelpers,
+] begin
+    prob, _ = make_standard_prob()
+    # The loud-error convention at ipopt_solver/solver.jl:18 is the contract the
+    # option-mapping enumeration leans on (zero silent drops) — lock it.
+    @test_logs (:warn, r"Unknown solver option: bogus_option_xyz") match_mode = :any begin
+        solve!(
+            prob;
+            options = IpoptOptions(max_iter = 3, print_level = 0),
+            verbose = false,
+            bogus_option_xyz = 1,
+        )
+    end
+end
