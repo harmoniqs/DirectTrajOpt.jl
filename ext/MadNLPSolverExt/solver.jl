@@ -17,25 +17,26 @@ function DirectTrajOpt._solve(
     callback = nothing,
     kwargs...,
 )
-    # Apply kwargs to matching MadNLPOptions fields
+    # Apply kwargs to matching MadNLPOptions fields. Unmatched kwargs warn
+    # loudly (the ipopt_solver/solver.jl convention — zero silent drops);
+    # the MadNLP-native raw pass-through lives on `_solve_with_kwargs`.
     madnlp_fields = fieldnames(MadNLPOptions)
-    madnlp_kwargs = Dict{Symbol,Any}()
     for (k, v) in kwargs
         if k in madnlp_fields
             setfield!(options, k, v)
-        else
-            # @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
-            push!(madnlp_kwargs, Pair(k, v))
+        elseif k !== :eval_hessian
+            @warn "Unknown solver option: $k. Valid options: $(madnlp_fields)"
         end
     end
 
-    # Sync derived fields that depend on other fields.
-    if haskey(madnlp_kwargs, :eval_hessian)
-        # @warn "Manually specifying limited-memory option not yet implemented for MadNLP"
+    # Sync derived fields that depend on other fields. (Keyed reads only:
+    # on Julia 1.12 `kwargs` is a `Base.Pairs` — property access throws.)
+    eval_hessian = get(kwargs, :eval_hessian, nothing)
+    if eval_hessian !== nothing
         setfield!(
             options,
             :hessian_approximation,
-            pop!(madnlp_kwargs, :eval_hessian) ? "exact" : "compact_lbfgs",
+            eval_hessian ? "exact" : "compact_lbfgs",
         )
     end
 
@@ -52,12 +53,62 @@ function DirectTrajOpt._solve(
         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
     t_solve = time()
-    MOI.optimize!(optimizer)
+    try
+        MOI.optimize!(optimizer)
 
-    # TODO: Verify this is working as expected
-    update_trajectory!(prob, optimizer, variables)
+        # TODO: Verify this is working as expected
+        update_trajectory!(prob, optimizer, variables)
 
-    return Solvers._solve_stats(optimizer, variables, :madnlp, t_solve)
+        return Solvers._solve_stats(optimizer, variables, :madnlp, t_solve)
+    catch err
+        # Failure path: the benchmark/CI walls read ONE SolveStats contract —
+        # a thrown solve returns populated stats with a failure-class status
+        # instead of propagating. The trajectory is left as-is: no primal is
+        # guaranteed to exist. (Status-based failures — ITERATION_LIMIT and
+        # friends — return normally through `_solve_stats` above.)
+        @warn "MadNLP solve! failed; returning failure SolveStats" exception =
+            (err, catch_backtrace())
+        return _madnlp_failure_stats(optimizer, err, t_solve)
+    end
+end
+
+"""
+    _madnlp_failure_stats(optimizer, err, t_solve) -> Solvers.SolveStats
+
+Best-effort `SolveStats` from a FAILED MadNLP solve. A thrown solve leaves
+MadNLP's MOI `result` unset (`nothing`), so every result-backed MOI getter can
+throw — each read is guarded and falls back to a safe placeholder
+(`MOI.OTHER_ERROR`, the exception's message, `NaN`, `-1`).
+"""
+function _madnlp_failure_stats(optimizer, err, t_solve::Float64)
+    status = try
+        MOI.get(optimizer, MOI.TerminationStatus())
+    catch
+        MOI.OTHER_ERROR
+    end
+    raw = try
+        MOI.get(optimizer, MOI.RawStatusString())
+    catch
+        err isa Exception ? sprint(showerror, err) : string(status)
+    end
+    obj = try
+        Float64(MOI.get(optimizer, MOI.ObjectiveValue()))
+    catch
+        NaN
+    end
+    iters = try
+        Int(MOI.get(optimizer, MOI.BarrierIterations()))
+    catch
+        -1
+    end
+    return Solvers.SolveStats(;
+        status = status,
+        raw_status = raw,
+        objective_value = obj,
+        iterations = iters,
+        solve_time_s = time() - t_solve,
+        solver = :madnlp,
+    )
 end
 
 
@@ -394,4 +445,115 @@ end
     traj_dist = sqrt(sum(traj_dist)) / length(traj_dist)
 
     @test traj_dist < 1e-4
+end
+
+# ----------------------------------------------------------------------------
+# SolveStats contract on the MadNLP arm (C2 — spec-20260830-madnlp-first-flip):
+# populated on the success path AND both failure paths (status-based limit and
+# thrown), with the Ipopt arm's return convention.
+# ----------------------------------------------------------------------------
+
+@testitem "solve! returns populated SolveStats on the MadNLP arm (success path)" setup=[
+    DTOTestHelpers,
+] begin
+    using DirectTrajOpt.Solvers: SolveStats, solve_status_symbol
+
+    prob, _ = make_standard_prob()
+    stats = solve!(prob; options = MadNLPOptions(max_iter = 100), verbose = false)
+
+    @test stats isa SolveStats
+    @test stats.solver === :madnlp
+    @test stats.status ∈ (MOI.LOCALLY_SOLVED, MOI.ALMOST_LOCALLY_SOLVED)
+    @test solve_status_symbol(stats.status) === :solved
+    # iterations come from MadNLP's model counter (cnt.k, via MOI.BarrierIterations)
+    @test stats.iterations >= 1
+    @test isfinite(stats.objective_value)
+    @test stats.solve_time_s >= 0
+    @test !isempty(stats.raw_status)
+end
+
+@testitem "solve! returns failure-class SolveStats when the iteration limit binds (MadNLP)" setup=[
+    DTOTestHelpers,
+] begin
+    using DirectTrajOpt.Solvers: SolveStats, solve_status_symbol
+
+    prob, _ = make_standard_prob()
+    stats = solve!(prob; options = MadNLPOptions(max_iter = 1), verbose = false)
+
+    @test stats isa SolveStats
+    @test stats.solver === :madnlp
+    @test stats.status == MOI.ITERATION_LIMIT
+    @test solve_status_symbol(stats.status) === :limit
+    @test stats.iterations == 1
+    @test isfinite(stats.objective_value)
+    @test stats.solve_time_s >= 0
+    @test !isempty(stats.raw_status)
+end
+
+@testitem "solve! returns populated failure SolveStats when the solve throws (MadNLP)" setup=[
+    DTOTestHelpers,
+] begin
+    using DirectTrajOpt.Solvers: SolveStats, solve_status_symbol
+
+    mutable struct _ThrowingCallback <: DirectTrajOpt.AbstractIntermediateCallback
+        fired::Base.RefValue{Bool}
+    end
+    function (cb::_ThrowingCallback)(::AbstractVector, ::Integer)
+        cb.fired[] = true
+        error("callback exploded mid-solve")
+    end
+
+    cb = _ThrowingCallback(Ref(false))
+    prob, _ = make_standard_prob()
+    # MadNLP's default rethrow_error=true surfaces the callback error; solve!
+    # must convert it into populated stats instead of propagating.
+    stats = solve!(
+        prob;
+        options = MadNLPOptions(max_iter = 100, intermediate_callback = cb),
+        verbose = false,
+    )
+
+    @test cb.fired[]                       # the throw really happened inside MadNLP
+    @test stats isa SolveStats             # failure became stats, not a thrown-only path
+    @test stats.solver === :madnlp
+    @test stats.status == MOI.OTHER_ERROR  # MadNLP INTERNAL_ERROR → MOI fallback
+    @test solve_status_symbol(stats.status) === :error
+    @test occursin("callback exploded", stats.raw_status)
+    @test stats.solve_time_s >= 0
+end
+
+# ----------------------------------------------------------------------------
+# Loud kwarg application (zero silent drops — the ipopt_solver/solver.jl:18
+# convention, mirrored on the MadNLP arm).
+# ----------------------------------------------------------------------------
+
+@testitem "MadNLP solve! warns loudly on unknown kwargs" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    @test_logs (:warn, r"Unknown solver option: totally_fake_option") match_mode = :any begin
+        solve!(
+            prob;
+            options = MadNLPOptions(max_iter = 5),
+            verbose = false,
+            totally_fake_option = 42,
+        )
+    end
+end
+
+@testitem "MadNLP solve! does not warn for mapped-with-translation kwargs (eval_hessian)" setup=[
+    DTOTestHelpers,
+] begin
+    using Logging
+    prob, _ = make_standard_prob()
+    logs, _ = Test.collect_test_logs() do
+        solve!(
+            prob;
+            options = MadNLPOptions(max_iter = 5),
+            verbose = false,
+            eval_hessian = false,
+        )
+    end
+    @test !any(
+        l -> l.level == Logging.Warn && occursin("Unknown solver option", l.message),
+        logs,
+    )
 end
