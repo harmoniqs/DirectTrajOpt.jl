@@ -13,6 +13,8 @@ import Ipopt
 # import MadNLP
 import DirectTrajOpt
 
+using ..WarpPlumbing
+
 using TestItemRunner
 
 

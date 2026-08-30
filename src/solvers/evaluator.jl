@@ -118,8 +118,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
 
         # Build Jacobian structure from integrators
         t_jac = time()
-        ∂g =
-            spzeros(0, prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim)
+        ∂g = spzeros(0, WarpPlumbing.packed_length(prob.trajectory))
 
         for (i, integrator) in enumerate(prob.integrators)
             t_int = time()
@@ -151,8 +150,8 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         # Build Hessian structure from integrators
         t_hess = time()
         hessian = spzeros(
-            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
-            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
+            WarpPlumbing.packed_length(prob.trajectory),
+            WarpPlumbing.packed_length(prob.trajectory),
         )
 
         for (i, integrator) in enumerate(prob.integrators)
@@ -227,7 +226,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         jacobian_constraint_row_offsets = copy(constraint_offsets)
 
         # Pre-compute linear index maps for O(1) lookup (replaces Dict with array indexing)
-        n_vars = prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim
+        n_vars = WarpPlumbing.packed_length(prob.trajectory)
         jacobian_ncols = n_vars
         hessian_ncols = n_vars
 
@@ -472,12 +471,11 @@ The returned trajectory shares all structural metadata (components, dims,
 bounds, names, etc.) with `evaluator.trajectory` (= `prob.trajectory`).
 """
 @inline function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
-    n_traj = evaluator.trajectory.dim * evaluator.trajectory.N
-    copyto!(evaluator._cached_traj.datavec, 1, Z⃗, 1, n_traj)
-    n_global = evaluator.trajectory.global_dim
-    if n_global > 0
-        copyto!(evaluator._cached_traj.global_data, 1, Z⃗, n_traj + 1, n_global)
-    end
+    # NT's unpack! is the single packed-write seam: warp-free it is exactly the
+    # historical [datavec; global_data] copy; under a warp it writes the
+    # non-derived rows, rebuilds the warp from the trailing parameters, and
+    # re-derives the timestep rows.
+    unpack!(evaluator._cached_traj, Z⃗)
     return evaluator._cached_traj
 end
 
