@@ -24,7 +24,7 @@
 # ## Decision Variables
 
 # ### States: `x₁, x₂, ..., xₙ`
-# The **state** represents the configuration of your system at each time step.
+# The **state** represents the configuration of your system at each knot point.
 # - For a robot arm: joint angles and velocities
 # - For a spacecraft: position and velocity
 # - For a quantum system: state vector or unitary operator

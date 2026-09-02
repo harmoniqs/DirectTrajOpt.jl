@@ -1,3 +1,4 @@
+using Random
 using NamedTrajectories
 using SparseArrays
 using LinearAlgebra
@@ -89,12 +90,8 @@ function named_trajectory_type_1(; free_time = true)
             Δt = ([0.1], [0.30000000000000004]),
         )
     else
-        components = (
-            Ũ⃗ = data[1:8, :],
-            a = data[9:10, :],
-            da = data[11:12, :],
-            dda = data[13:14, :],
-        )
+        components =
+            (Ũ⃗ = data[1:8, :], a = data[9:10, :], da = data[11:12, :], dda = data[13:14, :])
         controls = (:dda,)
         timestep = 0.2
         bounds = (a = ([-1.0, -1.0], [1.0, 1.0]), dda = ([-1.0, -1.0], [1.0, 1.0]))
@@ -181,4 +178,29 @@ function bilinear_dynamics_and_trajectory(;
     end
 
     return G, traj
+end
+
+"""
+    warped_derivative_trajectory(; N=8, T=1.0, seed=nothing)
+
+A warp-carrying trajectory for the Phase 1b (DTO#149) tests: components
+`(x, u, du)` with the timestep derived from a `GlobalScale(T)` warp. The `u ↔ du`
+chain is what `DerivativeIntegrator` consumes — the surviving SmoothPulse chain.
+The passed Δt values are ignored (the warp rewrites the row at construction).
+"""
+function warped_derivative_trajectory(; N = 8, T = 1.0, seed = nothing)
+    if seed !== nothing
+        Random.seed!(seed)
+    end
+    return NamedTrajectory(
+        (
+            x = randn(2, N),
+            u = randn(1, N),
+            du = randn(1, N),
+            Δt = fill(T / (N - 1), 1, N),   # ignored — rewritten from the warp
+        );
+        controls = (:u, :du),
+        timestep = :Δt,
+        warp = GlobalScale(T),
+    )
 end

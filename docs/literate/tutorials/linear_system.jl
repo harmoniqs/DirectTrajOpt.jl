@@ -47,7 +47,7 @@ G = u -> G_drift + sum(u .* G_drives)
 # ## Step 2: Create the Trajectory
 
 # Time parameters
-N = 50# number of time steps
+N = 50# number of knot points
 Δt = 0.1        # time step size
 total_time = N * Δt  # 5 seconds
 
@@ -147,7 +147,7 @@ function verify_dynamics(x, u, Δt, G, k)
     return error
 end
 
-println("\nDynamics verification (error at selected time steps):")
+println("\nDynamics verification (error at selected knots):")
 for k in [1, 10, 25, 40, N-1]
     error = verify_dynamics(x_sol, u_sol, prob.trajectory.Δt, G, k)
     println("  k=$k: error = ", error)
@@ -161,7 +161,7 @@ println("\n" * "="^50)
 println("SOLUTION SUMMARY")
 println("="^50)
 
-println("\nState trajectory (first 10 and last 10 time steps):")
+println("\nState trajectory (first 10 and last 10 knots):")
 println("Time | x₁      | x₂")
 println("-"^25)
 for k in [1:10; (N-9):N]
@@ -169,7 +169,7 @@ for k in [1:10; (N-9):N]
     println(@sprintf("%.2f | %7.4f | %7.4f", t, x_sol[1, k], x_sol[2, k]))
 end
 
-println("\nControl trajectory (first 10 and last 10 time steps):")
+println("\nControl trajectory (first 10 and last 10 knots):")
 println("Time | u")
 println("-"^15)
 for k in [1:10; (N-9):N]
