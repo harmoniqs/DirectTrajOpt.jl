@@ -1,3 +1,4 @@
+using Random
 using NamedTrajectories
 using SparseArrays
 using LinearAlgebra
@@ -175,4 +176,29 @@ function bilinear_dynamics_and_trajectory(;
     end
 
     return G, traj
+end
+
+"""
+    warped_derivative_trajectory(; N=8, T=1.0, seed=nothing)
+
+A warp-carrying trajectory for the Phase 1b (DTO#149) tests: components
+`(x, u, du)` with the timestep derived from a `GlobalScale(T)` warp. The `u ↔ du`
+chain is what `DerivativeIntegrator` consumes — the surviving SmoothPulse chain.
+The passed Δt values are ignored (the warp rewrites the row at construction).
+"""
+function warped_derivative_trajectory(; N = 8, T = 1.0, seed = nothing)
+    if seed !== nothing
+        Random.seed!(seed)
+    end
+    return NamedTrajectory(
+        (
+            x = randn(2, N),
+            u = randn(1, N),
+            du = randn(1, N),
+            Δt = fill(T / (N - 1), 1, N),   # ignored — rewritten from the warp
+        );
+        controls = (:u, :du),
+        timestep = :Δt,
+        warp = GlobalScale(T),
+    )
 end

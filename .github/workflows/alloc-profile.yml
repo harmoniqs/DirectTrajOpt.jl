@@ -22,8 +22,10 @@ jobs:
     # with sample_rate — each Ipopt/MadNLP solve under sampling takes ~30-40
     # min on GH Actions runners even at max_iter=30. Two solves + startup =
     # ~75 min on Julia 1.11, but ~90+ min on Julia 1.12 (it overran a 90 min
-    # cap), so 120 min gives a real cushion on the slower runtime.
-    timeout-minutes: 120
+    # cap), so 120 min gave a real cushion on the slower runtime — until the
+    # NT [sources] float (PR #150): an untagged-NT cold precompile pushed cold
+    # runs past 120 min twice. 180 min covers cold-cache + both solves.
+    timeout-minutes: 180
     permissions:
       actions: write
       # contents: write so github-action-benchmark can auto-push the time-series

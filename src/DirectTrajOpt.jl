@@ -6,6 +6,11 @@ using Reexport
 include("common_interface.jl")
 @reexport using .CommonInterface
 
+# Packed-coordinate helpers for trajectories carrying a NamedTrajectories time warp
+# (NT#161). Included before the submodules — every consumer of the packed decision
+# vector routes through these; warp-free they return the historical values exactly.
+include("warp_plumbing.jl")
+
 include("constraints/_constraints.jl")
 using .Constraints
 # Re-export constraint types but not the interface functions (they come from CommonInterface)
