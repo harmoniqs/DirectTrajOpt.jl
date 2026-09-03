@@ -16,9 +16,10 @@ TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [sources]
+NamedTrajectories = {rev = "main", url = "https://github.com/harmoniqs/NamedTrajectories.jl.git"}
 DirectTrajOpt = {path = ".."}
 # HBJ not yet registered in General; pin to a specific commit so benchmark
 # results are reproducible. Pinned to the SHA carrying the allocation analyzer
 # (benchmark_memory! / report_alloc_profile / AllocProfileResult) the alloc
 # profile suite needs. Drop in favor of [compat] once HBJ registers in General.
-HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "c38418cb7f932f2ff9a9c6c6eacf9a11ff1018c1"}
+HarmoniqsBenchmarks = {url = "https://github.com/harmoniqs/HarmoniqsBenchmarks.jl", rev = "v0.2.1"}

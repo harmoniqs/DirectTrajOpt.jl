@@ -254,7 +254,7 @@ end
     function callback_rollout_fidelity_factory(problem::DirectTrajOptProblem, system::Any, fid_fn::Function, fidelities::Union{Nothing, Dict{Int32, <:Real}}=nothing; fid_thresh=nothing, freq=1)
 
 A callback factory returning a callback that computes the rollout fidelity associated with an intermediate trajectory via `fid_fn(problem.trajectory, system)`, once every `freq` iterations, and stops the solver in its tracks if `!(fid_thresh isa Nothing) && fid >= fid_thresh`.
-This is particularly useful for the early stages of a solve, when dynamics constraints are yet to be satisfied, during which time changes in the objective are a poor proxy for the true infidelity of the system at its final timestep.
+This is particularly useful for the early stages of a solve, when dynamics constraints are yet to be satisfied, during which time changes in the objective are a poor proxy for the true infidelity of the system at its final knot point.
 
 # Warnings:
 - This callback expects that it be called after `_callback_update_trajectory`
@@ -832,6 +832,57 @@ end
     @test raw_count[] > 0
     @test ic.count[] > 0
     @test raw_count[] == ic.count[]   # both fire once per IPM iteration
+end
+
+@testitem "callback_best_rollout_fidelity_factory freq gating and fidelity dips" setup=[
+    DTOTestHelpers,
+] begin
+    prob, _ = make_standard_prob()
+
+    # Fidelity sequence with a dip: 0.9, then 0.5 (worse), then slowly
+    # improving. The dip forces the insertion scan to walk past an incumbent
+    # it does not beat (completing the loop body without a break), and
+    # freq = 2 makes every other iteration return early.
+    call_count = Ref(0)
+    mock_fid_fn = (traj, sys) -> begin
+        call_count[] += 1
+        if call_count[] == 1
+            return 0.9
+        elseif call_count[] == 2
+            return 0.5
+        else
+            return 0.7 + 0.01 * call_count[]
+        end
+    end
+
+    trajectories = Dict{Int32,Any}()
+    callback = Callbacks.callback_factory(
+        Callbacks.callback_update_trajectory_factory(prob),
+        Callbacks.callback_best_rollout_fidelity_factory(
+            prob,
+            nothing,
+            mock_fid_fn,
+            trajectories;
+            max_trajectories = 3,
+            freq = 2,
+            fid_thresh = nothing,
+        ),
+        Callbacks.callback_stop_iteration_factory(12),
+    )
+
+    optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
+        prob,
+        IpoptOptions(; max_iter = 20, print_level = 0),
+        callback,
+    )
+    IpoptSolverExt.MOI.optimize!(optimizer)
+
+    # The first push plus at least one post-dip insertion landed.
+    @test 2 <= length(trajectories) <= 3
+    for (k, (fid, t)) in trajectories
+        @test fid isa Number
+        @test t isa NamedTrajectory
+    end
 end
 
 
