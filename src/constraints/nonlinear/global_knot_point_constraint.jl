@@ -21,7 +21,7 @@ For pre-allocated optimization, see Piccolissimo.OptimizedNonlinearGlobalKnotPoi
 - `times::Vector{Int}`: Time indices where constraint is applied
 - `equality::Bool`: If true, g(x, globals) = 0; if false, g(x, globals) ≤ 0
 - `params::Vector`: Parameters for each time index
-- `g_dim::Int`: Dimension of constraint output at each time step
+- `g_dim::Int`: Dimension of constraint output at each knot
 - `var_dim::Int`: Combined dimension of knot point variables
 - `global_dim::Int`: Combined dimension of global variables
 - `combined_dim::Int`: var_dim + global_dim
@@ -76,7 +76,7 @@ struct NonlinearGlobalKnotPointConstraint{F} <: AbstractNonlinearConstraint
         # Create test vector combining knot point and global data
         Z⃗ = vec(traj)
         x_slice_test = slice(1, x_comps, traj.dim)
-        offset_global_comps = traj.dim * traj.N .+ global_comps
+        offset_global_comps = WarpPlumbing.packed_globals_base(traj) .+ global_comps
         xg_test = vcat(Z⃗[x_slice_test], Z⃗[offset_global_comps])
 
         @assert g(xg_test, params[1]) isa AbstractVector{<:Real}
@@ -172,16 +172,16 @@ function CommonInterface.eval_jacobian(
     constraint::NonlinearGlobalKnotPointConstraint,
     traj::NamedTrajectory,
 )
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     ∂g_full = spzeros(constraint.dim, Z_dim)
 
     x_comps = vcat([traj.components[name] for name in constraint.var_names]...)
     global_comps =
         vcat([traj.global_components[name] for name in constraint.global_names]...)
-    offset_global_comps = traj.dim * traj.N .+ global_comps
+    offset_global_comps = WarpPlumbing.packed_globals_base(traj) .+ global_comps
 
     @views for (i, t) ∈ enumerate(constraint.times)
-        # Rows: constraint equations for this timestep
+        # Rows: constraint equations for this knot
         row_range = slice(i, constraint.g_dim)
 
         # Combine knot point and global data
@@ -194,7 +194,7 @@ function CommonInterface.eval_jacobian(
 
         # Map to full structure
         # First var_dim columns map to knot point variables at time t
-        col_range_knot = slice(t, x_comps, traj.dim)
+        col_range_knot = WarpPlumbing.packed_slice(traj, t, x_comps)
         ∂g_full[row_range, col_range_knot] = ∂g_compact[:, 1:constraint.var_dim]
 
         # Remaining columns map to global variables
@@ -214,13 +214,13 @@ function CommonInterface.eval_hessian_of_lagrangian(
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     μ∂²g_full = spzeros(Z_dim, Z_dim)
 
     x_comps = vcat([traj.components[name] for name in constraint.var_names]...)
     global_comps =
         vcat([traj.global_components[name] for name in constraint.global_names]...)
-    offset_global_comps = traj.dim * traj.N .+ global_comps
+    offset_global_comps = WarpPlumbing.packed_globals_base(traj) .+ global_comps
 
     @views for (i, t) ∈ enumerate(constraint.times)
         # Combine knot point and global data
@@ -233,7 +233,7 @@ function CommonInterface.eval_hessian_of_lagrangian(
             ForwardDiff.hessian(x -> μₖ' * constraint.g(x, constraint.params[i]), xg_data)
 
         # Map to full structure with accumulation
-        knot_range = slice(t, x_comps, traj.dim)
+        knot_range = WarpPlumbing.packed_slice(traj, t, x_comps)
 
         # Knot × Knot block
         μ∂²g_full[knot_range, knot_range] .+=
@@ -247,7 +247,7 @@ function CommonInterface.eval_hessian_of_lagrangian(
         μ∂²g_full[offset_global_comps, knot_range] .+=
             μ∂²g_compact[(constraint.var_dim+1):end, 1:constraint.var_dim]
 
-        # Global × Global block (accumulated across timesteps)
+        # Global × Global block (accumulated across knots)
         μ∂²g_full[offset_global_comps, offset_global_comps] .+=
             μ∂²g_compact[(constraint.var_dim+1):end, (constraint.var_dim+1):end]
     end

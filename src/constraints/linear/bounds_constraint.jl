@@ -175,7 +175,7 @@ end
     J += MinimumTimeObjective(traj)
 
     # Test bounds on only first component of state
-    # Avoid timestep 1 where x has an initial constraint from traj.initial
+    # Avoid knot 1 where x has an initial constraint from traj.initial
     x_bound = 0.8
     bounds_con = BoundsConstraint(:x, 2:traj.N, x_bound; subcomponents = 1:1)
 
