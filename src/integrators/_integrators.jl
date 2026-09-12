@@ -15,6 +15,7 @@ using Test
 
 # Import and extend the common interface
 using ..CommonInterface
+using ..WarpPlumbing
 import ..CommonInterface:
     evaluate!, jacobian_structure, jacobian!, hessian_structure, hessian_of_lagrangian
 import ..CommonInterface: eval_jacobian, eval_hessian_of_lagrangian
@@ -45,16 +46,29 @@ include("../../test/test_utils.jl")
 
 Return the sparsity pattern of the integrator's Jacobian as a sparse matrix with
 ones at every potentially nonzero entry. Used by the solver to pre-allocate structure.
+
+Under a time warp the columns are PACKED coordinates: per-knot non-derived rows only
+(the derived timestep is never decision data) plus the trailing warp-parameter column
+the defects chain through (`Δtₖ = Δtₖ(T)`). Without a warp this is the historical
+pattern, bit-identical.
 """
 function get_jacobian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
     N = traj.N
     x_dim = integrator.x_dim
-    z_dim = traj.dim
     F_dim = integrator.dim
-    Z_dim = z_dim * N + traj.global_dim
-    ∂F = spzeros(F_dim, Z_dim)
+    if traj.warp === nothing
+        z_dim = traj.dim
+        ∂F = spzeros(F_dim, z_dim * N + traj.global_dim)
+        for k = 1:(N-1)
+            ∂F[slice(k, x_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
+        end
+        return ∂F
+    end
+    ∂F = spzeros(F_dim, WarpPlumbing.packed_length(traj))
+    warp_cols = WarpPlumbing.warp_param_indices(traj)
     for k = 1:(N-1)
-        ∂F[slice(k, x_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
+        cols = vcat(WarpPlumbing.packed_two_knot_window(traj, k), warp_cols)
+        ∂F[slice(k, x_dim), cols] .= 1.0
     end
     return ∂F
 end
@@ -63,15 +77,25 @@ end
     get_hessian_of_lagrangian_structure(integrator::AbstractIntegrator, traj::NamedTrajectory)
 
 Return the sparsity pattern of the integrator's Hessian of the Lagrangian as a sparse
-matrix with ones at every potentially nonzero entry.
+matrix with ones at every potentially nonzero entry. Warp-aware exactly as
+[`get_jacobian_structure`](@ref) (packed two-knot windows + the warp-parameter block).
 """
 function get_hessian_of_lagrangian_structure(::AbstractIntegrator, traj::NamedTrajectory)
     N = traj.N
-    z_dim = traj.dim
-    Z_dim = z_dim * N + traj.global_dim
+    if traj.warp === nothing
+        z_dim = traj.dim
+        μ∂²F = spzeros(z_dim * N + traj.global_dim, z_dim * N + traj.global_dim)
+        for k = 1:(N-1)
+            μ∂²F[slice(k, 1:2z_dim, z_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
+        end
+        return μ∂²F
+    end
+    Z_dim = WarpPlumbing.packed_length(traj)
     μ∂²F = spzeros(Z_dim, Z_dim)
+    warp_cols = WarpPlumbing.warp_param_indices(traj)
     for k = 1:(N-1)
-        μ∂²F[slice(k, 1:2z_dim, z_dim), slice(k, 1:2z_dim, z_dim)] .= 1.0
+        cols = vcat(WarpPlumbing.packed_two_knot_window(traj, k), warp_cols)
+        μ∂²F[cols, cols] .= 1.0
     end
     return μ∂²F
 end
@@ -112,28 +136,18 @@ function test_integrator(
     # Constraint dimension - use integrator.dim directly
     constraint_dim = integrator.dim
 
-    # Get dimensions for splitting full vector into datavec and global_data
-    datavec_len = length(traj.datavec)
-    global_len = traj.global_dim
-
-    println(
-        "  [test_integrator] constraint_dim=$constraint_dim, datavec_len=$datavec_len, global_len=$global_len",
-    )
-
-    # Full optimization vector includes both datavec and global_data
+    # Packed decision vector (warp-aware: non-derived rows, globals, warp params)
     Z⃗_full = collect(vec(traj))
 
-    # Store original values for restoration
-    original_datavec = copy(traj.datavec)
-    original_global = global_len > 0 ? copy(traj.global_data) : nothing
+    # Restore point: the original trajectory data, re-applied via unpack! after
+    # each finite-difference probe (under a warp this also re-derives the rows).
+    Z⃗_original = copy(Z⃗_full)
 
     # Function to evaluate constraints via evaluate! - mutates traj in-place for efficiency
     f̂ = Z⃗ -> begin
-        # Mutate trajectory data in-place
-        traj.datavec .= @view Z⃗[1:datavec_len]
-        if global_len > 0
-            traj.global_data .= @view Z⃗[(datavec_len+1):end]
-        end
+        # single packed-write seam: warp-free [datavec; globals], warp-aware
+        # non-derived rows + warp rebuild + derived-row sync
+        unpack!(traj, Z⃗)
         δ = zeros(eltype(Z⃗), constraint_dim)
         evaluate!(δ, integrator, traj)
         return δ
@@ -143,10 +157,7 @@ function test_integrator(
     @test !all(iszero.(f̂(Z⃗_full)))
 
     # Restore original values
-    traj.datavec .= original_datavec
-    if global_len > 0
-        traj.global_data .= original_global
-    end
+    unpack!(traj, Z⃗_original)
 
     # testing jacobian
     println("  [test_integrator] Computing analytic Jacobian...")
@@ -157,10 +168,7 @@ function test_integrator(
     ∂f_autodiff = FiniteDiff.finite_difference_jacobian(f̂, Z⃗_full)
 
     # Restore original values after finite diff
-    traj.datavec .= original_datavec
-    if global_len > 0
-        traj.global_data .= original_global
-    end
+    unpack!(traj, Z⃗_original)
 
     if show_jacobian_diff
         println("\tDifference in jacobian")
@@ -191,10 +199,7 @@ function test_integrator(
     μ∂²f_autodiff = FiniteDiff.finite_difference_hessian(Z⃗ -> μ'f̂(Z⃗), Z⃗_full)
 
     # Restore original values after finite diff
-    traj.datavec .= original_datavec
-    if global_len > 0
-        traj.global_data .= original_global
-    end
+    unpack!(traj, Z⃗_original)
 
     if gauss_newton
         # Mask comparison to only GN components (state-parameter cross-terms)
