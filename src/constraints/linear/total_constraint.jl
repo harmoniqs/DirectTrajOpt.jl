@@ -14,7 +14,7 @@ Commonly used for trajectory duration constraints.
 - `label::String`: Constraint label
 
 # Note
-When applied to the trajectory's timestep variable, only the first N-1 timesteps are summed
+When applied to the trajectory's timestep variable, only the first N-1 Δt values are summed
 (the last knot point has no duration after it). For other variables, all N values are summed.
 """
 struct TotalConstraint <: AbstractLinearConstraint
@@ -31,7 +31,7 @@ Constraint that the total trajectory duration equals a target value.
 The trajectory's timestep variable is inferred when applied.
 
 # Note
-Duration is computed as the sum of the first N-1 timesteps, since the final knot point
+Duration is computed as the sum of the first N-1 Δt values, since the final knot point
 represents the end state and has no duration after it.
 """
 function DurationConstraint(value::Float64; label = "duration constraint of $value")

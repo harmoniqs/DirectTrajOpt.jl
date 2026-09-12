@@ -90,6 +90,12 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     _jacobian_ncols::Int
     _hessian_ncols::Int
 
+    # Reusable trajectory wrapper — datavec/global_data are rebound per callback
+    # to avoid reconstructing a NamedTrajectory on every MOI evaluation.
+    # Shares all structural metadata (components, dims, bounds, etc.) with
+    # `trajectory`; only the data pointers differ.
+    _cached_traj::NamedTrajectory
+
     function Evaluator(prob::DirectTrajOptProblem; eval_hessian = true, verbose = false)
         t_start = time()
 
@@ -112,8 +118,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
 
         # Build Jacobian structure from integrators
         t_jac = time()
-        ∂g =
-            spzeros(0, prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim)
+        ∂g = spzeros(0, WarpPlumbing.packed_length(prob.trajectory))
 
         for (i, integrator) in enumerate(prob.integrators)
             t_int = time()
@@ -145,8 +150,8 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         # Build Hessian structure from integrators
         t_hess = time()
         hessian = spzeros(
-            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
-            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
+            WarpPlumbing.packed_length(prob.trajectory),
+            WarpPlumbing.packed_length(prob.trajectory),
         )
 
         for (i, integrator) in enumerate(prob.integrators)
@@ -221,7 +226,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         jacobian_constraint_row_offsets = copy(constraint_offsets)
 
         # Pre-compute linear index maps for O(1) lookup (replaces Dict with array indexing)
-        n_vars = prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim
+        n_vars = WarpPlumbing.packed_length(prob.trajectory)
         jacobian_ncols = n_vars
         hessian_ncols = n_vars
 
@@ -246,6 +251,17 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
             println("      evaluator ready (total: $(round(time() - t_start, digits=3))s)")
         end
 
+        # Build a one-time cached trajectory wrapper. This is the ONLY call to
+        # the NamedTrajectory copy constructor during the entire solve. The
+        # datavec and global_data are owned copies (real Vector{Float64}),
+        # ensuring the backing-store contract is preserved. Subsequent
+        # _update_trajectory_cache! calls copyto! into these buffers.
+        _cached_traj = NamedTrajectory(
+            prob.trajectory;
+            datavec = copy(prob.trajectory.datavec),
+            global_data = copy(prob.trajectory.global_data),
+        )
+
         return new(
             prob.trajectory,
             prob.objective,
@@ -266,6 +282,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
             hessian_linear_map,
             jacobian_ncols,
             hessian_ncols,
+            _cached_traj,
         )
     end
 end
@@ -444,21 +461,22 @@ end
 """
     _update_trajectory_cache!(evaluator, Z⃗)
 
-Update the cached trajectory in-place with new data from Z⃗.
-Avoids repeated allocation of NamedTrajectory wrappers.
+Copy the solver's current iterate `Z⃗` into the pre-allocated cached
+trajectory's backing vectors. The `_cached_traj.datavec` and
+`_cached_traj.global_data` are owned `Vector{Float64}` buffers allocated
+once at Evaluator construction; this call overwrites their contents via
+`copyto!` without allocating or rebinding.
+
+The returned trajectory shares all structural metadata (components, dims,
+bounds, names, etc.) with `evaluator.trajectory` (= `prob.trajectory`).
 """
-@inline @views function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
-    n_traj = evaluator.trajectory.dim * evaluator.trajectory.N
-
-    # Create trajectory wrapper with views (minimal allocation)
-    # This is equivalent to the old approach but reuses structure
-    traj = NamedTrajectory(
-        evaluator.trajectory;
-        datavec = Z⃗[1:n_traj],
-        global_data = Z⃗[(n_traj+1):end],
-    )
-
-    return traj
+@inline function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
+    # NT's unpack! is the single packed-write seam: warp-free it is exactly the
+    # historical [datavec; global_data] copy; under a warp it writes the
+    # non-derived rows, rebuilds the warp from the trailing parameters, and
+    # re-derives the timestep rows.
+    unpack!(evaluator._cached_traj, Z⃗)
+    return evaluator._cached_traj
 end
 
 """
@@ -738,12 +756,6 @@ end
     ∂²ℒ_structure = MOI.hessian_lagrangian_structure(evaluator)
 
     ∂²ℒ_values = zeros(length(∂²ℒ_structure))
-
-    for (i, j) ∈ ∂²ℒ_structure
-        if j < i
-            println("Hessian index: (", i, ", ", j, ")")
-        end
-    end
 
     MOI.eval_hessian_lagrangian(evaluator, ∂²ℒ_values, traj.datavec, σ, μ)
 

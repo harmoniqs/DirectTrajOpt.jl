@@ -71,7 +71,7 @@ Cost functions with automatic differentiation support:
 
 ```julia
 # Built-in objectives
-QuadraticRegularizer(:u, traj, R)       # ½ R Σ ||u_k||²
+QuadraticRegularizer(:u, traj, R)       # ½ R Σ Δt_k ||u_k||²
 QuadraticObjective(:x, traj, Q, x_ref)  # ½ Q Σ ||x_k - x_ref||²
 MinimumTimeObjective(traj)              # Σ Δt_k
 
