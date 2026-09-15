@@ -1,6 +1,7 @@
 module Callbacks
 
 using Ipopt
+import MathOptInterface as MOI
 
 using ..DirectTrajOpt
 using NamedTrajectories
@@ -171,6 +172,40 @@ end
 
 
 """
+    function callback_intermediate_factory(inner::DirectTrajOpt.AbstractIntermediateCallback)
+
+Adapt a solver-agnostic `DirectTrajOpt.AbstractIntermediateCallback` to the
+Ipopt callback shape so it can be installed via `IpoptOptions.intermediate_callback`
+(or, composed by `callback_factory`, alongside the raw text-telemetry callback).
+
+Each IPM iteration the adapter reconstructs the **full** NLP primal vector from
+the optimizer's current iterate — the Ipopt analog of MadNLP's
+`MadNLP.variable(solver.x)` — and invokes `inner(primal, iter)`, forwarding the
+`Bool` return to the solver (`false` ⇒ user-requested termination). This is what
+lets the *same* callback object (e.g. Piccolo's `LivePulsePlotCallback`) run
+unchanged under both the Ipopt and MadNLP backends.
+"""
+function callback_intermediate_factory(inner::DirectTrajOpt.AbstractIntermediateCallback)
+    function _callback_intermediate(
+        optimizer::Ipopt.Optimizer,
+        optimizer_state::IpoptOptimizerState;
+        kwargs...,
+    )
+        # Cadence parity with MadNLP + the AbstractIntermediateCallback contract
+        # ("invoked only from the solver's main IPM loop; auxiliary phases do not
+        # fire it"): skip Ipopt's restoration phase (alg_mod == 1). MadNLP's
+        # adapter does the analogous `mode isa UserCallbackRegular || return true`,
+        # so without this guard the SAME callback would see extra restoration-phase
+        # iterates under Ipopt that it never sees under MadNLP.
+        optimizer_state.alg_mod == 0 || return true
+        primal =
+            MOI.get(optimizer, MOI.VariablePrimal(), optimizer.list_of_variable_indices)
+        return inner(primal, Int(optimizer_state.iter_count))::Bool
+    end
+end
+
+
+"""
     function callback_update_trajectory_history_factory(problem::DirectTrajOptProblem, trajectories::Vector{<:NamedTrajectory})
 
 A callback factory returning a callback that populates `trajectories` with a `deepcopy` of the `NamedTrajectory` associated with `problem` at each iteration.
@@ -219,7 +254,7 @@ end
     function callback_rollout_fidelity_factory(problem::DirectTrajOptProblem, system::Any, fid_fn::Function, fidelities::Union{Nothing, Dict{Int32, <:Real}}=nothing; fid_thresh=nothing, freq=1)
 
 A callback factory returning a callback that computes the rollout fidelity associated with an intermediate trajectory via `fid_fn(problem.trajectory, system)`, once every `freq` iterations, and stops the solver in its tracks if `!(fid_thresh isa Nothing) && fid >= fid_thresh`.
-This is particularly useful for the early stages of a solve, when dynamics constraints are yet to be satisfied, during which time changes in the objective are a poor proxy for the true infidelity of the system at its final timestep.
+This is particularly useful for the early stages of a solve, when dynamics constraints are yet to be satisfied, during which time changes in the objective are a poor proxy for the true infidelity of the system at its final knot point.
 
 # Warnings:
 - This callback expects that it be called after `_callback_update_trajectory`
@@ -659,6 +694,195 @@ end
     @test length(stats) > 0
     @test haskey(stats[1], :iter_count)
     @test haskey(stats[1], :obj_value)
+end
+
+
+# ----------------------------------------------------------------------------
+# AbstractIntermediateCallback wiring (0.2a) — Ipopt brought up to the same
+# per-iter contract the MadNLP backend already honors. The MadNLP testitems in
+# ext/MadNLPSolverExt/MadNLPSolverExt.jl are the parity oracle.
+# ----------------------------------------------------------------------------
+
+@testitem "Ipopt intermediate_callback (AbstractIntermediateCallback) fires per iter" setup=[
+    DTOTestHelpers,
+] begin
+    mutable struct _IpoptAgnosticCounter <: DirectTrajOpt.AbstractIntermediateCallback
+        count::Base.RefValue{Int}
+        last_primal_len::Base.RefValue{Int}
+    end
+    function (cb::_IpoptAgnosticCounter)(primal::AbstractVector, iter::Integer)
+        cb.count[] += 1
+        cb.last_primal_len[] = length(primal)
+        return true
+    end
+
+    cb = _IpoptAgnosticCounter(Ref(0), Ref(0))
+    prob, _ = make_standard_prob()
+    solve!(
+        prob;
+        options = IpoptOptions(max_iter = 5, intermediate_callback = cb, print_level = 0),
+        verbose = false,
+    )
+    @test cb.count[] > 0
+    # The callback receives the FULL NLP primal vector (datavec + globals).
+    @test cb.last_primal_len[] ==
+          length(prob.trajectory.datavec) + prob.trajectory.global_dim
+end
+
+@testitem "Ipopt intermediate_callback full-primal parity with MadNLP" setup=[
+    DTOTestHelpers,
+] begin
+    # The SAME callback object, installed unchanged under BOTH backends, must see
+    # the same full-primal shape — no backend-specific branching in the callback.
+    mutable struct _ParityProbe <: DirectTrajOpt.AbstractIntermediateCallback
+        lens::Vector{Int}
+    end
+    function (cb::_ParityProbe)(primal::AbstractVector, ::Integer)
+        push!(cb.lens, length(primal))
+        return true
+    end
+
+    # add_global=true so global_dim > 0 — this actually exercises the
+    # datavec|globals primal layout (not length(datavec) + 0).
+    prob_ipopt, _ = make_standard_prob(add_global = true)
+    prob_madnlp, _ = make_standard_prob(add_global = true)
+    full_dim = length(prob_ipopt.trajectory.datavec) + prob_ipopt.trajectory.global_dim
+    @test prob_ipopt.trajectory.global_dim > 0     # guard: the parity check is meaningful
+
+    cb = _ParityProbe(Int[])                       # the SAME object installed under BOTH backends
+    solve!(
+        prob_ipopt;
+        options = IpoptOptions(max_iter = 5, intermediate_callback = cb, print_level = 0),
+        verbose = false,
+    )
+    n_ipopt = length(cb.lens)
+    solve!(
+        prob_madnlp;
+        options = DirectTrajOpt.MadNLPOptions(max_iter = 5, intermediate_callback = cb),
+        verbose = false,
+    )
+
+    @test n_ipopt > 0                              # Ipopt fired the callback
+    @test length(cb.lens) > n_ipopt                # the same object also fired under MadNLP (≥1)
+    # Identical full-primal shape (datavec + globals) under BOTH backends — the
+    # same callback object, no backend-specific branching.
+    @test all(==(full_dim), cb.lens)
+end
+
+@testitem "Ipopt intermediate_callback early termination via return false" setup=[
+    DTOTestHelpers,
+] begin
+    mutable struct _IpoptStopper <: DirectTrajOpt.AbstractIntermediateCallback
+        max_iters::Int
+        count::Base.RefValue{Int}
+    end
+    function (cb::_IpoptStopper)(_, _)
+        cb.count[] += 1
+        return cb.count[] < cb.max_iters
+    end
+
+    cb = _IpoptStopper(3, Ref(0))
+    prob, _ = make_standard_prob()
+    traj_before = deepcopy(prob.trajectory.data)
+    solve!(
+        prob;
+        options = IpoptOptions(max_iter = 100, intermediate_callback = cb, print_level = 0),
+        verbose = false,
+    )
+    # Stopped well before max_iter=100…
+    @test cb.count[] <= 5
+    # …and the last solver progress is retained (valid terminal result).
+    @test prob.trajectory.data != traj_before
+end
+
+@testitem "Ipopt intermediate_callback rejects invalid type" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    bogus_cb(args...) = true   # bare Function — not an AbstractIntermediateCallback
+    @test_throws ArgumentError solve!(
+        prob;
+        options = IpoptOptions(max_iter = 5, intermediate_callback = bogus_cb),
+        verbose = false,
+    )
+end
+
+@testitem "Ipopt raw callback and intermediate_callback compose (both fire per iter)" setup=[
+    DTOTestHelpers,
+] begin
+    # The raw `callback` (text telemetry / checkpointing) and the agnostic
+    # intermediate_callback coexist — the case the amicode template relies on
+    # (AMICODE_ITER text stream + LivePulsePlotCallback PNGs together).
+    mutable struct _IpoptComposeCounter <: DirectTrajOpt.AbstractIntermediateCallback
+        count::Base.RefValue{Int}
+    end
+    (cb::_IpoptComposeCounter)(_, _) = (cb.count[] += 1; true)
+
+    raw_count = Ref(0)
+    raw_cb = Callbacks.callback_factory(function (optimizer, optimizer_state; kwargs...)
+        raw_count[] += 1
+        return true
+    end)
+    ic = _IpoptComposeCounter(Ref(0))
+    prob, _ = make_standard_prob()
+    solve!(
+        prob;
+        options = IpoptOptions(max_iter = 5, intermediate_callback = ic, print_level = 0),
+        callback = raw_cb,
+        verbose = false,
+    )
+    @test raw_count[] > 0
+    @test ic.count[] > 0
+    @test raw_count[] == ic.count[]   # both fire once per IPM iteration
+end
+
+@testitem "callback_best_rollout_fidelity_factory freq gating and fidelity dips" setup=[
+    DTOTestHelpers,
+] begin
+    prob, _ = make_standard_prob()
+
+    # Fidelity sequence with a dip: 0.9, then 0.5 (worse), then slowly
+    # improving. The dip forces the insertion scan to walk past an incumbent
+    # it does not beat (completing the loop body without a break), and
+    # freq = 2 makes every other iteration return early.
+    call_count = Ref(0)
+    mock_fid_fn = (traj, sys) -> begin
+        call_count[] += 1
+        if call_count[] == 1
+            return 0.9
+        elseif call_count[] == 2
+            return 0.5
+        else
+            return 0.7 + 0.01 * call_count[]
+        end
+    end
+
+    trajectories = Dict{Int32,Any}()
+    callback = Callbacks.callback_factory(
+        Callbacks.callback_update_trajectory_factory(prob),
+        Callbacks.callback_best_rollout_fidelity_factory(
+            prob,
+            nothing,
+            mock_fid_fn,
+            trajectories;
+            max_trajectories = 3,
+            freq = 2,
+            fid_thresh = nothing,
+        ),
+        Callbacks.callback_stop_iteration_factory(12),
+    )
+
+    optimizer, variables = IpoptSolverExt.get_optimizer_and_variables(
+        prob,
+        IpoptOptions(; max_iter = 20, print_level = 0),
+        callback,
+    )
+    IpoptSolverExt.MOI.optimize!(optimizer)
+
+    # The first push plus at least one post-dip insertion landed.
+    @test 2 <= length(trajectories) <= 3
+    for (k, (fid, t)) in trajectories
+        @test fid isa Number
+        @test t isa NamedTrajectory
+    end
 end
 
 
