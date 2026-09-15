@@ -17,14 +17,9 @@ function remove_slack_variables!(prob::DirectTrajOptProblem)
 end
 
 function get_num_variables(prob::DirectTrajOptProblem)
-    n_vars = prob.trajectory.dim * prob.trajectory.N
-
-    for global_vars_i ∈ values(prob.trajectory.global_data)
-        n_global_vars = length(global_vars_i)
-        n_vars += n_global_vars
-    end
-
-    return n_vars
+    # Packed length: without a warp the historical dim·N + globals; under a warp
+    # the derived timestep rows drop out and the warp parameters trail.
+    return length(prob.trajectory)
 end
 
 function get_nonlinear_constraints(prob)
