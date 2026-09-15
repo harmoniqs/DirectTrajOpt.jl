@@ -43,7 +43,7 @@ function EqualityConstraint(
     val::Union{Float64,Vector{Float64}};
     label = "equality constraint on trajectory variable $name",
 )
-    # Convert scalar to vector (will be repeated per time step)
+    # Convert scalar to vector (will be repeated per knot)
     values = val isa Float64 ? [val] : val
 
     return EqualityConstraint(
@@ -90,9 +90,9 @@ end
         label="per-timestep equality constraint on trajectory variable \$name"
     )
 
-Constructs a per-timestep equality constraint for a trajectory variable.
+Constructs an equality constraint that pins a trajectory variable at selected knot points.
 `val` must have size `(var_dim, length(ts))` — column `k` pins the variable
-at timestep `ts[k]`.
+at knot `ts[k]`.
 """
 function EqualityConstraint(
     name::Symbol,
@@ -101,7 +101,7 @@ function EqualityConstraint(
     label = "per-timestep equality constraint on trajectory variable $name",
 )
     @assert size(val, 2) == length(ts) (
-        "Matrix columns ($(size(val, 2))) must match number of timesteps ($(length(ts)))"
+        "Matrix columns ($(size(val, 2))) must match the number of knots ($(length(ts)))"
     )
     return EqualityConstraint(name, collect(ts), Matrix(val), false, label)
 end
@@ -111,16 +111,16 @@ export fix_trajectory_variable!
 """
     fix_trajectory_variable!(constraints, name, values; times)
 
-Pin a trajectory variable to per-timestep values using an `EqualityConstraint`.
+Pin a trajectory variable to values at selected knot points using an `EqualityConstraint`.
 Removes any existing `BoundsConstraint` on `name` to avoid MOI conflicts.
 
 # Arguments
 - `constraints::Vector{<:AbstractConstraint}`: mutable constraint list
 - `name::Symbol`: trajectory variable name to pin
-- `values::AbstractMatrix{Float64}`: size `(var_dim, N)` — column `k` pins timestep `k`
+- `values::AbstractMatrix{Float64}`: size `(var_dim, N)` — column `k` pins knot `k`
 
 # Keyword Arguments
-- `times::AbstractVector{Int}`: timesteps to pin (default: `1:size(values, 2)`)
+- `times::AbstractVector{Int}`: knots to pin (default: `1:size(values, 2)`)
 """
 function fix_trajectory_variable!(
     constraints::Vector{<:AbstractConstraint},
@@ -129,7 +129,7 @@ function fix_trajectory_variable!(
     times::AbstractVector{Int} = 1:size(values, 2),
 )
     # Remove existing BoundsConstraint and EqualityConstraint on this trajectory variable
-    # to avoid MOI conflicts (per-timestep pinning supersedes initial/final/bounds)
+    # to avoid MOI conflicts (per-knot pinning supersedes initial/final/bounds)
     filter!(constraints) do c
         if c isa BoundsConstraint && c.var_names == name && !c.is_global
             return false
@@ -138,7 +138,7 @@ function fix_trajectory_variable!(
         end
         return true
     end
-    # Add per-timestep equality constraint
+    # Add per-knot equality constraint
     push!(constraints, EqualityConstraint(name, times, values))
     return constraints
 end
@@ -221,7 +221,7 @@ end
     J += QuadraticRegularizer(:u, traj, 1.0)
     J += MinimumTimeObjective(traj)
 
-    # Test equality constraint with scalar value at a middle timestep
+    # Test equality constraint with scalar value at a middle knot
     # (avoiding conflict with traj.initial and traj.final)
     du_mid = 0.0
     mid_con = EqualityConstraint(:du, [5], du_mid)
@@ -276,7 +276,7 @@ end
     J += QuadraticRegularizer(:u, traj, 1.0)
     J += MinimumTimeObjective(traj)
 
-    # Pin du at timesteps 3:7 to per-timestep values
+    # Pin du at knots 3:7 to per-knot values
     du_dim = traj.dims[:du]
     pin_times = 3:7
     du_ref = randn(du_dim, length(pin_times))
@@ -313,14 +313,14 @@ end
     @test any(c -> c isa BoundsConstraint && c.var_names == :u, prob_orig.constraints)
     @test any(c -> c isa EqualityConstraint && c.var_names == :u, prob_orig.constraints)
 
-    # Fix u to per-timestep values (should remove bounds AND initial/final equality)
+    # Fix u to per-knot values (should remove bounds AND initial/final equality)
     u_ref = copy(traj[:u])
     constraints = deepcopy(prob_orig.constraints)
     fix_trajectory_variable!(constraints, :u, u_ref)
 
     # Old bounds and equality constraints on :u should be removed
     @test !any(c -> c isa BoundsConstraint && c.var_names == :u, constraints)
-    # Only the new per-timestep equality should remain
+    # Only the new per-knot equality should remain
     u_eq_cons = filter(c -> c isa EqualityConstraint && c.var_names == :u, constraints)
     @test length(u_eq_cons) == 1
     @test u_eq_cons[1].values isa Matrix{Float64}
@@ -383,4 +383,30 @@ end
     )
     @test length(g_eq_cons_after) == 1
     @test g_eq_cons_after[1].values ≈ fill(0.5, g_dim)
+end
+
+@testitem "coverage: fix_global_variable! keeps unrelated constraints" setup =
+    [DTOTestHelpers] begin
+    _, traj = bilinear_dynamics_and_trajectory(add_global = true)
+
+    g_dim = length(traj.global_components[:g])
+    cons = AbstractConstraint[
+        GlobalBoundsConstraint(:g, 1.0),
+        BoundsConstraint(:u, 1:traj.N, 0.1),
+        EqualityConstraint(:u, [traj.N], [0.0, 0.0]),
+    ]
+
+    fix_global_variable!(cons, :g, zeros(g_dim))
+
+    # the :g bounds constraint was removed; the two trajectory-variable
+    # constraints survived the filter; the pinned global equality was
+    # appended (GlobalEqualityConstraint is a convenience constructor that
+    # returns an EqualityConstraint with is_global = true)
+    @test length(cons) == 3
+    @test !any(c -> c isa BoundsConstraint && c.is_global, cons)
+    @test count(c -> c isa BoundsConstraint && !c.is_global, cons) == 1
+    @test cons[end] isa EqualityConstraint
+    @test cons[end].is_global
+    @test cons[end].var_names == :g
+    @test cons[end].values == zeros(g_dim)
 end
