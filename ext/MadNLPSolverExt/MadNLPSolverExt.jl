@@ -29,11 +29,160 @@ include("utils.jl")
     @test opts.max_iter == 3000
     @test opts.print_level == 3
     @test opts.hessian_approximation == "exact"
+    @test opts.intermediate_callback === nothing
+    @test opts.fixed_variable_treatment === nothing
 
     opts2 = DirectTrajOpt.MadNLPOptions(max_iter = 100, tol = 1e-6)
     @test opts2.max_iter == 100
     @test opts2.tol == 1e-6
     @test opts isa Solvers.AbstractSolverOptions
+end
+
+@testitem "MadNLP intermediate_callback (raw MadNLP callback) fires per iter" setup=[
+    DTOTestHelpers,
+] begin
+    import MadNLP
+
+    mutable struct _IterCounter <: MadNLP.AbstractUserCallback
+        count::Base.RefValue{Int}
+    end
+    (cb::_IterCounter)(::MadNLP.AbstractMadNLPSolver, _) = (cb.count[] += 1; true)
+
+    cb = _IterCounter(Ref(0))
+    prob, _ = make_standard_prob()
+    solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 5,
+            intermediate_callback = cb,
+            fixed_variable_treatment = MadNLP.RelaxBound,
+        ),
+        verbose = false,
+    )
+    @test cb.count[] > 0
+end
+
+@testitem "MadNLP intermediate_callback (AbstractIntermediateCallback) fires per iter" setup=[
+    DTOTestHelpers,
+] begin
+    import MadNLP
+
+    mutable struct _AgnosticCounter <: DirectTrajOpt.AbstractIntermediateCallback
+        count::Base.RefValue{Int}
+        last_primal_len::Base.RefValue{Int}
+    end
+    function (cb::_AgnosticCounter)(primal::AbstractVector, iter::Integer)
+        cb.count[] += 1
+        cb.last_primal_len[] = length(primal)
+        return true
+    end
+
+    cb = _AgnosticCounter(Ref(0), Ref(0))
+    prob, _ = make_standard_prob()
+    solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 5,
+            intermediate_callback = cb,
+            fixed_variable_treatment = MadNLP.RelaxBound,
+        ),
+        verbose = false,
+    )
+    @test cb.count[] > 0
+    # With RelaxBound, the primal vector matches the full NLP variable count.
+    @test cb.last_primal_len[] ==
+          length(prob.trajectory.datavec) + prob.trajectory.global_dim
+end
+
+@testitem "MadNLP intermediate_callback auto-couples RelaxBound" setup=[DTOTestHelpers] begin
+    import MadNLP
+
+    mutable struct _AutoCoupleProbe <: DirectTrajOpt.AbstractIntermediateCallback
+        last_primal_len::Base.RefValue{Int}
+    end
+    function (cb::_AutoCoupleProbe)(primal::AbstractVector, _)
+        cb.last_primal_len[] = length(primal)
+        return true
+    end
+
+    cb = _AutoCoupleProbe(Ref(0))
+    prob, _ = make_standard_prob()
+    # Note: NOT passing fixed_variable_treatment. set_options! should auto-set it.
+    solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(max_iter = 5, intermediate_callback = cb),
+        verbose = false,
+    )
+    # If RelaxBound auto-coupled correctly, the primal includes fixed variables.
+    @test cb.last_primal_len[] ==
+          length(prob.trajectory.datavec) + prob.trajectory.global_dim
+end
+
+@testitem "MadNLP auto-couple respects MadNLP's conditional default" setup=[DTOTestHelpers] begin
+    import MadNLP
+
+    mutable struct _PassthroughProbe <: DirectTrajOpt.AbstractIntermediateCallback
+        len::Base.RefValue{Int}
+    end
+    (cb::_PassthroughProbe)(primal, _) = (cb.len[] = length(primal); true)
+
+    cb = _PassthroughProbe(Ref(0))
+    prob, _ = make_standard_prob()
+    # With `kkt_system = SparseCondensedKKTSystem`, MadNLP's own conditional
+    # default for `fixed_variable_treatment` is already `RelaxBound`, so the
+    # auto-couple should not fire. Capture logs and assert our @info is absent.
+    logs, _ = Test.collect_test_logs() do
+        solve!(
+            prob;
+            options = DirectTrajOpt.MadNLPOptions(
+                max_iter = 5,
+                intermediate_callback = cb,
+                kkt_system = MadNLP.SparseCondensedKKTSystem,
+            ),
+            verbose = false,
+        )
+    end
+    @test !any(l -> occursin("Setting fixed_variable_treatment", l.message), logs)
+    # MadNLP's untouched conditional default still yields the full primal.
+    @test cb.len[] == length(prob.trajectory.datavec) + prob.trajectory.global_dim
+end
+
+@testitem "MadNLP intermediate_callback early termination via return false" setup=[
+    DTOTestHelpers,
+] begin
+    import MadNLP
+
+    mutable struct _Stopper <: DirectTrajOpt.AbstractIntermediateCallback
+        max_iters::Int
+        count::Base.RefValue{Int}
+    end
+    function (cb::_Stopper)(_, _)
+        cb.count[] += 1
+        return cb.count[] < cb.max_iters
+    end
+
+    cb = _Stopper(3, Ref(0))
+    prob, _ = make_standard_prob()
+    solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(max_iter = 100, intermediate_callback = cb),
+        verbose = false,
+    )
+    # Callback stopped the solve well before max_iter=100.
+    @test cb.count[] <= 5
+end
+
+@testitem "MadNLP intermediate_callback rejects invalid type" setup=[DTOTestHelpers] begin
+    prob, _ = make_standard_prob()
+    bogus_cb(args...) = true   # bare Function — neither abstract nor MadNLP subtype
+    @test_throws ArgumentError solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 5,
+            intermediate_callback = bogus_cb,
+        ),
+        verbose = false,
+    )
 end
 
 @testitem "MadNLP basic solve" setup=[DTOTestHelpers] begin
