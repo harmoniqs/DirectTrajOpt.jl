@@ -17,14 +17,9 @@ function remove_slack_variables!(prob::DirectTrajOptProblem)
 end
 
 function get_num_variables(prob::DirectTrajOptProblem)
-    n_vars = prob.trajectory.dim * prob.trajectory.N
-
-    for global_vars_i ∈ values(prob.trajectory.global_data)
-        n_global_vars = length(global_vars_i)
-        n_vars += n_global_vars
-    end
-
-    return n_vars
+    # Packed length: without a warp the historical dim·N + globals; under a warp
+    # the derived timestep rows drop out and the warp parameters trail.
+    return length(prob.trajectory)
 end
 
 function get_nonlinear_constraints(prob)
@@ -33,13 +28,16 @@ function get_nonlinear_constraints(prob)
 
     # TODO: this is hacky as time integrator is being checked for, which should really bea linear constraint
     for integrator in prob.integrators
-        # Get the state dimension from the trajectory using the integrator's x_name, x_names, or t_name
-        if hasfield(typeof(integrator), :x_name)
-            dynamics_dim += prob.trajectory.dims[integrator.x_name]
-        elseif hasfield(typeof(integrator), :x_names)
+        # Get the state dimension from the trajectory using the integrator's x_names, x_name, or t_name
+        # (x_names first: an integrator carrying both — e.g. a multi-state
+        # BilinearIntegrator — must sum the whole stacked state, not just its
+        # primary name.)
+        if hasfield(typeof(integrator), :x_names)
             for x_name in integrator.x_names
                 dynamics_dim += prob.trajectory.dims[x_name]
             end
+        elseif hasfield(typeof(integrator), :x_name)
+            dynamics_dim += prob.trajectory.dims[integrator.x_name]
         elseif hasfield(typeof(integrator), :t_name)
             dynamics_dim += prob.trajectory.dims[integrator.t_name]
         else
@@ -199,9 +197,13 @@ function DirectTrajOpt.solve!(
     callback = nothing,
     kwargs...,
 )
-    DirectTrajOpt._solve(prob, options; verbose = verbose, callback = callback, kwargs...)
-
-    return nothing
+    return DirectTrajOpt._solve(
+        prob,
+        options;
+        verbose = verbose,
+        callback = callback,
+        kwargs...,
+    )
 end
 
 
@@ -314,4 +316,124 @@ end
     traj_before = deepcopy(prob.trajectory.data)
     solve!(prob; max_iter = 2, print_level = 0, verbose = false)
     @test prob.trajectory.data != traj_before
+end
+
+@testitem "coverage: remove_slack_variables! strips L1 slack components" setup =
+    [DTOTestHelpers] begin
+    using DirectTrajOpt.Solvers: remove_slack_variables!
+    using DirectTrajOpt.Constraints: L1SlackConstraint
+    N = 5
+    traj = NamedTrajectory(
+        (x = randn(4, N), u = randn(2, N), Δt = fill(0.1, 1, N), s_u = abs.(randn(2, N)));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+        bounds = (s_u = (-Inf, Inf),),
+    )
+    l1 = L1SlackConstraint(:u, :s_u, traj)
+    prob = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        AbstractIntegrator[];
+        constraints = AbstractConstraint[l1],
+    )
+    @test :s_u ∈ prob.trajectory.names
+    remove_slack_variables!(prob)
+    @test :s_u ∉ prob.trajectory.names
+    @test :x ∈ prob.trajectory.names
+end
+
+@testitem "coverage: get_nonlinear_constraints integrator field branches" setup =
+    [DTOTestHelpers] begin
+    using DirectTrajOpt: Solvers
+    const get_nonlinear_constraints = Solvers.get_nonlinear_constraints
+    # BilinearIntegrator carries both x_name and x_names; x_names wins (single-name:
+    # x_names = [x], same dimension)
+    G, traj = bilinear_dynamics_and_trajectory()
+    prob = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        [BilinearIntegrator(G, :x, :u, traj)],
+    )
+    nl = get_nonlinear_constraints(prob)
+    @test !isempty(nl)
+
+    # x_name-only integrator: a minimal mock carrying only x_name
+    # (BilinearIntegrator now carries both fields and takes the x_names branch)
+    struct _XNameIntegrator <: DirectTrajOpt.Integrators.AbstractIntegrator
+        x_name::Symbol
+        dim::Int
+        x_dim::Int
+    end
+    x_only = _XNameIntegrator(:x, traj.dims[:x] * (traj.N - 1), traj.dims[:x])
+    prob_x = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        AbstractIntegrator[x_only],
+    )
+    @test !isempty(get_nonlinear_constraints(prob_x))
+
+    # t_name-only integrator: a minimal mock carrying only t_name
+    struct _TOnlyIntegrator <: DirectTrajOpt.Integrators.AbstractIntegrator
+        t_name::Symbol
+        dim::Int
+        x_dim::Int
+    end
+    t_only = _TOnlyIntegrator(:Δt, traj.dims[:Δt] * (traj.N - 1), traj.dims[:Δt])
+    prob_t = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        AbstractIntegrator[t_only],
+    )
+    @test !isempty(get_nonlinear_constraints(prob_t))
+
+    # x_names-only integrator: a minimal mock carrying only x_names
+    struct _XNamesIntegrator <: DirectTrajOpt.Integrators.AbstractIntegrator
+        x_names::Vector{Symbol}
+        dim::Int
+        x_dim::Int
+    end
+    xn = _XNamesIntegrator(
+        [:x, :u],
+        (traj.dims[:x] + traj.dims[:u]) * (traj.N - 1),
+        traj.dims[:x],
+    )
+    prob_xn = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        AbstractIntegrator[xn],
+    )
+    @test !isempty(get_nonlinear_constraints(prob_xn))
+
+    # no recognized field: the descriptive error
+    struct _BareIntegrator <: DirectTrajOpt.Integrators.AbstractIntegrator
+        dim::Int
+        x_dim::Int
+    end
+    bare = _BareIntegrator(1, 1)
+    prob_bare = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        AbstractIntegrator[bare],
+    )
+    @test_throws ErrorException get_nonlinear_constraints(prob_bare)
+end
+
+@testitem "coverage: _solve_with_kwargs error paths" setup = [DTOTestHelpers] begin
+    G, traj = bilinear_dynamics_and_trajectory()
+    prob = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        [BilinearIntegrator(G, :x, :u, traj)],
+    )
+    # an options object that is not an AbstractSolverOptions subtype
+    @test_logs (:error, r"Invalid options argument") match_mode = :any begin
+        result = DirectTrajOpt._solve_with_kwargs(prob, "not options")
+        @test isnothing(result)
+    end
+    # a valid AbstractSolverOptions subtype with no registered backend
+    struct _OrphanOptions <: DirectTrajOpt.Solvers.AbstractSolverOptions end
+    @test_logs (:error, r"No solver backend") match_mode = :any begin
+        result = DirectTrajOpt._solve_with_kwargs(prob, _OrphanOptions())
+        @test isnothing(result)
+    end
 end
