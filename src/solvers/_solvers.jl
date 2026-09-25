@@ -7,11 +7,14 @@ export _solve
 export _solve_with_kwargs
 export solve!
 export SolveStats
+export solve_status_symbol
 
 import MathOptInterface as MOI
 import Ipopt
 # import MadNLP
 import DirectTrajOpt
+
+using ..WarpPlumbing
 
 using TestItemRunner
 
