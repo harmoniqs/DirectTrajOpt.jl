@@ -20,6 +20,7 @@ export CustomKnotHVP
 export knot_hvp
 
 using ..Constraints
+using ..WarpPlumbing
 
 using TrajectoryIndexingUtils
 using NamedTrajectories
@@ -132,7 +133,7 @@ function hessian_structure(
     traj::NamedTrajectory;
     verbose::Bool = false,
 )
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     structure = spzeros(Z_dim, Z_dim)
     for (i, sub_obj) in enumerate(obj.objectives)
         t_sub = time()
@@ -147,7 +148,7 @@ function hessian_structure(
 end
 
 function get_full_hessian(obj::CompositeObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     ∂²L = spzeros(Z_dim, Z_dim)
     for (sub_obj, weight) in zip(obj.objectives, obj.weights)
         ∂²L .+= weight * get_full_hessian(sub_obj, traj)
@@ -220,12 +221,12 @@ function gradient!(∇::AbstractVector, ::NullObjective, ::NamedTrajectory)
 end
 
 function hessian_structure(::NullObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     return spzeros(Z_dim, Z_dim)
 end
 
 function get_full_hessian(::NullObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     return spzeros(Z_dim, Z_dim)
 end# ----------------------------------------------------------------------------- #
 #                        Test Objective Utility                                #
@@ -278,10 +279,17 @@ function test_objective(
     ∇ = zeros(Z_dim)
     gradient!(∇, obj, traj)
     ∇_fd = FiniteDiff.finite_difference_gradient(Z⃗_vec) do Z⃗
-        traj_data = Z⃗[1:(traj.dim*traj.N)]
-        global_data = Z⃗[(traj.dim*traj.N+1):end]
-        traj_wrapped =
-            NamedTrajectory(traj; datavec = traj_data, global_data = global_data)
+        if traj.warp === nothing
+            traj_data = Z⃗[1:(traj.dim*traj.N)]
+            global_data = Z⃗[(traj.dim*traj.N+1):end]
+            traj_wrapped =
+                NamedTrajectory(traj; datavec = traj_data, global_data = global_data)
+            return objective_value(obj, traj_wrapped)
+        end
+        # Warp present: the packed vector holds the non-derived rows only —
+        # write them, rebuild the warp, re-derive the timestep rows.
+        traj_wrapped = NamedTrajectory(traj)
+        unpack!(traj_wrapped, Z⃗)
         return objective_value(obj, traj_wrapped)
     end
 
@@ -310,10 +318,16 @@ function test_objective(
     ∂²J = get_full_hessian(obj, traj)
 
     ∂²J_fd = FiniteDiff.finite_difference_hessian(Z⃗_vec) do Z⃗
-        traj_data = Z⃗[1:(traj.dim*traj.N)]
-        global_data = Z⃗[(traj.dim*traj.N+1):end]
-        traj_wrapped =
-            NamedTrajectory(traj; datavec = traj_data, global_data = global_data)
+        if traj.warp === nothing
+            traj_data = Z⃗[1:(traj.dim*traj.N)]
+            global_data = Z⃗[(traj.dim*traj.N+1):end]
+            traj_wrapped =
+                NamedTrajectory(traj; datavec = traj_data, global_data = global_data)
+            return objective_value(obj, traj_wrapped)
+        end
+        # Warp present: see the gradient closure above.
+        traj_wrapped = NamedTrajectory(traj)
+        unpack!(traj_wrapped, Z⃗)
         return objective_value(obj, traj_wrapped)
     end
 
@@ -396,4 +410,87 @@ include("regularizers.jl")
     @test val_combo ≈ 2.0 * val1 + 0.5 * val2 + val3
 end
 
+@testitem "coverage: NullObjective full surface" setup = [DTOTestHelpers] begin
+    using DirectTrajOpt.Objectives: hessian_structure
+    _, traj = bilinear_dynamics_and_trajectory(add_global = true)
+    null = NullObjective()
+
+    # value, gradient, hessian structure, full hessian — all zero-surface
+    @test objective_value(null, traj) == 0.0
+    ∇ = randn(length(traj.datavec) + traj.global_dim)
+    gradient!(∇, null, traj)
+    @test all(iszero, ∇)
+    Z_dim = traj.dim * traj.N + traj.global_dim
+    @test nnz(hessian_structure(null, traj)) == 0
+    @test nnz(get_full_hessian(null, traj)) == 0
+    @test size(get_full_hessian(null, traj)) == (Z_dim, Z_dim)
+
+    # show
+    @test sprint(show, null) == "NullObjective"
+
+    # arithmetic keeps it a no-op passenger
+    quad = QuadraticRegularizer(:u, traj, 1.0)
+    comp = null + quad
+    @test objective_value(comp, traj) == objective_value(quad, traj)
+    @test sprint(show, comp) isa String
+end
+
+@testitem "coverage: objective arithmetic — obj * Real and show(CompositeObjective)" setup =
+    [DTOTestHelpers] begin
+    _, traj = bilinear_dynamics_and_trajectory()
+    quad = QuadraticRegularizer(:u, traj, 2.0)
+
+    # both multiplication orders
+    left = 0.5 * quad
+    right = quad * 0.5
+    @test objective_value(left, traj) ≈ objective_value(right, traj)
+    @test 2 * objective_value(quad, traj) ≈ objective_value(quad * 2, traj)
+
+    # show renders the composite with weights
+    comp = 1.5 * quad + 0.25 * QuadraticRegularizer(:x, traj, 1.0)
+    s = sprint(show, comp)
+    @test occursin("CompositeObjective (2 terms)", s)
+    @test occursin("1.5", s)
+    @test occursin("0.25", s)
+end
+
+@testitem "coverage: scaling a CompositeObjective and norm-based test_objective branches" setup =
+    [DTOTestHelpers] begin
+    _, traj = bilinear_dynamics_and_trajectory()
+
+    # num::Real * CompositeObjective rescales the weights in place
+    quad_u = QuadraticRegularizer(:u, traj, 1.0)
+    quad_x = QuadraticRegularizer(:x, traj, 2.0)
+    comp = 0.5 * quad_u + 0.25 * quad_x
+    comp_scaled = 2.0 * comp
+    @test comp_scaled isa CompositeObjective
+    @test comp_scaled.objectives == comp.objectives
+    @test comp_scaled.weights == [1.0, 0.5]
+    @test objective_value(comp_scaled, traj) ≈ 2.0 * objective_value(comp, traj)
+
+    # norm-based gradient checks: atol > 0 path
+    test_objective(quad_u, traj; test_equality = false, atol = 1e-3)
+
+    # norm-based gradient checks with atol == 0: relative-tolerance path
+    test_objective(quad_u, traj; test_equality = false, atol = 0.0, rtol = 1e-3)
+end
+
+@testitem "coverage: test_objective verbose diff printing" setup = [DTOTestHelpers] begin
+    # A tiny trajectory keeps the printed diff tables short.
+    traj = NamedTrajectory(
+        (x = randn(2, 3), u = randn(1, 3), Δt = fill(0.1, 3));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+
+    # A quartic loss carries real finite-difference truncation error, so with
+    # atol = 0 the element-wise printers inside the show_gradient_diff /
+    # show_hessian_diff branches fire for at least one entry. The show
+    # branches assert nothing themselves; rtol keeps the (still-run) Hessian
+    # comparison comfortably green.
+    obj = KnotPointObjective(x -> norm(x)^4, :x, traj)
+
+    test_objective(obj, traj; show_gradient_diff = true, atol = 0.0, rtol = 1e-6)
+    test_objective(obj, traj; show_hessian_diff = true, atol = 0.0, rtol = 1e-6)
+end
 end

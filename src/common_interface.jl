@@ -29,8 +29,8 @@ using SparseArrays
 
 Evaluate the component (constraint or dynamics) and store the result in-place in `values`.
 
-For integrators: Computes dynamics violations δ = f(x_{k+1}, x_k, u_k, ...) for all timesteps.
-For constraints: Computes constraint violations g(x) for all applicable timesteps/variables.
+For integrators: Computes dynamics violations δ = f(x_{k+1}, x_k, u_k, ...) for all knot points.
+For constraints: Computes constraint violations g(x) for all applicable knots/variables.
 
 # Arguments
 - `values`: Pre-allocated vector to store the evaluation results
@@ -117,7 +117,7 @@ function hessian_of_lagrangian! end
 
 High-level method to evaluate and return the full Jacobian for the component.
 
-For integrators: Computes the Jacobian using ForwardDiff across all timesteps.
+For integrators: Computes the Jacobian using ForwardDiff across all knot points.
 For constraints: Calls jacobian! to fill compact storage, then assembles the full sparse Jacobian.
 
 # Arguments
@@ -134,7 +134,7 @@ function eval_jacobian end
 
 High-level method to evaluate and return the full Hessian of the Lagrangian for the component.
 
-For integrators: Computes the Hessian using ForwardDiff across all timesteps.
+For integrators: Computes the Hessian using ForwardDiff across all knot points.
 For constraints: Calls hessian_of_lagrangian to fill compact storage, then assembles the full sparse Hessian.
 
 # Arguments
