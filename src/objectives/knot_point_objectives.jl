@@ -25,7 +25,11 @@ where ℓ is evaluated on trajectory variables at each knot point.
 - `times::Vector{Int}`: Time indices where objective is evaluated
 - `params::Vector`: Parameters for each time index
 - `Qs::Vector{Float64}`: Weights for each time index
-- `∂²Ls::Vector{SparseMatrixCSC{Float64, Int}}`: Preallocated sparse Hessian storage (one per timestep)
+- `knot_hvp::Union{Nothing, KnotHVP}`: Optional declarable matrix-free
+  per-knot Hessian-vector product capability (see [`KnotHVP`](@ref)).
+  `nothing` (the default) leaves the existing dense-Hessian behavior
+  unchanged. Set to a `ConstantLowRankHVP` or `CustomKnotHVP` to
+  advertise a matrix-free apply to downstream consumers.
 
 # Constructor
 ```julia
@@ -35,7 +39,8 @@ KnotPointObjective(
     traj::NamedTrajectory,
     params::AbstractVector;
     times::AbstractVector{Int}=1:traj.N,
-    Qs::AbstractVector{Float64}=ones(length(times))
+    Qs::AbstractVector{Float64}=ones(length(times)),
+    knot_hvp::Union{Nothing, KnotHVP}=nothing,
 )
 ```
 
@@ -63,6 +68,7 @@ struct KnotPointObjective <: AbstractObjective
     times::Vector{Int}
     params::Vector
     Qs::Vector{Float64}
+    knot_hvp::Union{Nothing,KnotHVP}
 end
 
 function KnotPointObjective(
@@ -72,6 +78,7 @@ function KnotPointObjective(
     params::AbstractVector;
     times::AbstractVector{Int} = 1:traj.N,
     Qs::AbstractVector{Float64} = ones(length(times)),
+    knot_hvp::Union{Nothing,KnotHVP} = nothing,
 )
     @assert length(Qs) == length(times) "Qs must have the same length as times"
     @assert length(params) == length(times) "params must have the same length as times"
@@ -82,6 +89,7 @@ function KnotPointObjective(
         Vector{Int}(times),
         Vector(params),
         Vector{Float64}(Qs),
+        knot_hvp,
     )
 end
 
@@ -128,7 +136,7 @@ end
 Create a terminal objective that operates on multiple variables concatenated together.
 
 This is useful for objectives that need to access multiple state variables at the final
-timestep, such as coherent fidelity objectives.
+knot point, such as coherent fidelity objectives.
 
 # Arguments
 - `ℓ::Function`: Loss function taking concatenated values from all named variables
@@ -155,6 +163,11 @@ function Base.show(io::IO, obj::KnotPointObjective)
     print(io, "KnotPointObjective on [$vars] at $times_str")
 end
 
+# `knot_hvp` trait specialization — reads the carrier from the struct
+# field. The generic default `knot_hvp(::AbstractObjective, _) = nothing`
+# lives in `knot_hvp.jl`.
+knot_hvp(obj::KnotPointObjective, ::NamedTrajectory) = obj.knot_hvp
+
 # Implement AbstractObjective interface
 
 function objective_value(obj::KnotPointObjective, traj::NamedTrajectory)
@@ -171,18 +184,29 @@ end
 function gradient!(∇::AbstractVector, obj::KnotPointObjective, traj::NamedTrajectory)
     fill!(∇, 0.0)
 
+    # Declared-versus-AD: resolved ONCE, outside the knot loop. A declared loss
+    # structure supplies `∇ℓ` analytically; anything else (no carrier, the
+    # curvature-only carriers, the escape hatch) returns the not-handled token and
+    # falls to ForwardDiff exactly as before.
+    structure = knot_hvp(obj, traj)
+
     for (i, k) in enumerate(obj.times)
         zₖ = traj[k]
         # Extract relevant variables and their components
         x_vals = vcat([zₖ[name] for name in obj.var_names]...)
         x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
 
-        # Get indices for this knot point
-        knot_indices = slice(k, x_comps, traj.dim)
+        # Get indices for this knot point (packed coordinates under a warp)
+        knot_indices = WarpPlumbing.packed_slice(traj, k, x_comps)
 
-        # Compute gradient directly into view of the gradient vector
+        # Compute gradient directly into view of the gradient vector. The view is
+        # already zeroed by the `fill!` above, so the declared verb's ACCUMULATE
+        # semantics and ForwardDiff's overwrite land the same values.
         ∇_view = @view ∇[knot_indices]
-        ForwardDiff.gradient!(∇_view, x -> obj.ℓ(x, obj.params[i]), x_vals)
+        if loss_structure_gradient!(∇_view, structure, x_vals, obj.params[i]) ===
+           NOT_HANDLED
+            ForwardDiff.gradient!(∇_view, x -> obj.ℓ(x, obj.params[i]), x_vals)
+        end
 
         # Scale by weight
         ∇_view .*= obj.Qs[i]
@@ -193,14 +217,14 @@ end
 
 function hessian_structure(obj::KnotPointObjective, traj::NamedTrajectory)
 
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
 
     structure = spzeros(Z_dim, Z_dim)
 
     x_comps = vcat([traj.components[name] for name in obj.var_names]...)
 
     for k ∈ obj.times
-        knot_indices = slice(k, x_comps, traj.dim)
+        knot_indices = WarpPlumbing.packed_slice(traj, k, x_comps)
         structure[knot_indices, knot_indices] .= 1.0
     end
 
@@ -209,7 +233,7 @@ end
 
 function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
 
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
 
     ∂²L = spzeros(Z_dim, Z_dim)
 
@@ -217,7 +241,7 @@ function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
 
     for (i, k) in enumerate(obj.times)
         zₖ = traj[k]
-        knot_indices = slice(k, x_comps, traj.dim)
+        knot_indices = WarpPlumbing.packed_slice(traj, k, x_comps)
 
         ForwardDiff.hessian!(
             view(∂²L, knot_indices, knot_indices),
