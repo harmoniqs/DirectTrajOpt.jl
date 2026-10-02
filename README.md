@@ -36,7 +36,7 @@
 </div>
 <!--```-->
 
-**DirectTrajOpt.jl** is a framework for direct trajectory optimization via nonlinear programming. It converts continuous optimal control problems into finite-dimensional NLPs using direct transcription, then solves them with [Ipopt](https://github.com/jump-dev/Ipopt.jl).
+**DirectTrajOpt.jl** is a framework for direct trajectory optimization via nonlinear programming. It converts continuous optimal control problems into finite-dimensional NLPs using direct transcription, then solves them with [MadNLP](https://github.com/madnlp/MadNLP.jl) (the default) or [Ipopt](https://github.com/jump-dev/Ipopt.jl).
 
 ## Problem Formulation
 

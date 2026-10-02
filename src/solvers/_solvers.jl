@@ -82,17 +82,19 @@ include("solve.jl")
 # Coverage targets: src/solvers/_solvers.jl (50% → ~100%)
 
 @testitem "DefaultSolverOptions get/set" setup=[DTOTestHelpers] begin
+    # The MadNLP-default flip (#155): MadNLPOptions is the pinned default;
+    # Ipopt remains a fully-selectable backend.
     original = Solvers._get_DefaultSolverOptions()
-    @test original == IpoptSolverExt.IpoptOptions
+    @test original == DirectTrajOpt.MadNLPOptions
 
-    Solvers._set_DefaultSolverOptions(DirectTrajOpt.MadNLPOptions)
-    @test Solvers._get_DefaultSolverOptions() == DirectTrajOpt.MadNLPOptions
+    Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions)
+    @test Solvers._get_DefaultSolverOptions() == IpoptSolverExt.IpoptOptions
 
     Solvers._set_DefaultSolverOptions(Solvers.DefaultSolverOptions)
     @test Solvers._get_DefaultSolverOptions() == Solvers.DefaultSolverOptions
 
     Solvers._set_DefaultSolverOptions(original)
-    @test Solvers._get_DefaultSolverOptions() == IpoptSolverExt.IpoptOptions
+    @test Solvers._get_DefaultSolverOptions() == DirectTrajOpt.MadNLPOptions
 end
 
 @testitem "AbstractOptimizer alias" setup=[DTOTestHelpers] begin

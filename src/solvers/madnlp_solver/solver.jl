@@ -262,10 +262,10 @@ struct _MadNLPCallbackAdapter <: MadNLP.AbstractUserCallback
     inner::DirectTrajOpt.AbstractIntermediateCallback
 end
 
-function (a::_MadNLPCallbackAdapter)(
-    solver::MadNLP.AbstractMadNLPSolver,
-    mode::MadNLP.AbstractUserCallbackStatus,
-)
+# `solver` is intentionally duck-typed: the adapter reads only `variable(x)` and
+# `cnt.k`, and MadNLP invokes callbacks untyped — a plain (x, cnt) pair exercises
+# the mode filter without standing up a live IPM (see the adapter testitem).
+function (a::_MadNLPCallbackAdapter)(solver, mode::MadNLP.AbstractUserCallbackStatus)
     mode isa MadNLP.UserCallbackRegular || return true
     return a.inner(MadNLP.variable(solver.x), solver.cnt.k)
 end
@@ -296,6 +296,17 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
         if name in ignored_options
             continue
         end
+        # The restoration-audit default (#155 AC2): for `barrier` alone,
+        # `nothing` does NOT mean "MadNLP's own default" — it resolves to the
+        # audit-chosen `QualityFunctionUpdate` tracking `tol` (MadNLP's native
+        # `MonotoneUpdate` default stalls on the standard Piccolo QCP class;
+        # see the field's comment in options.jl for the full audit note). An
+        # explicit `MadNLP.AbstractBarrierUpdate` passes through untouched.
+        if name == :barrier
+            optimizer.options[name] =
+                value === nothing ? MadNLP.QualityFunctionUpdate(options.tol, 10.0) : value
+            continue
+        end
         # `nothing` means "use MadNLP's own default" — don't overwrite the optimizer's
         # internal dict in that case. Applies to the pass-through fields
         # (linear_solver, array_type, kkt_system, cudss_ordering).
@@ -303,7 +314,15 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
             continue
         end
         if name == :print_level
-            optimizer.options[name] = MadNLP.LogLevels(value)
+            # Ipopt-scale print_level carries through the flip: pre-flip the
+            # default dispatched Ipopt, whose scale is 0 (silent) … 12 (most
+            # verbose) — MadNLP's LogLevels run the other way, 1 (TRACE) … 6
+            # (ERROR). 1–6 pass through unchanged; 0 (Ipopt "print nothing")
+            # maps to ERROR, and 7–12 (Ipopt's most verbose) map to TRACE —
+            # without this, the ubiquitous `solve!(prob; print_level = 0)`
+            # silence idiom throws `invalid value for Enum LogLevels`.
+            optimizer.options[name] =
+                MadNLP.LogLevels(value <= 0 ? 6 : (value > 6 ? 1 : value))
         elseif name == :hessian_approximation
             hessian_approximation = MadNLP.ExactHessian
             hessian_approximation =
@@ -334,14 +353,73 @@ end
 
 
 # ----------------------------------------------------------------------------
+# The restoration-audit barrier default (#155 AC2): `barrier === nothing`
+# resolves at solve-configuration time to the audit-chosen QualityFunctionUpdate
+# tracking `tol`; an explicit barrier object passes through untouched.
+# ----------------------------------------------------------------------------
+
+@testitem "MadNLPOptions.barrier resolves to the audit-chosen QualityFunctionUpdate" setup =
+    [DTOTestHelpers] begin
+    import MadNLP
+
+    # The field itself defaults to `nothing` (resolved in set_options!, so the
+    # barrier floor can track `tol` rather than a static value).
+    @test DirectTrajOpt.MadNLPOptions().barrier === nothing
+
+    # `nothing` → the audit-chosen adaptive barrier with MadNLP's own
+    # mu_min/tol coupling: mu_min = min(1e-4, tol) / (barrier_tol_factor + 1).
+    optimizer = MadNLP.Optimizer()
+    DirectTrajOpt.set_options!(optimizer, DirectTrajOpt.MadNLPOptions())
+    barrier = optimizer.options[:barrier]
+    @test barrier isa MadNLP.QualityFunctionUpdate
+    @test barrier.mu_min == min(1e-4, 1e-8) / 11
+
+    # The floor tracks `tol` — a tighter tolerance still lowers it (Piccolissimo
+    # sweeps tune tol; a static barrier floor would cap them).
+    optimizer2 = MadNLP.Optimizer()
+    DirectTrajOpt.set_options!(optimizer2, DirectTrajOpt.MadNLPOptions(tol = 1e-10))
+    @test optimizer2.options[:barrier].mu_min == min(1e-4, 1e-10) / 11
+
+    # An explicit barrier object passes through untouched — manual control,
+    # and MadNLP's native monotone behavior stays one constructor away.
+    native = MadNLP.MonotoneUpdate(1e-8, 10.0)
+    optimizer3 = MadNLP.Optimizer()
+    DirectTrajOpt.set_options!(optimizer3, DirectTrajOpt.MadNLPOptions(barrier = native))
+    @test optimizer3.options[:barrier] === native
+end
+
+@testitem "MadNLP print_level accepts the Ipopt scale (0 = silence)" setup =
+    [DTOTestHelpers] begin
+    import MadNLP
+
+    # The flip must not break the pre-flip silence idiom: the default used to
+    # dispatch Ipopt, whose print_level 0 means "print nothing" (and 7–12 is
+    # max verbosity). Both leg-A suite errors on the first mini run traced to
+    # `LogLevels(0)` throwing.
+    optimizer = MadNLP.Optimizer()
+    DirectTrajOpt.set_options!(optimizer, DirectTrajOpt.MadNLPOptions(print_level = 0))
+    @test optimizer.options[:print_level] == MadNLP.ERROR
+
+    DirectTrajOpt.set_options!(optimizer, DirectTrajOpt.MadNLPOptions(print_level = 12))
+    @test optimizer.options[:print_level] == MadNLP.TRACE
+
+    # 1–6 (MadNLP's native scale) pass through unchanged.
+    DirectTrajOpt.set_options!(optimizer, DirectTrajOpt.MadNLPOptions(print_level = 4))
+    @test optimizer.options[:print_level] == MadNLP.LogLevels(4)
+
+    # End-to-end through the default dispatch: the exact call shape that broke
+    # (solve! with print_level=0 and no options kwarg) now runs.
+    prob, _ = make_standard_prob()
+    stats = solve!(prob; max_iter = 2, print_level = 0, verbose = false)
+    @test stats.solver === :madnlp
+end
+
+# ----------------------------------------------------------------------------
 # Optimizer Tests
 # ----------------------------------------------------------------------------
 
 
-@testitem "testing MadNLP.jl solver" begin
-
-    # include("../../test/test_utils.jl")
-    include("../../test/madnlp_test_utils.jl")
+@testitem "testing MadNLP.jl solver" setup=[DTOTestHelpers] begin
 
     G, traj = bilinear_dynamics_and_trajectory()
 
@@ -374,10 +452,8 @@ end
     solve!(prob; options = MadNLPOptions(max_iter = 100))
 end
 
-@testitem "testing MadNLP.jl solver with NonlinearGlobalKnotPointConstraint" begin
-
-    # include("../../test/test_utils.jl")
-    include("../../test/madnlp_test_utils.jl")
+@testitem "testing MadNLP.jl solver with NonlinearGlobalKnotPointConstraint" setup =
+    [DTOTestHelpers] begin
 
     G, traj = bilinear_dynamics_and_trajectory(add_global = true)
 
@@ -425,9 +501,7 @@ end
 
 @testitem "testing solution trajectory independent of choice of solver" begin
 
-    # include("../../test/test_utils.jl)
-    # include("../../test/madnlp_test_utils.jl")
-    include("../../test/solver_test_utils.jl")
+    include("../../../test/solver_test_utils.jl")
 
     seed = rand(UInt64)
 

@@ -3,8 +3,9 @@ export MadNLPOptions
 """
     MadNLPOptions <: Solvers.AbstractSolverOptions
 
-Configuration options for the MadNLP nonlinear solver, as used by the
-`MadNLPSolverExt` extension.
+Configuration options for the MadNLP nonlinear solver backend (the
+`MadNLPSolverExt` module — a hard dependency since #155, alongside
+`IpoptSolverExt`).
 
 Any field can also be passed directly as a keyword argument to `solve!`:
 ```julia
@@ -14,8 +15,9 @@ solve!(prob; options = MadNLPOptions(max_iter = 500))
 # Commonly used fields
 - `tol::Float64 = 1e-8`: Termination tolerance on the KKT residual
 - `max_iter::Int = 3000`: Maximum number of solver iterations
-- `print_level::Int = 3`: MadNLP output verbosity (MadNLP.LogLevels 1–6)
+- `print_level::Int = 3`: MadNLP output verbosity (MadNLP.LogLevels 1–6); the Ipopt scale carries over — 0 (Ipopt "print nothing") → `MadNLP.ERROR`, 7–12 (Ipopt's most verbose) → `MadNLP.TRACE`, 1–6 unchanged
 - `hessian_approximation::String = "exact"`: `"exact"` or `"compact_lbfgs"`
+- `barrier::Any = nothing`: barrier-parameter update strategy — `nothing` resolves at solve time to the audit-chosen default `MadNLP.QualityFunctionUpdate(tol, 10.0)` (see the field's comment in the struct below); pass any `MadNLP.AbstractBarrierUpdate` (e.g. `MadNLP.MonotoneUpdate(tol, 10.0)`) for manual control
 - `linear_solver::Any = nothing`: MadNLP linear-solver type, e.g. `MadNLP.LapackCPUSolver` (`nothing` ⇒ MadNLP default)
 - `intermediate_callback::Any = nothing`: `DirectTrajOpt.AbstractIntermediateCallback` or raw `MadNLP.AbstractUserCallback`
 
@@ -43,12 +45,11 @@ MadNLP-first flip's migration note.
 | `acceptable_tol` | defaulted | MadNLP-native `acceptable_tol` |
 | `acceptable_iter` | defaulted | MadNLP-native `acceptable_iter` |
 | `diverging_iterates_tol` | defaulted | MadNLP-native `diverging_iterates_tol` |
-| `mu_target` | defaulted | MadNLP-native barrier `mu_min` (`MonotoneUpdate`) |
+| `mu_target` | defaulted | MadNLP-native barrier `mu_min` (the active barrier update's floor) |
 | `nlp_scaling_method` | defaulted | MadNLP-native `nlp_scaling::Bool` + `nlp_scaling_max_gradient` |
 | `output_file` | defaulted | MadNLP-native `output_file` |
-| `mu_strategy` | defaulted | MadNLP-native adaptive barrier: `barrier = MadNLP.LOQOUpdate(tol, ...)` or `MadNLP.QualityFunctionUpdate(tol, ...)` |
-| `adaptive_mu_globalization` | defaulted | rides the same adaptive-barrier types (`barrier`) |
-| `refine` | defaulted | MadNLP linear solvers refine internally (e.g. `tol_linear_solve`) |
+| `mu_strategy` | mapped → `barrier` | type differs: Ipopt `String` (`"monotone"`/`"adaptive"`) ↔ a `MadNLP.AbstractBarrierUpdate` object (`MadNLP.MonotoneUpdate` ↔ `LOQOUpdate`/`QualityFunctionUpdate`); DTO default = `QualityFunctionUpdate` per the #155 restoration audit |
+| `adaptive_mu_globalization` | defaulted | rides the same adaptive-barrier types (`barrier`) || `refine` | defaulted | MadNLP linear solvers refine internally (e.g. `tol_linear_solve`) |
 | `acceptable_obj_change_tol` | defaulted | nearest: `obj_max_inc` (different semantics) |
 | `dual_inf_tol` | unsupported | no MadNLP counterpart |
 | `constr_viol_tol` | unsupported | no MadNLP counterpart (feasibility folded into `tol`) |
@@ -80,7 +81,7 @@ MadNLP-first flip's migration note.
 # Raw pass-through
 `DirectTrajOpt._solve_with_kwargs(prob, options; kwargs...)` forwards kwargs
 that match no field here directly into MadNLP's option dict — the escape hatch
-for MadNLP-native knobs not on this struct (`barrier`, `bound_push`, …).
+for MadNLP-native knobs not on this struct (`bound_push`, …).
 Note MadNLP itself silently discards option keys it does not recognize.
 The standard `solve!` path instead warns loudly on unmatched kwargs.
 """
@@ -90,6 +91,25 @@ Base.@kwdef mutable struct MadNLPOptions <: Solvers.AbstractSolverOptions
     max_iter::Int = 3000
     print_level::Int = 3 # (MadNLP.TRACE::MadNLP.LogLevels = 1, ..., MadNLP.ERROR::MadNLP.LogLevels = 6)
     hessian_approximation::String = "exact" # (exact = MadNLP.ExactHessian, compact_lbfgs = MadNLP.CompactLBFGS) # no other QN methods supported in conjunction with MadNLP.SparseCallback
+
+    # The barrier-parameter update strategy (#155 AC2 — the restoration audit).
+    # MadNLP 0.9's native default is `MonotoneUpdate`, which stalls on the
+    # standard Piccolo QCP class on ~1-in-3 seeds: it engages feasibility
+    # restoration + robust mode, the barrier re-anchors to infeasibility
+    # (mu ≈ 1.5e-4), and at a 60-iter budget the rollout fidelity misses the
+    # F ≥ 0.999 bar (0.99835) while Ipopt never restores on the same cells.
+    # Deterministic and machine-independent (identical traces on x86 and arm64;
+    # identical for the stock-Bilinear and HermitianExponential integrators on
+    # ZOH pulses). The audit's chosen default avoids the stall at equal wall
+    # cost with ZERO restoration engagement on every audited cell: an adaptive
+    # `QualityFunctionUpdate` barrier. `nothing` (the default) resolves at
+    # solve time to `MadNLP.QualityFunctionUpdate(tol, 10.0)` — the same tol
+    # coupling MadNLP's native default applies
+    # (`mu_min = min(1e-4, tol) / (barrier_tol_factor + 1)`), so a tighter
+    # `tol` still lowers the barrier floor. Pass any
+    # `MadNLP.AbstractBarrierUpdate` (e.g. `MadNLP.MonotoneUpdate(tol, 10.0)`
+    # to recover MadNLP's native behavior) for manual control.
+    barrier::Any = nothing
 
     # Pass-throughs consumed by MadNLP's MOI layer (not by MadNLP itself);
     # leave as `nothing` to use MadNLP defaults. Only forwarded when non-nothing.
@@ -231,9 +251,9 @@ const IPOPT_TO_MADNLP_OPTIONS = [
     ),
     (
         ipopt_field = :mu_strategy,
-        disposition = :defaulted,
-        target = nothing,
-        note = "MadNLP-native adaptive barrier: barrier = MadNLP.LOQOUpdate(tol, ...) or MadNLP.QualityFunctionUpdate(tol, ...)",
+        disposition = :mapped,
+        target = :barrier,
+        note = "type differs: Ipopt String (\"monotone\"/\"adaptive\") ↔ a MadNLP.AbstractBarrierUpdate object (MonotoneUpdate ↔ LOQO/QualityFunctionUpdate); DTO default = QualityFunctionUpdate per the #155 restoration audit",
     ),
     (
         ipopt_field = :adaptive_mu_globalization,
@@ -382,7 +402,7 @@ const MADNLP_NATIVE_ONLY_FIELDS =
     (:array_type, :kkt_system, :cudss_ordering, :fixed_variable_treatment)
 
 @testitem "IpoptOptions ↔ MadNLPOptions mapping: exhaustive enumeration, zero silent drops" begin
-    using DirectTrajOpt: IpoptSolverExt, MadNLPSolverExtStub
+    using DirectTrajOpt: IpoptSolverExt, MadNLPSolverExt
 
     # The machine-checked source of truth behind the MadNLPOptions docstring's
     # migration table. Every IpoptOptions field is classified exactly once as
@@ -391,7 +411,7 @@ const MADNLP_NATIVE_ONLY_FIELDS =
     # either a mapped target or explicitly MadNLP-native-only.
     ipopt_fields = fieldnames(IpoptSolverExt.IpoptOptions)
     madnlp_fields = fieldnames(DirectTrajOpt.MadNLPOptions)
-    table = MadNLPSolverExtStub.IPOPT_TO_MADNLP_OPTIONS
+    table = MadNLPSolverExt.IPOPT_TO_MADNLP_OPTIONS
 
     dispositions = (:mapped, :defaulted, :unsupported)
 
@@ -419,5 +439,5 @@ const MADNLP_NATIVE_ONLY_FIELDS =
 
     # Reverse coverage: every MadNLPOptions field is either a mapped target or
     # an explicitly-listed MadNLP-native-only field (no Ipopt counterpart).
-    @test Set(madnlp_fields) ⊆ targets ∪ Set(MadNLPSolverExtStub.MADNLP_NATIVE_ONLY_FIELDS)
+    @test Set(madnlp_fields) ⊆ targets ∪ Set(MadNLPSolverExt.MADNLP_NATIVE_ONLY_FIELDS)
 end

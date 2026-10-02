@@ -42,5 +42,5 @@ Modules = [DirectTrajOpt.IpoptSolverExt]
 
 ## MadNLP Solver
 ```@autodocs
-Modules = [DirectTrajOpt.MadNLPSolverExtStub]
+Modules = [DirectTrajOpt.MadNLPSolverExt]
 ```
