@@ -9,6 +9,18 @@ Changes before v0.9.8 are not recorded here — see the
 
 ## [Unreleased]
 
+### Changed
+
+- **MadNLP is the default solver backend (#155)** — the no-kwarg `solve!(prob)` now dispatches MadNLP. MadNLP is a HARD dependency (the `MadNLPSolverExt` weakdep package extension moved from `ext/` into `src/` beside `IpoptSolverExt`); Ipopt remains a hard dependency and fully selectable via `solve!(prob; options = IpoptOptions(...))` or `Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions)`. `test/compare_solvers.jl` is a live harness again: a default-leg vs Ipopt-leg comparison (plus an explicit MadNLP leg) with fixed seeds.
+
+### Fixed
+
+- **The Jacobian-product seam (`evaluator.jl`)** — `MOI.eval_constraint_jacobian_product` / `eval_constraint_jacobian_transpose_product` compute J·w / Jᵀw from the evaluator's cached structure and a reusable pre-allocated values buffer instead of assembling a fresh `zeros(nnz)` (and a `@warn`) per call. Exact math unchanged; MadNLP's restoration/robust path is the beneficiary (its `jtprod!` routes through the transpose product). Verified: 660,960 → 628,360 bytes/call on the standard test problem (the fill-path floor is 632,264), zero warnings on clean solves.
+
+### Added
+
+- **AMICODE_ITER telemetry contract on the MadNLP arm, encoded in the suite** — a raw `MadNLP.AbstractUserCallback` verifier (all four state columns — `cnt.k`, `obj_val`, `inf_pr`, `inf_du` — finite on every `UserCallbackRegular` emission, iters monotone) and a unit test pinning `_MadNLPCallbackAdapter`'s mode filter (restore/robust phases never forward to the solver-agnostic callback). The adapter's `solver` argument is now duck-typed (`variable(x)` + `cnt.k`) — MadNLP invokes callbacks untyped, so behavior is unchanged; it only permits deterministic testing of the filter.
+
 ## [0.10.1] — 2026-08-21
 
 ### Added

@@ -53,11 +53,13 @@ include("solvers/_solvers.jl")
 include("solvers/ipopt_solver/IpoptSolverExt.jl")
 @reexport using .IpoptSolverExt
 
-# include("solvers/madnlp_solver/MadNLPSolverExt.jl")
-# @reexport using .MadNLPSolverExt
-include("solvers/madnlp_solver/MadNLPSolverExtStub.jl")
-@reexport using .MadNLPSolverExtStub
+include("solvers/madnlp_solver/MadNLPSolverExt.jl")
+@reexport using .MadNLPSolverExt
 
-Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions) # once made into extension, could be done by the extension itself
+# MadNLP-default flip (#155): MadNLP is a hard dependency and the no-kwarg
+# `solve!(prob)` backend; Ipopt remains a hard dependency, fully selectable
+# via `solve!(prob; options = IpoptOptions(...))` or
+# `Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions)`.
+Solvers._set_DefaultSolverOptions(MadNLPSolverExt.MadNLPOptions)
 
 end

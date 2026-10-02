@@ -262,10 +262,10 @@ struct _MadNLPCallbackAdapter <: MadNLP.AbstractUserCallback
     inner::DirectTrajOpt.AbstractIntermediateCallback
 end
 
-function (a::_MadNLPCallbackAdapter)(
-    solver::MadNLP.AbstractMadNLPSolver,
-    mode::MadNLP.AbstractUserCallbackStatus,
-)
+# `solver` is intentionally duck-typed: the adapter reads only `variable(x)` and
+# `cnt.k`, and MadNLP invokes callbacks untyped — a plain (x, cnt) pair exercises
+# the mode filter without standing up a live IPM (see the adapter testitem).
+function (a::_MadNLPCallbackAdapter)(solver, mode::MadNLP.AbstractUserCallbackStatus)
     mode isa MadNLP.UserCallbackRegular || return true
     return a.inner(MadNLP.variable(solver.x), solver.cnt.k)
 end
@@ -338,10 +338,7 @@ end
 # ----------------------------------------------------------------------------
 
 
-@testitem "testing MadNLP.jl solver" begin
-
-    # include("../../test/test_utils.jl")
-    include("../../test/madnlp_test_utils.jl")
+@testitem "testing MadNLP.jl solver" setup=[DTOTestHelpers] begin
 
     G, traj = bilinear_dynamics_and_trajectory()
 
@@ -374,10 +371,8 @@ end
     solve!(prob; options = MadNLPOptions(max_iter = 100))
 end
 
-@testitem "testing MadNLP.jl solver with NonlinearGlobalKnotPointConstraint" begin
-
-    # include("../../test/test_utils.jl")
-    include("../../test/madnlp_test_utils.jl")
+@testitem "testing MadNLP.jl solver with NonlinearGlobalKnotPointConstraint" setup =
+    [DTOTestHelpers] begin
 
     G, traj = bilinear_dynamics_and_trajectory(add_global = true)
 
@@ -425,9 +420,7 @@ end
 
 @testitem "testing solution trajectory independent of choice of solver" begin
 
-    # include("../../test/test_utils.jl)
-    # include("../../test/madnlp_test_utils.jl")
-    include("../../test/solver_test_utils.jl")
+    include("../../../test/solver_test_utils.jl")
 
     seed = rand(UInt64)
 

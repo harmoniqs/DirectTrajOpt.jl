@@ -3,8 +3,9 @@ export MadNLPOptions
 """
     MadNLPOptions <: Solvers.AbstractSolverOptions
 
-Configuration options for the MadNLP nonlinear solver, as used by the
-`MadNLPSolverExt` extension.
+Configuration options for the MadNLP nonlinear solver backend (the
+`MadNLPSolverExt` module — a hard dependency since #155, alongside
+`IpoptSolverExt`).
 
 Any field can also be passed directly as a keyword argument to `solve!`:
 ```julia
@@ -382,7 +383,7 @@ const MADNLP_NATIVE_ONLY_FIELDS =
     (:array_type, :kkt_system, :cudss_ordering, :fixed_variable_treatment)
 
 @testitem "IpoptOptions ↔ MadNLPOptions mapping: exhaustive enumeration, zero silent drops" begin
-    using DirectTrajOpt: IpoptSolverExt, MadNLPSolverExtStub
+    using DirectTrajOpt: IpoptSolverExt, MadNLPSolverExt
 
     # The machine-checked source of truth behind the MadNLPOptions docstring's
     # migration table. Every IpoptOptions field is classified exactly once as
@@ -391,7 +392,7 @@ const MADNLP_NATIVE_ONLY_FIELDS =
     # either a mapped target or explicitly MadNLP-native-only.
     ipopt_fields = fieldnames(IpoptSolverExt.IpoptOptions)
     madnlp_fields = fieldnames(DirectTrajOpt.MadNLPOptions)
-    table = MadNLPSolverExtStub.IPOPT_TO_MADNLP_OPTIONS
+    table = MadNLPSolverExt.IPOPT_TO_MADNLP_OPTIONS
 
     dispositions = (:mapped, :defaulted, :unsupported)
 
@@ -419,5 +420,5 @@ const MADNLP_NATIVE_ONLY_FIELDS =
 
     # Reverse coverage: every MadNLPOptions field is either a mapped target or
     # an explicitly-listed MadNLP-native-only field (no Ipopt counterpart).
-    @test Set(madnlp_fields) ⊆ targets ∪ Set(MadNLPSolverExtStub.MADNLP_NATIVE_ONLY_FIELDS)
+    @test Set(madnlp_fields) ⊆ targets ∪ Set(MadNLPSolverExt.MADNLP_NATIVE_ONLY_FIELDS)
 end

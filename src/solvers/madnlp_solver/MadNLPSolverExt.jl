@@ -16,12 +16,15 @@ using DirectTrajOpt.Objectives
 using DirectTrajOpt.Solvers
 
 
-# include("options.jl") # moved to solvers/madnlp_solver/options.jl
+# MadNLP is a HARD dependency (#155): this backend module now lives in src/
+# beside IpoptSolverExt (the package-extension/weakdep form is gone), and
+# MadNLPOptions is the pinned default — see src/DirectTrajOpt.jl.
+include("options.jl")
 include("solver.jl")
 include("utils.jl")
 
 
-# Coverage targets: ext/MadNLPSolverExt/ + src/solvers/madnlp_solver/
+# Coverage targets: src/solvers/madnlp_solver/
 
 @testitem "MadNLPOptions construction" setup=[DTOTestHelpers] begin
     opts = DirectTrajOpt.MadNLPOptions()
@@ -210,18 +213,8 @@ end
     @test contains(output, "optimizer initialization complete")
 end
 
-# @testitem "MadNLP unknown kwargs passthrough" setup=[DTOTestHelpers] begin
-#     # On this branch the @warn for unknown kwargs is commented out in
-#     # ext/MadNLPSolverExt/solver.jl. Unknown kwargs are silently collected.
-#     # When warnings are re-enabled, add @test_logs assertion here.
-#     prob, _ = make_standard_prob()
-#     solve!(prob; options=DirectTrajOpt.MadNLPOptions(max_iter=5), verbose=false, totally_fake_option=42)
-#     @test true
-# end
-
 @testitem "MadNLP eval_hessian kwarg routing" setup=[DTOTestHelpers] begin
     # eval_hessian=false routes to hessian_approximation="compact_lbfgs".
-    # The @warn is commented out on this branch — just verify no error.
     prob, _ = make_standard_prob()
     solve!(
         prob;
@@ -234,7 +227,6 @@ end
 
 @testitem "MadNLP eval_hessian kwarg routing" setup=[DTOTestHelpers] begin
     # eval_hessian=false routes to hessian_approximation="compact_lbfgs".
-    # The @warn is commented out on this branch — just verify no error.
     prob, _ = make_standard_prob()
     result = _solve_with_kwargs(
         prob,
@@ -345,6 +337,102 @@ end
         barrier = MadNLP.QualityFunctionUpdate(1e-8, 10.0),
     )
     @test true
+end
+
+# ----------------------------------------------------------------------------
+# Telemetry parity (#155 AC): the AMICODE_ITER emitter contract on the
+# MadNLP arm. The emitter rides the RAW MadNLP callback (same architecture as
+# the Ipopt path — the agnostic (primal, iter) callback cannot carry IPM
+# state); every Regular invocation must expose all four state columns, and
+# the UserCallbackRegular filter must keep iter monotonic by skipping the
+# restore/robust phases, which fire without advancing cnt.k.
+# ----------------------------------------------------------------------------
+
+@testitem "AMICODE_ITER state carries on MadNLP (iter/f/inf_pr/inf_du on the raw callback)" setup =
+    [DTOTestHelpers] begin
+    import MadNLP
+
+    mutable struct _AmicodeIterProbe <: MadNLP.AbstractUserCallback
+        rows::Vector{NamedTuple}
+        modes::Vector{String}
+    end
+    function (cb::_AmicodeIterProbe)(
+        solver::MadNLP.AbstractMadNLPSolver,
+        mode::MadNLP.AbstractUserCallbackStatus,
+    )
+        push!(cb.modes, string(typeof(mode).name.name))
+        # The AMICODE_ITER columns, read exactly as an emitter would read them
+        if mode isa MadNLP.UserCallbackRegular
+            push!(
+                cb.rows,
+                (
+                    iter = Int(MadNLP.get_cnt(solver).k),
+                    f = Float64(MadNLP.get_obj_val(solver)),
+                    inf_pr = Float64(MadNLP.get_inf_pr(solver)),
+                    inf_du = Float64(MadNLP.get_inf_du(solver)),
+                ),
+            )
+        end
+        return true
+    end
+
+    cb = _AmicodeIterProbe(NamedTuple[], String[])
+    prob, _ = make_standard_prob()
+    stats = solve!(
+        prob;
+        options = DirectTrajOpt.MadNLPOptions(
+            max_iter = 10,
+            intermediate_callback = cb,
+            print_level = 6,
+        ),
+        verbose = false,
+    )
+    @test stats.solver === :madnlp
+    @test !isempty(cb.rows)
+    # All four columns readable and finite on every Regular emission.
+    for r in cb.rows
+        @test isfinite(r.f)
+        @test isfinite(r.inf_pr)
+        @test isfinite(r.inf_du)
+    end
+    # Regular emissions carry monotone iters — no duplicates, no
+    # non-advancing rows (restore/robust phases never emit).
+    @test issorted([r.iter for r in cb.rows])
+    @test length(unique([r.iter for r in cb.rows])) == length(cb.rows)
+    @test length(cb.rows) <= stats.iterations + 1
+    # Every observed mode comes from the closed callback-status set.
+    @test all(
+        m -> m ∈ ("UserCallbackRegular", "UserCallbackRestore", "UserCallbackRobust"),
+        cb.modes,
+    )
+end
+
+@testitem "_MadNLPCallbackAdapter filters restore/robust modes (UserCallbackRegular only)" setup =
+    [DTOTestHelpers] begin
+    import MadNLP
+
+    mutable struct _Recorder <: DirectTrajOpt.AbstractIntermediateCallback
+        calls::Vector{Tuple{Int,Int}} # (length(primal), iter)
+    end
+    function (cb::_Recorder)(primal::AbstractVector, iter::Integer)
+        push!(cb.calls, (length(primal), Int(iter)))
+        return true
+    end
+
+    rec = _Recorder(Tuple{Int,Int}[])
+    adapter = DirectTrajOpt.MadNLPSolverExt._MadNLPCallbackAdapter(rec)
+    # Duck-typed solver surface: the adapter reads only `x` (a PrimalVector)
+    # and `cnt.k` — enough to exercise the mode filter without a live IPM.
+    mock = (x = MadNLP.PrimalVector(Vector{Float64}, 6, 0, Int[], Int[]), cnt = (k = 3,))
+
+    # Regular: forwarded to the agnostic callback (primal stripped to the NLP
+    # variables, cnt.k as the iteration index).
+    @test adapter(mock, MadNLP.UserCallbackRegular()) == true
+    @test rec.calls == [(6, 3)]
+    # Restore/robust phases: silently skipped — no emission, solve continues.
+    @test adapter(mock, MadNLP.UserCallbackRestore()) == true
+    @test adapter(mock, MadNLP.UserCallbackRobust()) == true
+    @test rec.calls == [(6, 3)]
 end
 
 end

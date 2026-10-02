@@ -310,12 +310,34 @@ end
     @test DirectTrajOpt._solve(prob, _FakeSolverOptions()) === nothing
 end
 
-@testitem "solve! default dispatch uses Ipopt" setup=[DTOTestHelpers] begin
+@testitem "solve! default dispatch uses MadNLP (the flip); Ipopt fully selectable" setup =
+    [DTOTestHelpers] begin
     prob, _ = make_standard_prob()
-    @test Solvers._get_DefaultSolverOptions() == IpoptSolverExt.IpoptOptions
+    @test Solvers._get_DefaultSolverOptions() == DirectTrajOpt.MadNLPOptions
     traj_before = deepcopy(prob.trajectory.data)
-    solve!(prob; max_iter = 2, print_level = 0, verbose = false)
+    stats = solve!(prob; max_iter = 2, verbose = false)
     @test prob.trajectory.data != traj_before
+    @test stats.solver === :madnlp
+
+    # Ipopt remains fully selectable — both as an explicit options argument
+    # and as the default via _set_DefaultSolverOptions.
+    prob2, _ = make_standard_prob()
+    stats2 = solve!(
+        prob2;
+        options = IpoptSolverExt.IpoptOptions(max_iter = 2, print_level = 0),
+        verbose = false,
+    )
+    @test stats2.solver === :ipopt
+
+    Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions)
+    try
+        prob3, _ = make_standard_prob()
+        stats3 = solve!(prob3; max_iter = 2, print_level = 0, verbose = false)
+        @test stats3.solver === :ipopt
+    finally
+        Solvers._set_DefaultSolverOptions(DirectTrajOpt.MadNLPOptions)
+    end
+    @test Solvers._get_DefaultSolverOptions() == DirectTrajOpt.MadNLPOptions
 end
 
 @testitem "coverage: remove_slack_variables! strips L1 slack components" setup =
