@@ -122,11 +122,17 @@
     end
     @test all(isapprox.(triu(∂²ℒ), triu(sparse(∂²ℒ_fd)), atol = 1e-3, rtol = 1e-3))
 
-    # Ipopt end-to-end through the packed path: T is the only free time quantity,
-    # the solve writes back through unpack!, and the derived rows stay synced
+    # End-to-end through the packed path (rides the pinned default — Ipopt
+    # pre-#155, MadNLP since): T is the only free time quantity, the solve
+    # writes back through unpack!, and the derived rows stay synced.
     solve!(prob; max_iter = 200, verbose = false, print_level = 0)
     T_solved = prob.trajectory.warp.T
-    @test 0.2 ≤ T_solved ≤ T0 + 1e-6          # min-time drives T down to the floor
+    # min-time drives T down to the floor. The floor (0.2) is a
+    # WarpParamBoundsConstraint, not a variable bound, so the converged
+    # iterate may sit within the solver's constraint tolerance on EITHER
+    # side: Ipopt lands on the feasible side; MadNLP 0.9 lands O(1e-9)
+    # below. Assert floor-touching to a tolerance, not strict feasibility.
+    @test 0.2 - 1e-7 ≤ T_solved ≤ T0 + 1e-6
     @test prob.trajectory.Δt ≈ fill(T_solved / (N - 1), 1, N)
     @test all(k -> prob.trajectory[k].timestep ≈ T_solved / (N - 1), 1:N)
 end

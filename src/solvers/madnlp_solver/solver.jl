@@ -314,7 +314,15 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
             continue
         end
         if name == :print_level
-            optimizer.options[name] = MadNLP.LogLevels(value)
+            # Ipopt-scale print_level carries through the flip: pre-flip the
+            # default dispatched Ipopt, whose scale is 0 (silent) … 12 (most
+            # verbose) — MadNLP's LogLevels run the other way, 1 (TRACE) … 6
+            # (ERROR). 1–6 pass through unchanged; 0 (Ipopt "print nothing")
+            # maps to ERROR, and 7–12 (Ipopt's most verbose) map to TRACE —
+            # without this, the ubiquitous `solve!(prob; print_level = 0)`
+            # silence idiom throws `invalid value for Enum LogLevels`.
+            optimizer.options[name] =
+                MadNLP.LogLevels(value <= 0 ? 6 : (value > 6 ? 1 : value))
         elseif name == :hessian_approximation
             hessian_approximation = MadNLP.ExactHessian
             hessian_approximation =
@@ -378,6 +386,32 @@ end
     optimizer3 = MadNLP.Optimizer()
     DirectTrajOpt.set_options!(optimizer3, DirectTrajOpt.MadNLPOptions(barrier = native))
     @test optimizer3.options[:barrier] === native
+end
+
+@testitem "MadNLP print_level accepts the Ipopt scale (0 = silence)" setup =
+    [DTOTestHelpers] begin
+    import MadNLP
+
+    # The flip must not break the pre-flip silence idiom: the default used to
+    # dispatch Ipopt, whose print_level 0 means "print nothing" (and 7–12 is
+    # max verbosity). Both leg-A suite errors on the first mini run traced to
+    # `LogLevels(0)` throwing.
+    optimizer = MadNLP.Optimizer()
+    DirectTrajOpt.set_options!(optimizer, DirectTrajOpt.MadNLPOptions(print_level = 0))
+    @test optimizer.options[:print_level] == MadNLP.ERROR
+
+    DirectTrajOpt.set_options!(optimizer, DirectTrajOpt.MadNLPOptions(print_level = 12))
+    @test optimizer.options[:print_level] == MadNLP.TRACE
+
+    # 1–6 (MadNLP's native scale) pass through unchanged.
+    DirectTrajOpt.set_options!(optimizer, DirectTrajOpt.MadNLPOptions(print_level = 4))
+    @test optimizer.options[:print_level] == MadNLP.LogLevels(4)
+
+    # End-to-end through the default dispatch: the exact call shape that broke
+    # (solve! with print_level=0 and no options kwarg) now runs.
+    prob, _ = make_standard_prob()
+    stats = solve!(prob; max_iter = 2, print_level = 0, verbose = false)
+    @test stats.solver === :madnlp
 end
 
 # ----------------------------------------------------------------------------

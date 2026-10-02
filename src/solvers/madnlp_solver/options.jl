@@ -15,7 +15,7 @@ solve!(prob; options = MadNLPOptions(max_iter = 500))
 # Commonly used fields
 - `tol::Float64 = 1e-8`: Termination tolerance on the KKT residual
 - `max_iter::Int = 3000`: Maximum number of solver iterations
-- `print_level::Int = 3`: MadNLP output verbosity (MadNLP.LogLevels 1–6)
+- `print_level::Int = 3`: MadNLP output verbosity (MadNLP.LogLevels 1–6); the Ipopt scale carries over — 0 (Ipopt "print nothing") → `MadNLP.ERROR`, 7–12 (Ipopt's most verbose) → `MadNLP.TRACE`, 1–6 unchanged
 - `hessian_approximation::String = "exact"`: `"exact"` or `"compact_lbfgs"`
 - `barrier::Any = nothing`: barrier-parameter update strategy — `nothing` resolves at solve time to the audit-chosen default `MadNLP.QualityFunctionUpdate(tol, 10.0)` (see the field's comment in the struct below); pass any `MadNLP.AbstractBarrierUpdate` (e.g. `MadNLP.MonotoneUpdate(tol, 10.0)`) for manual control
 - `linear_solver::Any = nothing`: MadNLP linear-solver type, e.g. `MadNLP.LapackCPUSolver` (`nothing` ⇒ MadNLP default)
