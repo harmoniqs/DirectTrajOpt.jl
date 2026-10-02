@@ -9,6 +9,8 @@ Changes before v0.9.8 are not recorded here — see the
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-10-02
+
 ### Changed
 
 - **MadNLP is the default solver backend (#155)** — the no-kwarg `solve!(prob)` now dispatches MadNLP. MadNLP is a HARD dependency (the `MadNLPSolverExt` weakdep package extension moved from `ext/` into `src/` beside `IpoptSolverExt`); Ipopt remains a hard dependency and fully selectable via `solve!(prob; options = IpoptOptions(...))` or `Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions)`. `test/compare_solvers.jl` is a live harness again: a default-leg vs Ipopt-leg comparison (plus an explicit MadNLP leg) with fixed seeds.
