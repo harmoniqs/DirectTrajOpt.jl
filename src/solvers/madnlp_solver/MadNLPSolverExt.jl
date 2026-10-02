@@ -32,6 +32,7 @@ include("utils.jl")
     @test opts.max_iter == 3000
     @test opts.print_level == 3
     @test opts.hessian_approximation == "exact"
+    @test opts.barrier === nothing
     @test opts.intermediate_callback === nothing
     @test opts.fixed_variable_treatment === nothing
 

@@ -296,6 +296,17 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
         if name in ignored_options
             continue
         end
+        # The restoration-audit default (#155 AC2): for `barrier` alone,
+        # `nothing` does NOT mean "MadNLP's own default" — it resolves to the
+        # audit-chosen `QualityFunctionUpdate` tracking `tol` (MadNLP's native
+        # `MonotoneUpdate` default stalls on the standard Piccolo QCP class;
+        # see the field's comment in options.jl for the full audit note). An
+        # explicit `MadNLP.AbstractBarrierUpdate` passes through untouched.
+        if name == :barrier
+            optimizer.options[name] = value === nothing ?
+                MadNLP.QualityFunctionUpdate(options.tol, 10.0) : value
+            continue
+        end
         # `nothing` means "use MadNLP's own default" — don't overwrite the optimizer's
         # internal dict in that case. Applies to the pass-through fields
         # (linear_solver, array_type, kkt_system, cudss_ordering).
@@ -332,6 +343,42 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
     return nothing
 end
 
+
+# ----------------------------------------------------------------------------
+# The restoration-audit barrier default (#155 AC2): `barrier === nothing`
+# resolves at solve-configuration time to the audit-chosen QualityFunctionUpdate
+# tracking `tol`; an explicit barrier object passes through untouched.
+# ----------------------------------------------------------------------------
+
+@testitem "MadNLPOptions.barrier resolves to the audit-chosen QualityFunctionUpdate" setup =
+    [DTOTestHelpers] begin
+    import MadNLP
+
+    # The field itself defaults to `nothing` (resolved in set_options!, so the
+    # barrier floor can track `tol` rather than a static value).
+    @test DirectTrajOpt.MadNLPOptions().barrier === nothing
+
+    # `nothing` → the audit-chosen adaptive barrier with MadNLP's own
+    # mu_min/tol coupling: mu_min = min(1e-4, tol) / (barrier_tol_factor + 1).
+    optimizer = MadNLP.Optimizer()
+    DirectTrajOpt.set_options!(optimizer, DirectTrajOpt.MadNLPOptions())
+    barrier = optimizer.options[:barrier]
+    @test barrier isa MadNLP.QualityFunctionUpdate
+    @test barrier.mu_min == min(1e-4, 1e-8) / 11
+
+    # The floor tracks `tol` — a tighter tolerance still lowers it (Piccolissimo
+    # sweeps tune tol; a static barrier floor would cap them).
+    optimizer2 = MadNLP.Optimizer()
+    DirectTrajOpt.set_options!(optimizer2, DirectTrajOpt.MadNLPOptions(tol = 1e-10))
+    @test optimizer2.options[:barrier].mu_min == min(1e-4, 1e-10) / 11
+
+    # An explicit barrier object passes through untouched — manual control,
+    # and MadNLP's native monotone behavior stays one constructor away.
+    native = MadNLP.MonotoneUpdate(1e-8, 10.0)
+    optimizer3 = MadNLP.Optimizer()
+    DirectTrajOpt.set_options!(optimizer3, DirectTrajOpt.MadNLPOptions(barrier = native))
+    @test optimizer3.options[:barrier] === native
+end
 
 # ----------------------------------------------------------------------------
 # Optimizer Tests
