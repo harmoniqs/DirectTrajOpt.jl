@@ -303,8 +303,8 @@ function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::MadNL
         # see the field's comment in options.jl for the full audit note). An
         # explicit `MadNLP.AbstractBarrierUpdate` passes through untouched.
         if name == :barrier
-            optimizer.options[name] = value === nothing ?
-                MadNLP.QualityFunctionUpdate(options.tol, 10.0) : value
+            optimizer.options[name] =
+                value === nothing ? MadNLP.QualityFunctionUpdate(options.tol, 10.0) : value
             continue
         end
         # `nothing` means "use MadNLP's own default" — don't overwrite the optimizer's
