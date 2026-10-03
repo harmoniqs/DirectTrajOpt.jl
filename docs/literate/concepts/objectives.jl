@@ -105,7 +105,7 @@ obj_free_time =
 # ## TerminalObjective
 
 # ### Overview
-# Applies a cost only at the **final time step**:
+# Applies a cost only at the **final knot point**:
 # ```math
 # J = f(x_N)
 # ```
@@ -151,7 +151,7 @@ obj_soft = TerminalObjective(x -> 100.0 * norm(x - x_goal)^2, :x, traj_soft)
 # ## KnotPointObjective
 
 # ### Overview
-# Applies a cost at **specific time steps**:
+# Applies a cost at **specific knots**:
 # ```math
 # J = \sum_{k \in K} f(x_k, u_k)
 # ```
@@ -182,7 +182,7 @@ obj_knot_all = KnotPointObjective(
     xu -> xu[1]^2 + xu[3]^2,  # xu is concatenated [x; u]
     [:x, :u],
     traj;
-    times = 1:N,  # All time steps
+    times = 1:N,  # All knots
 )
 # Equivalent to manually summing costs
 
