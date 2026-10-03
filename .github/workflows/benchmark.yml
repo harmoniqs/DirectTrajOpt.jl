@@ -2,6 +2,10 @@ name: Benchmarks
 on:
   push:
     tags: ['v*']
+  schedule:
+    # weekly fresh main-branch baseline for the published series — keeps PR
+    # comparisons anchored to current main instead of the last release era
+    - cron: '30 3 * * 1'   # Mondays 03:30 UTC, before the workday
   pull_request:
     paths:
       - 'src/**'
