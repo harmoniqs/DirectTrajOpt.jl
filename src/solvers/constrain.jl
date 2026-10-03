@@ -35,7 +35,7 @@ function (con::EqualityConstraint)(
         @assert name ∈ traj.global_names "Global variable $name not found in trajectory"
         @assert length(con.values) == traj.global_dims[name] "Value dimension mismatch for global variable $name"
 
-        indices = traj.dim * traj.N .+ traj.global_components[name]
+        indices = WarpPlumbing.packed_globals_base(traj) .+ traj.global_components[name]
 
         for (i, val) ∈ zip(indices, con.values)
             MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
@@ -58,7 +58,7 @@ function (con::EqualityConstraint)(
                 "Matrix row dimension ($(size(con.values, 1))) must match variable dimension ($(traj.dims[name])) for $name"
             )
             for (k, t) ∈ enumerate(ts)
-                indices = slice(t, traj.components[name], traj.dim)
+                indices = WarpPlumbing.packed_slice(traj, t, traj.components[name])
                 for (i, val) ∈ zip(indices, @view con.values[:, k])
                     MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
                 end
@@ -73,7 +73,7 @@ function (con::EqualityConstraint)(
             end
 
             for t ∈ ts
-                indices = slice(t, traj.components[name], traj.dim)
+                indices = WarpPlumbing.packed_slice(traj, t, traj.components[name])
                 for (i, val) ∈ zip(indices, val_per_time)
                     MOI.add_constraints(opt, vars[i], MOI.EqualTo(val))
                 end
@@ -111,7 +111,7 @@ function (con::BoundsConstraint)(
             @assert all(lb .<= ub) "Lower bounds must be <= upper bounds"
         end
 
-        indices = traj.dim * traj.N .+ traj.global_components[name]
+        indices = WarpPlumbing.packed_globals_base(traj) .+ traj.global_components[name]
 
         for (i, (lb_i, ub_i)) ∈ zip(indices, zip(lb, ub))
             MOI.add_constraints(opt, vars[i], MOI.GreaterThan(lb_i))
@@ -146,7 +146,7 @@ function (con::BoundsConstraint)(
 
         # Apply bounds at each knot (only for selected subcomponents)
         for t ∈ ts
-            indices = slice(t, traj.components[name][subcomps], traj.dim)
+            indices = WarpPlumbing.packed_slice(traj, t, traj.components[name][subcomps])
             for (i, (lb_i, ub_i)) ∈ zip(indices, zip(lb[subcomps], ub[subcomps]))
                 MOI.add_constraints(opt, vars[i], MOI.GreaterThan(lb_i))
                 MOI.add_constraints(opt, vars[i], MOI.LessThan(ub_i))
@@ -160,6 +160,17 @@ function (con::AllEqualConstraint)(
     vars::Vector{MOI.VariableIndex},
     traj::NamedTrajectory,
 )
+    # Phase 1b (DTO#149): obsolete under a warp — refused at problem construction
+    # already; this is defense in depth for hand-assembled problems.
+    traj.warp !== nothing &&
+        (con.var_name == :Δt || con.var_name == traj.timestep) &&
+        throw(
+            ArgumentError(
+                "AllEqualConstraint on the timestep is obsolete under a time warp — the " *
+                "uniform mesh is built into the warp lattice and the duration is the warp " *
+                "parameter T (bound it via WarpParamBoundsConstraint). (DirectTrajOpt#149)",
+            ),
+        )
     # Determine which variable to constrain (use trajectory's timestep if :Δt)
     var_name = con.var_name == :Δt ? traj.timestep : con.var_name
     @assert var_name isa Symbol "Trajectory must have a timestep variable for AllEqualConstraint"
@@ -169,8 +180,9 @@ function (con::AllEqualConstraint)(
     @assert comp_idx <= traj.dims[var_name] "Component index $comp_idx exceeds variable dimension"
 
     # All timesteps 1:N-1 must equal timestep N
-    indices = [index(k, traj.components[var_name][comp_idx], traj.dim) for k ∈ 1:(traj.N-1)]
-    bar_index = index(traj.N, traj.components[var_name][comp_idx], traj.dim)
+    comp = traj.components[var_name][comp_idx]
+    indices = [WarpPlumbing.packed_row_index(traj, k, comp) for k ∈ 1:(traj.N-1)]
+    bar_index = WarpPlumbing.packed_row_index(traj, traj.N, comp)
 
     x_minus_val = MOI.ScalarAffineTerm(-1.0, vars[bar_index])
     for i ∈ indices
@@ -192,8 +204,8 @@ function (con::L1SlackConstraint)(
     s_comps = traj.components[con.slack_name]
 
     for t ∈ con.times
-        v_indices = slice(t, v_comps, traj.dim)
-        s_indices = slice(t, s_comps, traj.dim)
+        v_indices = WarpPlumbing.packed_slice(traj, t, v_comps)
+        s_indices = WarpPlumbing.packed_slice(traj, t, s_comps)
 
         for (vi, si) ∈ zip(v_indices, s_indices)
             # v_{k,i} - s_{k,i} ≤ 0
@@ -234,13 +246,24 @@ function (con::TotalConstraint)(
     @assert var_name isa Symbol "Trajectory must have a timestep variable for TotalConstraint"
     @assert var_name ∈ traj.names "Variable $var_name not found in trajectory"
 
+    # Phase 1b (DTO#149): obsolete on the derived timestep under a warp.
+    traj.warp !== nothing &&
+        var_name == traj.timestep &&
+        throw(
+            ArgumentError(
+                "TotalConstraint on the timestep is obsolete under a time warp — the total " *
+                "duration IS the warp parameter T; pin it via WarpParamBoundsConstraint with " *
+                "lo == hi. (DirectTrajOpt#149)",
+            ),
+        )
     comp_idx = con.component_index
     @assert comp_idx <= traj.dims[var_name] "Component index $comp_idx exceeds variable dimension"
 
     # For timestep variables, sum only first N-1 (last knot point has no duration after it)
     # For other variables, sum all N values
     time_indices = (var_name == traj.timestep) ? (1:(traj.N-1)) : (1:traj.N)
-    indices = [index(k, traj.components[var_name][comp_idx], traj.dim) for k ∈ time_indices]
+    comp = traj.components[var_name][comp_idx]
+    indices = [WarpPlumbing.packed_row_index(traj, k, comp) for k ∈ time_indices]
 
     MOI.add_constraints(
         opt,
@@ -264,8 +287,8 @@ function (con::SymmetryConstraint)(
 
     # Get component indices for the variable
     component_indices = [
-        slice(t, traj.components[con.var_name], traj.dim)[con.component_indices] for
-        t ∈ 1:traj.N
+        WarpPlumbing.packed_slice(traj, t, traj.components[con.var_name])[con.component_indices]
+        for t ∈ 1:traj.N
     ]
 
     if con.even
@@ -294,8 +317,17 @@ function (con::SymmetryConstraint)(
 
     # Add timestep symmetry if requested and timestep exists
     if con.include_timestep && traj.timestep isa Symbol
-        time_indices =
-            [index(k, traj.components[traj.timestep][1], traj.dim) for k ∈ 1:traj.N]
+        traj.warp !== nothing && throw(
+            ArgumentError(
+                "SymmetryConstraint(include_timestep = true) is obsolete under a time warp " *
+                "— the derived timestep is one lattice quantity, not per-knot decision " *
+                "data. (DirectTrajOpt#149)",
+            ),
+        )
+        time_indices = [
+            WarpPlumbing.packed_row_index(traj, k, traj.components[traj.timestep][1])
+            for k ∈ 1:traj.N
+        ]
         even_pairs = vcat(
             even_pairs,
             [(time_indices[idx], time_indices[traj.N+1-idx]) for idx ∈ 1:(traj.N÷2)],
@@ -340,7 +372,7 @@ function (con::GlobalLinearConstraint)(
         ":$(con.name) has dim $(length(g))",
     )
 
-    base = traj.dim * traj.N                       # global vars follow the knot vars
+    base = WarpPlumbing.packed_globals_base(traj)  # global vars follow the knot vars
     nrows = size(con.A, 1)
 
     # Bucket the sparse entries by row (CSC is column-major, so collect once).
@@ -387,11 +419,23 @@ function (con::TimeConsistencyConstraint)(
     @assert timestep_name isa Symbol "Trajectory must have a timestep variable"
     @assert timestep_name ∈ traj.names "Timestep variable $timestep_name not found in trajectory"
 
+    # Phase 1b (DTO#149): obsolete under a warp — the Δt rows are derived, so the
+    # consistency holds by construction. Defense in depth behind the problem-level
+    # refusal.
+    traj.warp !== nothing &&
+        timestep_name == traj.timestep &&
+        throw(
+            ArgumentError(
+                "TimeConsistencyConstraint is obsolete under a time warp — the timestep rows " *
+                "are derived from the warp, so tₖ₊₁ = tₖ + Δtₖ holds by construction. Physical " *
+                "knot times are knot_times(traj.warp, traj.N). (DirectTrajOpt#149)",
+            ),
+        )
     # For each k = 1:N-1, add constraint: t_{k+1} - t_k - Δt_k = 0
     for k = 1:(traj.N-1)
-        t_k = index(k, traj.components[time_name][1], traj.dim)
-        t_k1 = index(k+1, traj.components[time_name][1], traj.dim)
-        Δt_k = index(k, traj.components[timestep_name][1], traj.dim)
+        t_k = WarpPlumbing.packed_row_index(traj, k, traj.components[time_name][1])
+        t_k1 = WarpPlumbing.packed_row_index(traj, k+1, traj.components[time_name][1])
+        Δt_k = WarpPlumbing.packed_row_index(traj, k, traj.components[timestep_name][1])
 
         # t_{k+1} - t_k - Δt_k = 0
         MOI.add_constraints(
@@ -407,6 +451,32 @@ function (con::TimeConsistencyConstraint)(
             MOI.EqualTo(0.0),
         )
     end
+end
+
+function (con::WarpParamBoundsConstraint)(
+    opt::AbstractOptimizer,
+    vars::Vector{MOI.VariableIndex},
+    traj::NamedTrajectory,
+)
+    warp = traj.warp
+    warp === nothing && throw(
+        ArgumentError(
+            "WarpParamBoundsConstraint requires a trajectory with a time warp — there are " *
+            "no warp parameters to bound (the per-knot timestep is an ordinary variable " *
+            "there; bound it with BoundsConstraint). (DirectTrajOpt#149)",
+        ),
+    )
+    length(con.lo) == n_params(warp) || throw(
+        ArgumentError(
+            "WarpParamBoundsConstraint bounds length $(length(con.lo)) does not match the " *
+            "warp parameter count $(n_params(warp))",
+        ),
+    )
+    for (j, pos) ∈ enumerate(WarpPlumbing.warp_param_indices(traj))
+        MOI.add_constraints(opt, vars[pos], MOI.GreaterThan(con.lo[j]))
+        MOI.add_constraints(opt, vars[pos], MOI.LessThan(con.hi[j]))
+    end
+    return nothing
 end
 
 
