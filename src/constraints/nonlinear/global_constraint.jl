@@ -119,12 +119,12 @@ function CommonInterface.eval_jacobian(
     constraint::NonlinearGlobalConstraint,
     traj::NamedTrajectory,
 )
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     ∂g_full = spzeros(constraint.dim, Z_dim)
 
     global_comps =
         vcat([traj.global_components[name] for name in constraint.global_names]...)
-    offset_global_comps = traj.dim * traj.N .+ global_comps
+    offset_global_comps = WarpPlumbing.packed_globals_base(traj) .+ global_comps
 
     # Compute compact Jacobian and map to global columns
     ∂g_compact = ForwardDiff.jacobian(x -> constraint.g(x), traj.global_data[global_comps])
@@ -143,12 +143,12 @@ function CommonInterface.eval_hessian_of_lagrangian(
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     μ∂²g_full = spzeros(Z_dim, Z_dim)
 
     global_comps =
         vcat([traj.global_components[name] for name in constraint.global_names]...)
-    offset_global_comps = traj.dim * traj.N .+ global_comps
+    offset_global_comps = WarpPlumbing.packed_globals_base(traj) .+ global_comps
 
     # Compute compact Hessian and map to global×global block
     μ∂²g_compact =

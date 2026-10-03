@@ -32,7 +32,7 @@ using CairoMakie
 
 # A trajectory contains your states, controls, and time information:
 
-N = 50  # number of time steps
+N = 50  # number of knot points
 traj = NamedTrajectory(
     (
         x = randn(2, N),    # 2D state
