@@ -39,11 +39,12 @@ function DirectTrajOpt._solve(
     optimizer, variables =
         get_optimizer_and_variables(prob, options, callback, verbose = verbose)
 
+    t_solve = time()
     MOI.optimize!(optimizer)
 
     update_trajectory!(prob, optimizer, variables)
 
-    return nothing
+    return Solvers._solve_stats(optimizer, variables, :ipopt, t_solve)
 end
 
 
@@ -107,9 +108,16 @@ function get_optimizer_and_variables(
         println("    variables set ($(round(time() - t_vars, digits=3))s)")
     end
 
-    # set callback function
-    if !isnothing(callback)
-        MOI.set(optimizer, Ipopt.CallbackFunction(), callback(optimizer))
+    # set callback function — compose the raw `callback` (text telemetry /
+    # checkpointing factory closure) with an AbstractIntermediateCallback
+    # installed via `options.intermediate_callback`. Ipopt accepts a single
+    # CallbackFunction, so they're merged: every callback fires once per IPM
+    # iteration and the solve continues iff all return true (false ⇒
+    # user-requested termination). No callback at all ⇒ nothing is set (the
+    # no-callback solve path is byte-for-byte unchanged).
+    cb_factory = _ipopt_callback_function(callback, options.intermediate_callback)
+    if !isnothing(cb_factory)
+        MOI.set(optimizer, Ipopt.CallbackFunction(), cb_factory(optimizer))
     end
 
     # add linear constraints
@@ -145,26 +153,16 @@ end
 
 
 function set_variables!(optimizer::AbstractOptimizer, traj::NamedTrajectory)
-    data_dim = traj.dim * traj.N
+    # One optimizer variable per PACKED position: warp-free the historical
+    # [datavec; global_data]; under a warp the derived timestep rows drop out
+    # and the warp parameters (the duration variable) trail.
+    packed = collect(vec(traj))
 
     # add variables
-    variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
+    variables = MOI.add_variables(optimizer, length(packed))
 
-    # set trajectory data
-    MOI.set(
-        optimizer,
-        MOI.VariablePrimalStart(),
-        variables[1:data_dim],
-        collect(traj.datavec),
-    )
-
-    # set global data
-    MOI.set(
-        optimizer,
-        MOI.VariablePrimalStart(),
-        variables[data_dim .+ (1:traj.global_dim)],
-        collect(traj.global_data),
-    )
+    # set packed primal start (per-knot rows, globals, warp params)
+    MOI.set(optimizer, MOI.VariablePrimalStart(), variables, packed)
 
     return variables
 end
@@ -174,11 +172,15 @@ function update_trajectory!(
     optimizer::AbstractOptimizer,
     variables::Vector{MOI.VariableIndex},
 )
-    update!(
-        prob.trajectory,
-        MOI.get(optimizer, MOI.VariablePrimal(), variables),
-        type = :both,
-    )
+    z = MOI.get(optimizer, MOI.VariablePrimal(), variables)
+    if prob.trajectory.warp !== nothing
+        # Phase 1b (DTO#149): under a warp the packed vector goes through
+        # unpack! — update! with a packed vector throws (the derived timestep
+        # rows are never decision data).
+        unpack!(prob.trajectory, z)
+    else
+        update!(prob.trajectory, z, type = :both)
+    end
     return nothing
 end
 
@@ -188,8 +190,47 @@ end
 # ----------------------------------------------------------------------------
 
 
+# Compose the raw `callback` factory and an AbstractIntermediateCallback (from
+# `IpoptOptions.intermediate_callback`) into a single Ipopt CallbackFunction
+# factory (`optimizer -> (state... -> Bool)`), or `nothing` if neither is set.
+# The agnostic callback is wrapped by `Callbacks.callback_intermediate_factory`,
+# which reconstructs the full primal each iteration — so the SAME callback object
+# runs under Ipopt and MadNLP with no backend-specific branching.
+function _ipopt_callback_function(callback, intermediate_callback)
+    factories = Function[]
+    isnothing(callback) || push!(factories, callback)
+    if !isnothing(intermediate_callback)
+        intermediate_callback isa DirectTrajOpt.AbstractIntermediateCallback || throw(
+            ArgumentError(
+                "IpoptOptions.intermediate_callback must be a subtype of " *
+                "`DirectTrajOpt.AbstractIntermediateCallback`, got " *
+                "$(typeof(intermediate_callback))",
+            ),
+        )
+        push!(
+            factories,
+            Callbacks.callback_factory(
+                Callbacks.callback_intermediate_factory(intermediate_callback),
+            ),
+        )
+    end
+    isempty(factories) && return nothing
+    length(factories) == 1 && return factories[1]
+    # Compose factories: build each per-optimizer closure once, then AND their
+    # per-iteration returns. The comprehension (not a short-circuiting generator)
+    # guarantees every callback runs each iteration regardless of order/result.
+    return function (optimizer)
+        closures = [factory(optimizer) for factory in factories]
+        return (optimizer_state...) ->
+            all(Bool[closure(optimizer_state...) for closure in closures])
+    end
+end
+
+
 function DirectTrajOpt.set_options!(optimizer::AbstractOptimizer, options::IpoptOptions)
-    ignored_options = [:eval_hessian, :refine]
+    # intermediate_callback is wired separately (Ipopt.CallbackFunction), not an
+    # Ipopt string option — exclude it from the options dict like eval_hessian/refine.
+    ignored_options = [:eval_hessian, :refine, :intermediate_callback]
 
     for name in fieldnames(typeof(options))
         value = getfield(options, name)
@@ -290,7 +331,7 @@ end
 
     solve!(prob; max_iter = 100)
 
-    # Verify constraint is satisfied at each timestep
+    # Verify constraint is satisfied at each knot
     for k = 2:(traj.N-1)
         u = traj[k][:u]
         g = traj.global_data[traj.global_components[:g]]
@@ -484,4 +525,41 @@ end
     J += MinimumTimeObjective(traj)
     prob = DirectTrajOptProblem(traj, J, integrators)
     solve!(prob; max_iter = 5, eval_hessian = false, print_level = 0)
+end
+
+@testitem "solve! refine kwarg syncs adaptive_mu_globalization in _solve" begin
+    include("../../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory()
+    prob = DirectTrajOptProblem(
+        traj,
+        QuadraticRegularizer(:u, traj, 1.0),
+        [BilinearIntegrator(G, :x, :u, traj)],
+    )
+
+    # IpoptOptions computes adaptive_mu_globalization at construction; a
+    # refine= kwarg reaching _solve must re-sync the derived field.
+    opts = IpoptOptions(; max_iter = 3, print_level = 0)
+    @test opts.adaptive_mu_globalization == "obj-constr-filter"
+
+    stats = DirectTrajOpt._solve(prob, opts; refine = false, verbose = false)
+    @test stats isa Solvers.SolveStats
+    @test opts.refine == false
+    @test opts.adaptive_mu_globalization == "never-monotone-mode"
+end
+
+@testitem "solve! kwarg application warns loudly on unmatched options (Ipopt convention)" setup=[
+    DTOTestHelpers,
+] begin
+    prob, _ = make_standard_prob()
+    # The loud-error convention at ipopt_solver/solver.jl:18 is the contract the
+    # option-mapping enumeration leans on (zero silent drops) — lock it.
+    @test_logs (:warn, r"Unknown solver option: bogus_option_xyz") match_mode = :any begin
+        solve!(
+            prob;
+            options = IpoptOptions(max_iter = 3, print_level = 0),
+            verbose = false,
+            bogus_option_xyz = 1,
+        )
+    end
 end
