@@ -77,6 +77,18 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         solve_kwargs = (;),
     ) where {F<:Function}
 
+        # Phase 1b scope amendment (DTO#149): Bilinear-family integrator on the
+        # demotion arc — no warp plumbing; refuse rather than solve with silently
+        # wrong sensitivities.
+        traj.warp !== nothing && throw(
+            ArgumentError(
+                "TimeDependentBilinearIntegrator does not support time-warp trajectories: " *
+                "the Bilinear family is on the demotion arc and carries no warp column by " *
+                "scope (DirectTrajOpt#149 amendment). Derived-Δt dynamics live with the " *
+                "surviving integrator family (HermitianExponentialIntegrator, Piccolo.jl#321).",
+            ),
+        )
+
         N = traj.N
         @assert N > 1 "Trajectory must have at least two knot points."
 
