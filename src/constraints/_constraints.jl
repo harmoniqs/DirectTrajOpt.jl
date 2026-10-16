@@ -29,6 +29,7 @@ using Test
 
 # Import and extend the common interface
 using ..CommonInterface
+using ..WarpPlumbing
 import ..CommonInterface:
     evaluate!, jacobian_structure, jacobian!, hessian_structure, hessian_of_lagrangian
 import ..CommonInterface: eval_jacobian, eval_hessian_of_lagrangian
@@ -99,14 +100,14 @@ function hessian_of_lagrangian! end
 """
     get_full_jacobian(constraint, traj::NamedTrajectory)
 
-Assemble the full sparse Jacobian matrix from compact per-timestep blocks.
+Assemble the full sparse Jacobian matrix from compact per-knot blocks.
 """
 function get_full_jacobian end
 
 """
     get_full_hessian(constraint, traj::NamedTrajectory)
 
-Assemble the full sparse Hessian matrix from compact per-timestep blocks.
+Assemble the full sparse Hessian matrix from compact per-knot blocks.
 """
 function get_full_hessian end
 
@@ -172,13 +173,20 @@ function test_constraint(
     # Use vec(traj) to include both datavec and global_data
     ĝ =
         Z⃗ -> begin
-            # Split into datavec and global_data
-            datavec_size = traj.dim * traj.N
-            Z_traj = NamedTrajectory(
-                traj;
-                datavec = Z⃗[1:datavec_size],
-                global_data = Z⃗[(datavec_size+1):end],
-            )
+            if traj.warp === nothing
+                # Split into datavec and global_data
+                datavec_size = traj.dim * traj.N
+                Z_traj = NamedTrajectory(
+                    traj;
+                    datavec = Z⃗[1:datavec_size],
+                    global_data = Z⃗[(datavec_size+1):end],
+                )
+            else
+                # Warp present: the packed vector holds the non-derived rows
+                # only — write them, rebuild the warp, re-derive the rows.
+                Z_traj = NamedTrajectory(traj)
+                unpack!(Z_traj, Z⃗)
+            end
             values = zeros(eltype(Z⃗), constraint.dim)
             CommonInterface.evaluate!(values, constraint, Z_traj)
             return values
@@ -221,8 +229,7 @@ function test_constraint(
 
     # Compute finite difference Hessian using full vector (datavec + global_data)
     # Collect to convert from lazy ApplyArray to regular Vector
-    μ∂²g_finite_diff =
-        FiniteDiff.finite_difference_hessian(Z⃗ -> μ'ĝ(Z⃗), collect(vec(traj)))
+    μ∂²g_finite_diff = FiniteDiff.finite_difference_hessian(Z⃗ -> μ'ĝ(Z⃗), collect(vec(traj)))
 
     if show_hessian_diff
         println("\tDifference in Hessian")
@@ -268,10 +275,30 @@ include("linear/total_constraint.jl")
 include("linear/symmetry_constraint.jl")
 include("linear/time_consistency_constraint.jl")
 include("linear/l1_slack_constraint.jl")
+include("linear/global_linear_constraint.jl")
+include("linear/warp_param_bounds_constraint.jl")
 
 # Nonlinear constraints
 include("nonlinear/knot_point_constraint.jl")
 include("nonlinear/global_constraint.jl")
 include("nonlinear/global_knot_point_constraint.jl")
+
+@testitem "coverage: test_constraint norm-based comparison branches" setup =
+    [DTOTestHelpers] begin
+    # A tiny trajectory keeps the verbose diff output short.
+    traj = NamedTrajectory(
+        (x = randn(2, 3), u = randn(1, 3), Δt = fill(0.1, 3));
+        controls = (:u, :Δt),
+        timestep = :Δt,
+    )
+
+    NLC = NonlinearKnotPointConstraint(x -> [norm(x) - 1.0], :x, traj)
+
+    # norm-based Jacobian/Hessian checks: atol > 0 paths
+    test_constraint(NLC, traj; test_equality = false, atol = 1e-3)
+
+    # norm-based checks with atol == 0: relative-tolerance paths
+    test_constraint(NLC, traj; test_equality = false, atol = 0.0, rtol = 1e-3)
+end
 
 end

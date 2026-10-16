@@ -77,8 +77,20 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
         solve_kwargs = (;),
     ) where {F<:Function}
 
+        # Phase 1b scope amendment (DTO#149): Bilinear-family integrator on the
+        # demotion arc — no warp plumbing; refuse rather than solve with silently
+        # wrong sensitivities.
+        traj.warp !== nothing && throw(
+            ArgumentError(
+                "TimeDependentBilinearIntegrator does not support time-warp trajectories: " *
+                "the Bilinear family is on the demotion arc and carries no warp column by " *
+                "scope (DirectTrajOpt#149 amendment). Derived-Δt dynamics live with the " *
+                "surviving integrator family (HermitianExponentialIntegrator, Piccolo.jl#321).",
+            ),
+        )
+
         N = traj.N
-        @assert N > 1 "Trajectory must have at least two timesteps."
+        @assert N > 1 "Trajectory must have at least two knot points."
 
         x_dim = traj.dims[x]
         u_dim = traj.dims[u]
@@ -104,13 +116,8 @@ struct TimeDependentBilinearIntegrator{F} <: AbstractBilinearIntegrator
             return nothing
         end
 
-        u_template = if spline_order == 0
-            zeros(u_dim)
-        elseif spline_order == 1
-            zeros(2u_dim)
-        else
-            error("Unsupported spline order: $spline_order")
-        end
+        # spline_order ∈ {0, 1} is guaranteed by the validation above.
+        u_template = spline_order == 0 ? zeros(u_dim) : zeros(2u_dim)
 
         p_template = vcat(u_template, 1.0, 0.0) # [controls..., Δt, t]
 
@@ -155,14 +162,8 @@ function evaluate!(
         tₖ = traj[k][B.t_name][1]
         Δtₖ = traj[k].timestep
 
-        if B.spline_order == 0
-            pₖ = uₖ
-        elseif B.spline_order == 1
-            uₖ₊₁ = traj[k+1][B.u_name]
-            pₖ = [uₖ; uₖ₊₁]
-        else
-            error("Unsupported spline order: $(B.spline_order)")
-        end
+        # spline_order ∈ {0, 1} is validated at construction.
+        pₖ = B.spline_order == 0 ? uₖ : [uₖ; traj[k+1][B.u_name]]
 
         δ[slice(k, B.x_dim)] = B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
     end
@@ -185,14 +186,8 @@ end
                 Δtₖ = zₖ[traj.components[traj.timestep]][1]
                 xₖ₊₁ = zₖ₊₁[traj.components[B.x_name]]
 
-                if B.spline_order == 0
-                    pₖ = uₖ
-                elseif B.spline_order == 1
-                    uₖ₊₁ = zₖ₊₁[traj.components[B.u_name]]
-                    pₖ = [uₖ; uₖ₊₁]
-                else
-                    error("Unsupported spline order: $(B.spline_order)")
-                end
+                # spline_order ∈ {0, 1} is validated at construction.
+                pₖ = B.spline_order == 0 ? uₖ : [uₖ; zₖ₊₁[traj.components[B.u_name]]]
 
                 return B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
             end,
@@ -224,14 +219,8 @@ function eval_hessian_of_lagrangian(
                 Δtₖ = zₖ[traj.components[traj.timestep]][1]
                 xₖ₊₁ = zₖ₊₁[traj.components[B.x_name]]
 
-                if B.spline_order == 0
-                    pₖ = uₖ
-                elseif B.spline_order == 1
-                    uₖ₊₁ = zₖ₊₁[traj.components[B.u_name]]
-                    pₖ = [uₖ; uₖ₊₁]
-                else
-                    error("Unsupported spline order: $(B.spline_order)")
-                end
+                # spline_order ∈ {0, 1} is validated at construction.
+                pₖ = B.spline_order == 0 ? uₖ : [uₖ; zₖ₊₁[traj.components[B.u_name]]]
 
                 return μₖ'B.f(xₖ₊₁, xₖ, pₖ, Δtₖ, tₖ)
             end,
@@ -266,4 +255,33 @@ end
     B = TimeDependentBilinearIntegrator(G_td, :x, :u, :t, traj)
 
     test_integrator(B, traj, test_equality = false, atol = 1e-3)
+end
+
+@testitem "testing TimeDependentBilinearIntegrator with zero-order hold" begin
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_time = true)
+
+    B = TimeDependentBilinearIntegrator((a, t) -> G(a), :x, :u, :t, traj; spline_order = 0)
+
+    @test B.spline_order == 0
+    @test B.u_dim == traj.dims[:u]
+    @test sprint(show, B) isa String
+
+    test_integrator(B, traj, test_equality = false, atol = 1e-3)
+end
+
+@testitem "TimeDependentBilinearIntegrator rejects unsupported spline orders" begin
+    include("../../test/test_utils.jl")
+
+    G, traj = bilinear_dynamics_and_trajectory(add_time = true)
+
+    @test_throws ErrorException TimeDependentBilinearIntegrator(
+        (a, t) -> G(a),
+        :x,
+        :u,
+        :t,
+        traj;
+        spline_order = 2,
+    )
 end
