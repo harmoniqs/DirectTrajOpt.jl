@@ -96,6 +96,12 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     # `trajectory`; only the data pointers differ.
     _cached_traj::NamedTrajectory
 
+    # Reusable Jacobian-values buffer, aligned with `jacobian_structure`.
+    # Owned by the jacobian-product seam (#155): J·w / Jᵀw fill this instead
+    # of assembling a fresh zeros(nnz) per call (MadNLP's restoration path
+    # hits these per iteration).
+    _jacobian_values::Vector{Float64}
+
     function Evaluator(prob::DirectTrajOptProblem; eval_hessian = true, verbose = false)
         t_start = time()
 
@@ -118,8 +124,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
 
         # Build Jacobian structure from integrators
         t_jac = time()
-        ∂g =
-            spzeros(0, prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim)
+        ∂g = spzeros(0, WarpPlumbing.packed_length(prob.trajectory))
 
         for (i, integrator) in enumerate(prob.integrators)
             t_int = time()
@@ -151,8 +156,8 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         # Build Hessian structure from integrators
         t_hess = time()
         hessian = spzeros(
-            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
-            prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim,
+            WarpPlumbing.packed_length(prob.trajectory),
+            WarpPlumbing.packed_length(prob.trajectory),
         )
 
         for (i, integrator) in enumerate(prob.integrators)
@@ -227,7 +232,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
         jacobian_constraint_row_offsets = copy(constraint_offsets)
 
         # Pre-compute linear index maps for O(1) lookup (replaces Dict with array indexing)
-        n_vars = prob.trajectory.dim * prob.trajectory.N + prob.trajectory.global_dim
+        n_vars = WarpPlumbing.packed_length(prob.trajectory)
         jacobian_ncols = n_vars
         hessian_ncols = n_vars
 
@@ -263,6 +268,8 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
             global_data = copy(prob.trajectory.global_data),
         )
 
+        jacobian_values = zeros(Float64, length(jacobian_structure))
+
         return new(
             prob.trajectory,
             prob.objective,
@@ -284,6 +291,7 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
             jacobian_ncols,
             hessian_ncols,
             _cached_traj,
+            jacobian_values,
         )
     end
 end
@@ -403,25 +411,27 @@ end
     return nothing
 end
 
-function MOI.eval_constraint_jacobian_product(
+# The Jacobian-product seam (#155): J·w and Jᵀw computed straight from the
+# cached structure and a REUSABLE values buffer — exact results, no per-call
+# assembly of the full sparse jacobian (previously: fresh structure query +
+# zeros(nnz) + one @warn per call). The transpose product is MadNLP's
+# restoration/robust-path caller (NLPModels jtprod! → MadNLPMOI); the
+# forward product rides the same idiom for symmetry.
+
+@views function MOI.eval_constraint_jacobian_product(
     evaluator::Evaluator,
     y::AbstractVector{T},
     x::AbstractVector{T},
     w::AbstractVector{T},
 ) where {T}
-    @warn "Constraint jacobian product using stub implementation" # to reviewer(s): feel free to remove this warning if satisfied with the method as-is
+    fill!(y, zero(T))
 
-    # Temporary workaround
+    Z = _update_trajectory_cache!(evaluator, x)
+    _fill_jacobian_values!(evaluator._jacobian_values, evaluator, Z)
 
-    fill!(y, 0.0)
-
-    _x = _update_trajectory_cache!(evaluator, x)
-
-    jac_structure::Vector{Tuple{Int,Int}} = MOI.jacobian_structure(evaluator)
-    jac::Vector{T} = zeros(length(jac_structure))
-    _fill_jacobian_values!(jac, evaluator, _x)
-
-    for idx in eachindex(jac_structure)
+    jac_structure = evaluator.jacobian_structure
+    jac = evaluator._jacobian_values
+    @inbounds for idx in eachindex(jac_structure)
         row, col = jac_structure[idx]
         y[row] += w[col] * jac[idx]
     end
@@ -429,25 +439,20 @@ function MOI.eval_constraint_jacobian_product(
     return nothing
 end
 
-function MOI.eval_constraint_jacobian_transpose_product(
+@views function MOI.eval_constraint_jacobian_transpose_product(
     evaluator::Evaluator,
     y::AbstractVector{T},
     x::AbstractVector{T},
     w::AbstractVector{T},
 ) where {T}
-    @warn "Constraint jacobian transpose product using stub implementation"
+    fill!(y, zero(T))
 
-    # Temporary workaround
+    Z = _update_trajectory_cache!(evaluator, x)
+    _fill_jacobian_values!(evaluator._jacobian_values, evaluator, Z)
 
-    fill!(y, 0.0)
-
-    _x = _update_trajectory_cache!(evaluator, x)
-
-    jac_structure::Vector{Tuple{Int,Int}} = MOI.jacobian_structure(evaluator)
-    jac::Vector{T} = zeros(length(jac_structure))
-    _fill_jacobian_values!(jac, evaluator, _x)
-
-    for idx in eachindex(jac_structure)
+    jac_structure = evaluator.jacobian_structure
+    jac = evaluator._jacobian_values
+    @inbounds for idx in eachindex(jac_structure)
         row, col = jac_structure[idx]
         y[col] += w[row] * jac[idx]
     end
@@ -472,12 +477,11 @@ The returned trajectory shares all structural metadata (components, dims,
 bounds, names, etc.) with `evaluator.trajectory` (= `prob.trajectory`).
 """
 @inline function _update_trajectory_cache!(evaluator::Evaluator, Z⃗::AbstractVector)
-    n_traj = evaluator.trajectory.dim * evaluator.trajectory.N
-    copyto!(evaluator._cached_traj.datavec, 1, Z⃗, 1, n_traj)
-    n_global = evaluator.trajectory.global_dim
-    if n_global > 0
-        copyto!(evaluator._cached_traj.global_data, 1, Z⃗, n_traj + 1, n_global)
-    end
+    # NT's unpack! is the single packed-write seam: warp-free it is exactly the
+    # historical [datavec; global_data] copy; under a warp it writes the
+    # non-derived rows, rebuilds the warp from the trailing parameters, and
+    # re-derives the timestep rows.
+    unpack!(evaluator._cached_traj, Z⃗)
     return evaluator._cached_traj
 end
 
@@ -759,12 +763,6 @@ end
 
     ∂²ℒ_values = zeros(length(∂²ℒ_structure))
 
-    for (i, j) ∈ ∂²ℒ_structure
-        if j < i
-            println("Hessian index: (", i, ", ", j, ")")
-        end
-    end
-
     MOI.eval_hessian_lagrangian(evaluator, ∂²ℒ_values, traj.datavec, σ, μ)
 
     n_vars =
@@ -806,6 +804,8 @@ end
 end
 
 @testitem "eval_constraint_jacobian_product" setup=[DTOTestHelpers] begin
+    import Logging
+
     _, traj, evaluator = make_evaluator()
 
     Z⃗ = collect(traj.datavec)
@@ -824,12 +824,31 @@ end
 
     w = randn(n_vars)
     y_moi = zeros(n_cons)
-    MOI.eval_constraint_jacobian_product(evaluator, y_moi, Z⃗, w)
+
+    # The #155 seam contract: exact J·w, no stub warning, and no per-call
+    # re-assembly buffer — the allocation cost must match the evaluator's own
+    # fill path (eval_constraint_jacobian on the same point), not carry an
+    # extra zeros(nnz) on top of it.
+    logs, _ = Test.collect_test_logs() do
+        MOI.eval_constraint_jacobian_product(evaluator, y_moi, Z⃗, w)
+    end
+    @test !any(l -> l.level == Logging.Warn, logs)
 
     @test isapprox(y_moi, J_dense * w, atol = 1e-10)
+
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)  # warm the fill path
+    MOI.eval_constraint_jacobian_product(evaluator, y_moi, Z⃗, w)  # warm the product path
+    a_jac = @allocated MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+    a_prod = @allocated MOI.eval_constraint_jacobian_product(evaluator, y_moi, Z⃗, w)
+    # 12_000 bytes comfortably covers the scatter loop; the stub's per-call
+    # zeros(nnz) (8·nnz ≈ 12.8 KB for this problem, plus the structure query)
+    # exceeds it.
+    @test a_prod - a_jac <= 12_000
 end
 
 @testitem "eval_constraint_jacobian_transpose_product" setup=[DTOTestHelpers] begin
+    import Logging
+
     _, traj, evaluator = make_evaluator()
 
     Z⃗ = collect(traj.datavec)
@@ -847,9 +866,22 @@ end
 
     w = randn(n_cons)
     y_moi = zeros(n_vars)
-    MOI.eval_constraint_jacobian_transpose_product(evaluator, y_moi, Z⃗, w)
+
+    # The #155 seam contract (the MadNLP restoration-path caller): exact Jᵀw,
+    # no stub warning, and no per-call re-assembly of the full sparse jacobian.
+    logs, _ = Test.collect_test_logs() do
+        MOI.eval_constraint_jacobian_transpose_product(evaluator, y_moi, Z⃗, w)
+    end
+    @test !any(l -> l.level == Logging.Warn, logs)
 
     @test isapprox(y_moi, J_dense' * w, atol = 1e-10)
+
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)  # warm the fill path
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y_moi, Z⃗, w)  # warm
+    a_jac = @allocated MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+    a_tprod =
+        @allocated MOI.eval_constraint_jacobian_transpose_product(evaluator, y_moi, Z⃗, w)
+    @test a_tprod - a_jac <= 12_000
 end
 
 @testitem "Evaluator verbose construction" setup=[DTOTestHelpers] begin
