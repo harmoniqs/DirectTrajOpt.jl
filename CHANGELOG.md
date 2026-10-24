@@ -9,6 +9,10 @@ Changes before v0.9.8 are not recorded here — see the
 
 ## [Unreleased]
 
+### Fixed
+
+- **Jacobian-values cache on the Jacobian-product seam (#163)** — under MadNLP's quasi-Newton mode (`hessian_approximation = "compact_lbfgs"`) the L-BFGS update requests Jᵀl through `MOI.eval_constraint_jacobian_transpose_product` on **every iteration**, not only on the restoration/robust path, and the evaluator answered each request by re-evaluating the full constraint Jacobian (on spline-integrator problems ~45% of wall time, booked by MadNLP outside function evaluations). The evaluator now keeps a two-slot cache of (exact copy of the packed iterate, Jacobian values), filled by `eval_constraint_jacobian` and by any product that had to recompute; J·w / Jᵀw at a bit-identical iterate (elementwise `isequal`, no tolerance) reuse the stored values with zero allocation. Two slots, first-in-first-out, because MadNLP asks for Jᵀl at the *previous* iterate right after evaluating J at the current one — a single same-iterate slot (or LRU eviction) misses every iteration (measured: 1 hit in 15 iterations vs 15/15). Returned values are unchanged: a 15-iteration compact_lbfgs solve on the standard test problem has a bit-identical per-iteration trace and final iterate with the cache on vs off. Observable via `evaluator._jacobian_cache_hits`; `evaluator._jacobian_cache_enabled = false` restores the re-evaluate-every-call path.
+
 ## [0.11.0] — 2026-10-02
 
 ### Changed
