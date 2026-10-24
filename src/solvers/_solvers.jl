@@ -6,11 +6,15 @@ export AbstractIntermediateCallback
 export _solve
 export _solve_with_kwargs
 export solve!
+export SolveStats
+export solve_status_symbol
 
 import MathOptInterface as MOI
 import Ipopt
 # import MadNLP
 import DirectTrajOpt
+
+using ..WarpPlumbing
 
 using TestItemRunner
 
@@ -71,23 +75,26 @@ end
 
 include("constrain.jl")
 include("evaluator.jl")
+include("solve_stats.jl")
 include("solve.jl")
 
 
 # Coverage targets: src/solvers/_solvers.jl (50% → ~100%)
 
 @testitem "DefaultSolverOptions get/set" setup=[DTOTestHelpers] begin
+    # The MadNLP-default flip (#155): MadNLPOptions is the pinned default;
+    # Ipopt remains a fully-selectable backend.
     original = Solvers._get_DefaultSolverOptions()
-    @test original == IpoptSolverExt.IpoptOptions
+    @test original == DirectTrajOpt.MadNLPOptions
 
-    Solvers._set_DefaultSolverOptions(DirectTrajOpt.MadNLPOptions)
-    @test Solvers._get_DefaultSolverOptions() == DirectTrajOpt.MadNLPOptions
+    Solvers._set_DefaultSolverOptions(IpoptSolverExt.IpoptOptions)
+    @test Solvers._get_DefaultSolverOptions() == IpoptSolverExt.IpoptOptions
 
     Solvers._set_DefaultSolverOptions(Solvers.DefaultSolverOptions)
     @test Solvers._get_DefaultSolverOptions() == Solvers.DefaultSolverOptions
 
     Solvers._set_DefaultSolverOptions(original)
-    @test Solvers._get_DefaultSolverOptions() == IpoptSolverExt.IpoptOptions
+    @test Solvers._get_DefaultSolverOptions() == DirectTrajOpt.MadNLPOptions
 end
 
 @testitem "AbstractOptimizer alias" setup=[DTOTestHelpers] begin
