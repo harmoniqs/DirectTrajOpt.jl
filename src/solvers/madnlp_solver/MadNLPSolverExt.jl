@@ -246,6 +246,77 @@ end
     @test true
 end
 
+@testitem "MadNLP compact_lbfgs jacobian cache: bit-identical solve with cache hits" setup=[
+    DTOTestHelpers,
+] begin
+    # #163: under compact_lbfgs MadNLP calls Jᵀw every iteration for the
+    # L-BFGS update. The cached path must reproduce the fresh-evaluation path
+    # (cache disabled = the pre-#163 behavior) bit for bit, while hitting.
+    import MadNLP
+    import Random
+
+    struct _TraceProbe <: MadNLP.AbstractUserCallback
+        rows::Vector{NTuple{4,Float64}}
+    end
+    function (cb::_TraceProbe)(
+        solver::MadNLP.AbstractMadNLPSolver,
+        mode::MadNLP.AbstractUserCallbackStatus,
+    )
+        push!(
+            cb.rows,
+            (
+                Float64(MadNLP.get_cnt(solver).k),
+                Float64(MadNLP.get_obj_val(solver)),
+                Float64(MadNLP.get_inf_pr(solver)),
+                Float64(MadNLP.get_inf_du(solver)),
+            ),
+        )
+        return true
+    end
+
+    function lbfgs_solve(; cache_enabled)
+        Random.seed!(163)  # the test problem's initial guess is random
+        prob, _ = make_standard_prob()
+        probe = _TraceProbe(NTuple{4,Float64}[])
+        opts = DirectTrajOpt.MadNLPOptions(
+            max_iter = 15,
+            hessian_approximation = "compact_lbfgs",
+            intermediate_callback = probe,
+            print_level = 0,
+        )
+        optimizer, variables = DirectTrajOpt.MadNLPSolverExt.get_optimizer_and_variables(
+            prob,
+            opts,
+            nothing;
+            verbose = false,
+        )
+        evaluator = MOI.get(optimizer, MOI.NLPBlock()).evaluator
+        evaluator._jacobian_cache_enabled = cache_enabled
+        MOI.optimize!(optimizer)
+        return (
+            x = MOI.get(optimizer, MOI.VariablePrimal(), variables),
+            objective = MOI.get(optimizer, MOI.ObjectiveValue()),
+            iterations = MOI.get(optimizer, MOI.BarrierIterations()),
+            hits = evaluator._jacobian_cache_hits,
+            trace = probe.rows,
+        )
+    end
+
+    fresh = lbfgs_solve(cache_enabled = false)
+    cached = lbfgs_solve(cache_enabled = true)
+
+    @test fresh.hits == 0
+    @test cached.hits > 0
+    # One Jᵀl per L-BFGS update, each at the previous accepted iterate: every
+    # one of them should be answered from the cache.
+    @test cached.hits >= cached.iterations - 1
+    @test length(cached.trace) > 1
+    @test cached.trace == fresh.trace
+    @test cached.iterations == fresh.iterations
+    @test cached.objective == fresh.objective
+    @test cached.x == fresh.x
+end
+
 @testitem "MadNLP with global variables" setup=[DTOTestHelpers] begin
     G, traj = bilinear_dynamics_and_trajectory(add_global = true)
     integrators = [

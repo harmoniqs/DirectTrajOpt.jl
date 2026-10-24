@@ -48,6 +48,9 @@ function sparse_to_moi(A::SparseMatrixCSC)
     return (inds, vals)
 end
 
+# Number of (iterate, Jacobian values) entries the Jacobian-product seam keeps.
+const _JACOBIAN_CACHE_SLOTS = 2
+
 """
     Evaluator <: MOI.AbstractNLPEvaluator
 
@@ -96,11 +99,21 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     # `trajectory`; only the data pointers differ.
     _cached_traj::NamedTrajectory
 
-    # Reusable Jacobian-values buffer, aligned with `jacobian_structure`.
-    # Owned by the jacobian-product seam (#155): J·w / Jᵀw fill this instead
-    # of assembling a fresh zeros(nnz) per call (MadNLP's restoration path
-    # hits these per iteration).
-    _jacobian_values::Vector{Float64}
+    # Jacobian-values cache (#163), owned by the jacobian-product seam (#155).
+    # `_JACOBIAN_CACHE_SLOTS` entries of (exact copy of the packed iterate,
+    # Jacobian values aligned with `jacobian_structure`). Filled by
+    # `eval_constraint_jacobian` and by any product that had to recompute;
+    # J·w / Jᵀw at a bit-identical iterate reuse the stored values instead of
+    # re-evaluating the integrator Jacobians. Two slots, because MadNLP's
+    # quasi-Newton update asks for Jᵀl at the PREVIOUS iterate right after
+    # evaluating the Jacobian at the current one (see the seam comment below).
+    _jacobian_cache_keys::Vector{Vector{Float64}}
+    _jacobian_cache_values::Vector{Vector{Float64}}
+    _jacobian_cache_filled::Vector{Bool}
+    _jacobian_cache_newest::Int  # slot most recently STORED (hits do not count)
+    _jacobian_cache_hits::Int  # observability: products answered from the cache
+    # `false` → every product re-evaluates (the pre-#163 path; testing reference)
+    _jacobian_cache_enabled::Bool
 
     function Evaluator(prob::DirectTrajOptProblem; eval_hessian = true, verbose = false)
         t_start = time()
@@ -268,7 +281,10 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
             global_data = copy(prob.trajectory.global_data),
         )
 
-        jacobian_values = zeros(Float64, length(jacobian_structure))
+        n_packed = WarpPlumbing.packed_length(prob.trajectory)
+        jacobian_cache_keys = [zeros(Float64, n_packed) for _ = 1:_JACOBIAN_CACHE_SLOTS]
+        jacobian_cache_values =
+            [zeros(Float64, length(jacobian_structure)) for _ = 1:_JACOBIAN_CACHE_SLOTS]
 
         return new(
             prob.trajectory,
@@ -291,7 +307,12 @@ mutable struct Evaluator <: MOI.AbstractNLPEvaluator
             jacobian_ncols,
             hessian_ncols,
             _cached_traj,
-            jacobian_values,
+            jacobian_cache_keys,
+            jacobian_cache_values,
+            fill(false, _JACOBIAN_CACHE_SLOTS),
+            1,
+            0,
+            true,
         )
     end
 end
@@ -384,6 +405,11 @@ end
     # Fill values directly from structure without building full sparse matrix
     _fill_jacobian_values!(∂, evaluator, Z)
 
+    # Keep a copy for the Jacobian-product seam (#163).
+    slot = _jacobian_cache_store_slot(evaluator, Z⃗)
+    copyto!(evaluator._jacobian_cache_values[slot], ∂)
+    _jacobian_cache_set_key!(evaluator, slot, Z⃗)
+
     return nothing
 end
 
@@ -411,12 +437,19 @@ end
     return nothing
 end
 
-# The Jacobian-product seam (#155): J·w and Jᵀw computed straight from the
-# cached structure and a REUSABLE values buffer — exact results, no per-call
-# assembly of the full sparse jacobian (previously: fresh structure query +
-# zeros(nnz) + one @warn per call). The transpose product is MadNLP's
-# restoration/robust-path caller (NLPModels jtprod! → MadNLPMOI); the
-# forward product rides the same idiom for symmetry.
+# The Jacobian-product seam (#155, #163): J·w and Jᵀw computed straight from
+# the cached structure and Jacobian values — exact results, no per-call
+# assembly of the full sparse jacobian. The values come from the Jacobian
+# cache when the requested iterate matches a stored one bit for bit, and are
+# re-evaluated (refreshing the cache) otherwise.
+#
+# Callers: the transpose product is a PER-ITERATION caller under MadNLP's
+# quasi-Newton Hessian approximations (`hessian_approximation =
+# "compact_lbfgs"`): the L-BFGS update forms yₖ = ∇f₊ − ∇f + J₊ᵀl₊ − Jᵀl₊,
+# taking J₊ᵀl₊ from the KKT system and requesting Jᵀl₊ at the previous
+# iterate through NLPModels jtprod! → MadNLPMOI → this method. It is also
+# reached on the restoration/robust path. The forward product rides the same
+# idiom for symmetry.
 
 @views function MOI.eval_constraint_jacobian_product(
     evaluator::Evaluator,
@@ -424,13 +457,10 @@ end
     x::AbstractVector{T},
     w::AbstractVector{T},
 ) where {T}
+    jac = _cached_jacobian_values!(evaluator, x)
     fill!(y, zero(T))
 
-    Z = _update_trajectory_cache!(evaluator, x)
-    _fill_jacobian_values!(evaluator._jacobian_values, evaluator, Z)
-
     jac_structure = evaluator.jacobian_structure
-    jac = evaluator._jacobian_values
     @inbounds for idx in eachindex(jac_structure)
         row, col = jac_structure[idx]
         y[row] += w[col] * jac[idx]
@@ -445,18 +475,76 @@ end
     x::AbstractVector{T},
     w::AbstractVector{T},
 ) where {T}
+    jac = _cached_jacobian_values!(evaluator, x)
     fill!(y, zero(T))
 
-    Z = _update_trajectory_cache!(evaluator, x)
-    _fill_jacobian_values!(evaluator._jacobian_values, evaluator, Z)
-
     jac_structure = evaluator.jacobian_structure
-    jac = evaluator._jacobian_values
     @inbounds for idx in eachindex(jac_structure)
         row, col = jac_structure[idx]
         y[col] += w[row] * jac[idx]
     end
 
+    return nothing
+end
+
+# ============================================================================ #
+# Jacobian-values cache (#163)
+# ============================================================================ #
+
+"""
+    _cached_jacobian_values!(evaluator, x) -> Vector{Float64}
+
+Jacobian values (aligned with `jacobian_structure`) at the packed iterate `x`.
+Answered from the cache — no integrator evaluation, no allocation — when `x`
+equals a stored key exactly (elementwise `isequal`: no tolerance, `-0.0` and
+`0.0` are distinct); otherwise re-evaluated into the oldest-stored slot,
+which then caches `x`. The Jacobian is a pure function of the packed iterate
+(trajectory data, globals, and warp parameters all enter through `unpack!`),
+so an exact key is sufficient.
+"""
+function _cached_jacobian_values!(evaluator::Evaluator, x::AbstractVector)
+    slot = _jacobian_cache_lookup(evaluator, x)
+    if slot != 0
+        evaluator._jacobian_cache_hits += 1
+        return evaluator._jacobian_cache_values[slot]
+    end
+
+    slot = _jacobian_cache_store_slot(evaluator, x)
+    values = evaluator._jacobian_cache_values[slot]
+    _fill_jacobian_values!(values, evaluator, _update_trajectory_cache!(evaluator, x))
+    _jacobian_cache_set_key!(evaluator, slot, x)
+    return values
+end
+
+# Slot holding exactly `x`, or 0 (also 0 whenever the cache is disabled).
+function _jacobian_cache_lookup(evaluator::Evaluator, x::AbstractVector)
+    evaluator._jacobian_cache_enabled || return 0
+    for slot = 1:_JACOBIAN_CACHE_SLOTS
+        evaluator._jacobian_cache_filled[slot] || continue
+        isequal(evaluator._jacobian_cache_keys[slot], x) && return slot
+    end
+    return 0
+end
+
+# Slot to (re)write for `x`: its existing slot if already cached (no duplicate
+# entries), else the oldest-stored one (with two slots: the one that is not
+# the newest). Deliberately first-in-first-out, NOT least-recently-used: each
+# MadNLP L-BFGS iteration stores J(xₖ) and then asks for Jᵀl at xₖ₋₁. Under
+# LRU that hit on xₖ₋₁ would make xₖ the eviction victim of the next store,
+# J(xₖ₊₁), so the following Jᵀl at xₖ would miss every iteration.
+function _jacobian_cache_store_slot(evaluator::Evaluator, x::AbstractVector)
+    for slot = 1:_JACOBIAN_CACHE_SLOTS
+        evaluator._jacobian_cache_filled[slot] || return slot
+        isequal(evaluator._jacobian_cache_keys[slot], x) && return slot
+    end
+    return mod1(evaluator._jacobian_cache_newest + 1, _JACOBIAN_CACHE_SLOTS)
+end
+
+# Record `x` (copied, never aliased) as the key of `slot`'s freshly written values.
+function _jacobian_cache_set_key!(evaluator::Evaluator, slot::Int, x::AbstractVector)
+    copyto!(evaluator._jacobian_cache_keys[slot], x)
+    evaluator._jacobian_cache_filled[slot] = true
+    evaluator._jacobian_cache_newest = slot
     return nothing
 end
 
@@ -882,6 +970,213 @@ end
     a_tprod =
         @allocated MOI.eval_constraint_jacobian_transpose_product(evaluator, y_moi, Z⃗, w)
     @test a_tprod - a_jac <= 12_000
+end
+
+# Jacobian-values cache (#163): the products reuse the values the evaluator
+# last computed at a bit-identical iterate instead of re-evaluating the
+# integrator Jacobians. The hit counter is the observable; the reference path
+# is a second evaluator with the cache disabled (fresh evaluation per call,
+# the pre-#163 behavior), so exact `==` comparisons share the scatter order.
+
+@testitem "jacobian cache: transpose product hits after eval_constraint_jacobian" setup=[
+    DTOTestHelpers,
+] begin
+    _, traj, evaluator = make_evaluator()
+    _, _, fresh = make_evaluator()
+    fresh._jacobian_cache_enabled = false
+
+    Z⃗ = collect(traj.datavec)
+    w = randn(evaluator.n_constraints)
+    y = zeros(length(Z⃗))
+    y_ref = zeros(length(Z⃗))
+
+    jac_values = zeros(length(MOI.jacobian_structure(evaluator)))
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+    @test evaluator._jacobian_cache_hits == 0
+
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗, w)
+    @test evaluator._jacobian_cache_hits == 1
+
+    MOI.eval_constraint_jacobian_transpose_product(fresh, y_ref, Z⃗, w)
+    @test fresh._jacobian_cache_hits == 0
+    @test y == y_ref
+
+    # The hit path allocates nothing.
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗, w)  # warm
+    a_hit = @allocated MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗, w)
+    @test a_hit == 0
+    @test y == y_ref
+end
+
+@testitem "jacobian cache: forward product hits after eval_constraint_jacobian" setup=[
+    DTOTestHelpers,
+] begin
+    _, traj, evaluator = make_evaluator()
+    _, _, fresh = make_evaluator()
+    fresh._jacobian_cache_enabled = false
+
+    Z⃗ = collect(traj.datavec)
+    w = randn(length(Z⃗))
+    y = zeros(evaluator.n_constraints)
+    y_ref = zeros(evaluator.n_constraints)
+
+    jac_values = zeros(length(MOI.jacobian_structure(evaluator)))
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+
+    MOI.eval_constraint_jacobian_product(evaluator, y, Z⃗, w)
+    @test evaluator._jacobian_cache_hits == 1
+
+    MOI.eval_constraint_jacobian_product(fresh, y_ref, Z⃗, w)
+    @test fresh._jacobian_cache_hits == 0
+    @test y == y_ref
+
+    MOI.eval_constraint_jacobian_product(evaluator, y, Z⃗, w)  # warm
+    a_hit = @allocated MOI.eval_constraint_jacobian_product(evaluator, y, Z⃗, w)
+    @test a_hit == 0
+    @test y == y_ref
+end
+
+@testitem "jacobian cache: product at a different iterate recomputes and refreshes" setup=[
+    DTOTestHelpers,
+] begin
+    _, traj, evaluator = make_evaluator()
+    _, _, fresh = make_evaluator()
+    fresh._jacobian_cache_enabled = false
+
+    Z⃗ = collect(traj.datavec)
+    Z⃗′ = Z⃗ .+ 1e-3 .* randn(length(Z⃗))
+    w = randn(evaluator.n_constraints)
+    y = zeros(length(Z⃗))
+    y_ref = zeros(length(Z⃗))
+
+    jac_values = zeros(length(MOI.jacobian_structure(evaluator)))
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗′, w)
+    @test evaluator._jacobian_cache_hits == 0
+    MOI.eval_constraint_jacobian_transpose_product(fresh, y_ref, Z⃗′, w)
+    @test y == y_ref
+
+    # The recompute refreshed the cache: the same iterate now hits.
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗′, w)
+    @test evaluator._jacobian_cache_hits == 1
+    @test y == y_ref
+
+    # A different iterate never reads stale values — even one differing in a
+    # single bit of a single entry.
+    Z⃗″ = copy(Z⃗′)
+    Z⃗″[end] = nextfloat(Z⃗″[end])
+    hits = evaluator._jacobian_cache_hits
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗″, w)
+    @test evaluator._jacobian_cache_hits == hits
+    MOI.eval_constraint_jacobian_transpose_product(fresh, y_ref, Z⃗″, w)
+    @test y == y_ref
+end
+
+@testitem "jacobian cache: in-place mutation of the caller's iterate is not a stale hit" setup=[
+    DTOTestHelpers,
+] begin
+    _, traj, evaluator = make_evaluator()
+    _, _, fresh = make_evaluator()
+    fresh._jacobian_cache_enabled = false
+
+    x = collect(traj.datavec)
+    w = randn(evaluator.n_constraints)
+    y = zeros(length(x))
+    y_ref = zeros(length(x))
+
+    jac_values = zeros(length(MOI.jacobian_structure(evaluator)))
+    MOI.eval_constraint_jacobian(evaluator, jac_values, x)
+
+    # Mutate the very buffer the evaluator was handed.
+    x .+= 1e-3 .* randn(length(x))
+
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y, x, w)
+    @test evaluator._jacobian_cache_hits == 0
+    MOI.eval_constraint_jacobian_transpose_product(fresh, y_ref, x, w)
+    @test y == y_ref
+
+    # Same for a cache entry stored by a product that had to recompute.
+    x .-= 2e-3
+    MOI.eval_constraint_jacobian_product(evaluator, zeros(evaluator.n_constraints), x, y)
+    @test evaluator._jacobian_cache_hits == 0
+end
+
+@testitem "jacobian cache: L-BFGS access pattern (Jᵀl at the previous iterate) hits" setup=[
+    DTOTestHelpers,
+] begin
+    # MadNLP's quasi-Newton update stores J(xₖ) and THEN asks for Jᵀl at xₖ₋₁
+    # (`qn.last_x`). Every such request must hit — including across iterations,
+    # where a hit must not evict the newest iterate.
+    _, traj, evaluator = make_evaluator()
+    _, _, fresh = make_evaluator()
+    fresh._jacobian_cache_enabled = false
+
+    jac_values = zeros(length(MOI.jacobian_structure(evaluator)))
+    l = randn(evaluator.n_constraints)
+    y = zeros(length(traj.datavec))
+    y_ref = zeros(length(traj.datavec))
+
+    xs = [collect(traj.datavec) .+ 1e-3 .* randn(length(traj.datavec)) for _ = 1:5]
+    MOI.eval_constraint_jacobian(evaluator, jac_values, xs[1])
+    for k = 2:length(xs)
+        MOI.eval_constraint_jacobian(evaluator, jac_values, xs[k])
+        MOI.eval_constraint_jacobian_transpose_product(evaluator, y, xs[k-1], l)
+        @test evaluator._jacobian_cache_hits == k - 1
+        MOI.eval_constraint_jacobian_transpose_product(fresh, y_ref, xs[k-1], l)
+        @test y == y_ref
+    end
+end
+
+@testitem "jacobian cache: products on a cold cache" setup=[DTOTestHelpers] begin
+    _, traj, evaluator = make_evaluator()
+    _, _, reference = make_evaluator()
+
+    Z⃗ = collect(traj.datavec)
+    n_vars = length(Z⃗)
+    n_cons = evaluator.n_constraints
+
+    # Dense reference Jacobian from a separate evaluator.
+    jac_structure = MOI.jacobian_structure(reference)
+    jac_values = zeros(length(jac_structure))
+    MOI.eval_constraint_jacobian(reference, jac_values, Z⃗)
+    J_dense = zeros(n_cons, n_vars)
+    for (idx, (row, col)) in enumerate(jac_structure)
+        J_dense[row, col] += jac_values[idx]
+    end
+
+    w = randn(n_cons)
+    y = zeros(n_vars)
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗, w)
+    @test evaluator._jacobian_cache_hits == 0
+    @test isapprox(y, J_dense' * w, atol = 1e-10)
+
+    v = randn(n_vars)
+    Jv = zeros(n_cons)
+    MOI.eval_constraint_jacobian_product(evaluator, Jv, Z⃗, v)
+    @test evaluator._jacobian_cache_hits == 1  # filled by the cold transpose product
+    @test isapprox(Jv, J_dense * v, atol = 1e-10)
+end
+
+@testitem "jacobian cache: disabled cache keeps the miss path allocation-lean" setup=[
+    DTOTestHelpers,
+] begin
+    # With the cache off every product re-evaluates (the pre-#163 path); that
+    # path must still carry no per-call zeros(nnz) on top of the fill path.
+    _, traj, evaluator = make_evaluator()
+    evaluator._jacobian_cache_enabled = false
+
+    Z⃗ = collect(traj.datavec)
+    w = randn(evaluator.n_constraints)
+    y = zeros(length(Z⃗))
+    jac_values = zeros(length(MOI.jacobian_structure(evaluator)))
+
+    MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+    MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗, w)
+    a_jac = @allocated MOI.eval_constraint_jacobian(evaluator, jac_values, Z⃗)
+    a_miss = @allocated MOI.eval_constraint_jacobian_transpose_product(evaluator, y, Z⃗, w)
+    @test evaluator._jacobian_cache_hits == 0
+    @test a_miss - a_jac <= 12_000
 end
 
 @testitem "Evaluator verbose construction" setup=[DTOTestHelpers] begin
