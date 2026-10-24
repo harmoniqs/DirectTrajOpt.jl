@@ -255,11 +255,11 @@ Compute and return the full Jacobian using automatic differentiation.
     K::NonlinearKnotPointConstraint,
     traj::NamedTrajectory,
 )
-    ∂K = spzeros(K.dim, traj.dim * traj.N + traj.global_dim)
+    ∂K = spzeros(K.dim, WarpPlumbing.packed_length(traj))
     x_comps = vcat([traj.components[name] for name ∈ K.var_names]...)
     for (i, k) ∈ enumerate(K.times)
         ForwardDiff.jacobian!(
-            ∂K[slice(i, K.g_dim), slice(k, x_comps, traj.dim)],
+            ∂K[slice(i, K.g_dim), WarpPlumbing.packed_slice(traj, k, x_comps)],
             x -> K.g(x, K.params[i]),
             vcat([traj[k][name] for name in K.var_names]...),
         )
@@ -277,12 +277,13 @@ Compute and return the full Hessian of the Lagrangian using automatic differenti
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    μ∂²K = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
+    Z_dim = WarpPlumbing.packed_length(traj)
+    μ∂²K = spzeros(Z_dim, Z_dim)
     x_comps = vcat([traj.components[name] for name ∈ K.var_names]...)
 
     for (i, k) ∈ enumerate(K.times)
         μₖ = μ[slice(i, K.g_dim)]
-        block_range = slice(k, x_comps, traj.dim)
+        block_range = WarpPlumbing.packed_slice(traj, k, x_comps)
         ForwardDiff.hessian!(
             μ∂²K[block_range, block_range],
             x -> μₖ' * K.g(x, K.params[i]),
