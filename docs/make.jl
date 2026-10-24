@@ -20,6 +20,7 @@ pages = [
         "Minimum Time" => "generated/tutorials/minimum_time.md",
     ],
     "Library" => "lib.md",
+    "Benchmarks" => "benchmarks.md",
 ]
 
 generate_docs(
