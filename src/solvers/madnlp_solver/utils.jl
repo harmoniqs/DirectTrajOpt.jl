@@ -110,10 +110,8 @@ function DirectTrajOpt._solve_with_kwargs(
 end
 
 
-@testitem "testing MadNLP.jl solver internals (using DirectTrajOpt._solve_with_kwargs with kkt_system=MadNLP.SparseUnreducedKKTSystem, linear_solver=MadNLP.LapackCPUSolver)" begin
-
-    # include("../../test/test_utils.jl")
-    include("../../test/madnlp_test_utils.jl")
+@testitem "testing MadNLP.jl solver internals (using DirectTrajOpt._solve_with_kwargs with kkt_system=MadNLP.SparseUnreducedKKTSystem, linear_solver=MadNLP.LapackCPUSolver)" setup =
+    [DTOTestHelpers] begin
 
     G, traj = bilinear_dynamics_and_trajectory()
 
