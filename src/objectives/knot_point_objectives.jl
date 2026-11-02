@@ -196,8 +196,8 @@ function gradient!(∇::AbstractVector, obj::KnotPointObjective, traj::NamedTraj
         x_vals = vcat([zₖ[name] for name in obj.var_names]...)
         x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
 
-        # Get indices for this knot point
-        knot_indices = slice(k, x_comps, traj.dim)
+        # Get indices for this knot point (packed coordinates under a warp)
+        knot_indices = WarpPlumbing.packed_slice(traj, k, x_comps)
 
         # Compute gradient directly into view of the gradient vector. The view is
         # already zeroed by the `fill!` above, so the declared verb's ACCUMULATE
@@ -217,14 +217,14 @@ end
 
 function hessian_structure(obj::KnotPointObjective, traj::NamedTrajectory)
 
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
 
     structure = spzeros(Z_dim, Z_dim)
 
     x_comps = vcat([traj.components[name] for name in obj.var_names]...)
 
     for k ∈ obj.times
-        knot_indices = slice(k, x_comps, traj.dim)
+        knot_indices = WarpPlumbing.packed_slice(traj, k, x_comps)
         structure[knot_indices, knot_indices] .= 1.0
     end
 
@@ -233,7 +233,7 @@ end
 
 function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
 
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
 
     ∂²L = spzeros(Z_dim, Z_dim)
 
@@ -241,7 +241,7 @@ function get_full_hessian(obj::KnotPointObjective, traj::NamedTrajectory)
 
     for (i, k) in enumerate(obj.times)
         zₖ = traj[k]
-        knot_indices = slice(k, x_comps, traj.dim)
+        knot_indices = WarpPlumbing.packed_slice(traj, k, x_comps)
 
         ForwardDiff.hessian!(
             view(∂²L, knot_indices, knot_indices),

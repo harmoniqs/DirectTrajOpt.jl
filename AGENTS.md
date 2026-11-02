@@ -1,8 +1,8 @@
 # AGENTS.md — DirectTrajOpt.jl
 
 DirectTrajOpt.jl is the direct trajectory optimization layer under
-Piccolo: Ipopt and MadNLP backends and the solver-agnostic intermediate
-callback interface.
+Piccolo: MadNLP (the default since #155) and Ipopt backends and the
+solver-agnostic intermediate callback interface.
 
 ## Conventions
 

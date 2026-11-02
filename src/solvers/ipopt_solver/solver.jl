@@ -153,26 +153,16 @@ end
 
 
 function set_variables!(optimizer::AbstractOptimizer, traj::NamedTrajectory)
-    data_dim = traj.dim * traj.N
+    # One optimizer variable per PACKED position: warp-free the historical
+    # [datavec; global_data]; under a warp the derived timestep rows drop out
+    # and the warp parameters (the duration variable) trail.
+    packed = collect(vec(traj))
 
     # add variables
-    variables = MOI.add_variables(optimizer, data_dim + traj.global_dim)
+    variables = MOI.add_variables(optimizer, length(packed))
 
-    # set trajectory data
-    MOI.set(
-        optimizer,
-        MOI.VariablePrimalStart(),
-        variables[1:data_dim],
-        collect(traj.datavec),
-    )
-
-    # set global data
-    MOI.set(
-        optimizer,
-        MOI.VariablePrimalStart(),
-        variables[data_dim .+ (1:traj.global_dim)],
-        collect(traj.global_data),
-    )
+    # set packed primal start (per-knot rows, globals, warp params)
+    MOI.set(optimizer, MOI.VariablePrimalStart(), variables, packed)
 
     return variables
 end
@@ -182,11 +172,15 @@ function update_trajectory!(
     optimizer::AbstractOptimizer,
     variables::Vector{MOI.VariableIndex},
 )
-    update!(
-        prob.trajectory,
-        MOI.get(optimizer, MOI.VariablePrimal(), variables),
-        type = :both,
-    )
+    z = MOI.get(optimizer, MOI.VariablePrimal(), variables)
+    if prob.trajectory.warp !== nothing
+        # Phase 1b (DTO#149): under a warp the packed vector goes through
+        # unpack! — update! with a packed vector throws (the derived timestep
+        # rows are never decision data).
+        unpack!(prob.trajectory, z)
+    else
+        update!(prob.trajectory, z, type = :both)
+    end
     return nothing
 end
 
@@ -552,4 +546,20 @@ end
     @test stats isa Solvers.SolveStats
     @test opts.refine == false
     @test opts.adaptive_mu_globalization == "never-monotone-mode"
+end
+
+@testitem "solve! kwarg application warns loudly on unmatched options (Ipopt convention)" setup=[
+    DTOTestHelpers,
+] begin
+    prob, _ = make_standard_prob()
+    # The loud-error convention at ipopt_solver/solver.jl:18 is the contract the
+    # option-mapping enumeration leans on (zero silent drops) — lock it.
+    @test_logs (:warn, r"Unknown solver option: bogus_option_xyz") match_mode = :any begin
+        solve!(
+            prob;
+            options = IpoptOptions(max_iter = 3, print_level = 0),
+            verbose = false,
+            bogus_option_xyz = 1,
+        )
+    end
 end

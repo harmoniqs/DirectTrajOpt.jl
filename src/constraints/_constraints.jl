@@ -28,6 +28,7 @@ using Test
 
 # Import and extend the common interface
 using ..CommonInterface
+using ..WarpPlumbing
 import ..CommonInterface:
     evaluate!, jacobian_structure, jacobian!, hessian_structure, hessian_of_lagrangian
 import ..CommonInterface: eval_jacobian, eval_hessian_of_lagrangian
@@ -161,13 +162,20 @@ function test_constraint(
     # Use vec(traj) to include both datavec and global_data
     ĝ =
         Z⃗ -> begin
-            # Split into datavec and global_data
-            datavec_size = traj.dim * traj.N
-            Z_traj = NamedTrajectory(
-                traj;
-                datavec = Z⃗[1:datavec_size],
-                global_data = Z⃗[(datavec_size+1):end],
-            )
+            if traj.warp === nothing
+                # Split into datavec and global_data
+                datavec_size = traj.dim * traj.N
+                Z_traj = NamedTrajectory(
+                    traj;
+                    datavec = Z⃗[1:datavec_size],
+                    global_data = Z⃗[(datavec_size+1):end],
+                )
+            else
+                # Warp present: the packed vector holds the non-derived rows
+                # only — write them, rebuild the warp, re-derive the rows.
+                Z_traj = NamedTrajectory(traj)
+                unpack!(Z_traj, Z⃗)
+            end
             values = zeros(eltype(Z⃗), constraint.dim)
             CommonInterface.evaluate!(values, constraint, Z_traj)
             return values
@@ -248,6 +256,7 @@ include("linear/symmetry_constraint.jl")
 include("linear/time_consistency_constraint.jl")
 include("linear/l1_slack_constraint.jl")
 include("linear/global_linear_constraint.jl")
+include("linear/warp_param_bounds_constraint.jl")
 
 # Nonlinear constraints
 include("nonlinear/knot_point_constraint.jl")

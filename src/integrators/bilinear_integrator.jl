@@ -76,6 +76,19 @@ struct BilinearIntegrator{F} <: AbstractBilinearIntegrator
         u::Symbol,
         traj::NamedTrajectory,
     )
+        # Phase 1b scope amendment (DTO#149): BilinearIntegrator is on the demotion
+        # arc (open-core split — default dispatch flips to the Hermitian exponential
+        # family). It got NO warp plumbing; a warp trajectory would produce silently
+        # wrong sensitivities. Refuse instead.
+        traj.warp !== nothing && throw(
+            ArgumentError(
+                "BilinearIntegrator does not support time-warp trajectories: it is on the " *
+                "demotion arc (open-core split — default dispatch flips to the Hermitian " *
+                "exponential family) and carries no warp column by scope (DirectTrajOpt#149 " *
+                "amendment). Derived-Δt dynamics live with the surviving integrator family " *
+                "(HermitianExponentialIntegrator, Piccolo.jl#321).",
+            ),
+        )
         length(xs) > 0 || throw(ArgumentError("xs must contain at least one state name"))
         x_names = collect(Symbol, xs)
         x_dim = sum(traj.dims[x] for x in x_names)
