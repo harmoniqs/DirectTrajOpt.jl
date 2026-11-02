@@ -54,7 +54,7 @@ println("System: 2D damped oscillator with symmetric control coupling")
 
 # ## Step 2: Trajectory Setup
 
-N = 40# Number of time steps (fewer than before)
+N = 40# Number of knot points (fewer than before)
 Δt_init = 0.15  # Initial guess for time step
 
 x_init = [0.0, 0.0]

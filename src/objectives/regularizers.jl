@@ -108,6 +108,35 @@ end
 
 function gradient!(∇::AbstractVector, reg::QuadraticRegularizer, traj::NamedTrajectory)
     v_comps = traj.components[reg.name]
+
+    warp = traj.warp
+    if warp !== nothing
+        # Phase 1b (DTO#149): under a warp the Δt rows are derived — the per-knot
+        # ∂J/∂Δt scatter is replaced by the SINGLE chain term
+        #   ∂J/∂θⱼ = Σₖ (∂J/∂Δtₖ) · ∂Δtₖ/∂θⱼ
+        # accumulated at the warp-parameter columns.
+        chain = WarpPlumbing.derived_row_chain(warp, traj.N)
+        warp_cols = WarpPlumbing.warp_param_indices(traj)
+        dJdΔt = zeros(length(reg.times))
+        for (i, t) ∈ enumerate(reg.times)
+            zₖ = traj[t]
+            vₖ = zₖ[reg.name]
+            Δvₖ = vₖ - reg.baseline[:, t]
+            Δtₖ = zₖ.timestep
+
+            # ∂J/∂v_k = Δt_k · R ⊙ Δv_k at the packed columns
+            ∇v = Δtₖ .* (reg.R .* Δvₖ)
+            v_indices = WarpPlumbing.packed_slice(traj, t, v_comps)
+            ∇[v_indices] .+= ∇v
+
+            dJdΔt[i] = 0.5 * Δvₖ' * (reg.R .* Δvₖ)
+        end
+        for (j, col) in enumerate(warp_cols)
+            ∇[col] += sum(dJdΔt[i] * chain[t, j] for (i, t) in enumerate(reg.times))
+        end
+        return nothing
+    end
+
     # Defensive, matching LinearRegularizer: `NamedTrajectory.timestep` is typed
     # `Symbol` in the current NamedTrajectories, so this is always true and the
     # branch folds away. It guards the `traj.components[traj.timestep]` lookup,
@@ -138,10 +167,23 @@ function gradient!(∇::AbstractVector, reg::QuadraticRegularizer, traj::NamedTr
 end
 
 function hessian_structure(reg::QuadraticRegularizer, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     structure = spzeros(Z_dim, Z_dim)
 
     v_comps = traj.components[reg.name]
+
+    if traj.warp !== nothing
+        # Phase 1b: v-blocks at packed positions + (v, T) cross terms from the
+        # Δtₖ(T) weight. No Δt-Δt term — the value is linear in each derived Δt.
+        warp_cols = WarpPlumbing.warp_param_indices(traj)
+        for k ∈ reg.times
+            v_indices = WarpPlumbing.packed_slice(traj, k, v_comps)
+            structure[v_indices, v_indices] .= 1.0
+            structure[v_indices, warp_cols] .= 1.0
+        end
+        return structure
+    end
+
     free_time = traj.timestep isa Symbol
     Δt_comp = free_time ? traj.components[traj.timestep][1] : 0
 
@@ -169,10 +211,32 @@ function hessian_structure(reg::QuadraticRegularizer, traj::NamedTrajectory)
 end
 
 function get_full_hessian(reg::QuadraticRegularizer, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     ∂²J = spzeros(Z_dim, Z_dim)
 
     v_comps = traj.components[reg.name]
+
+    warp = traj.warp
+    if warp !== nothing
+        # Phase 1b: ∂²J/∂v² = Δt·diag(R) (packed), and the chain-weighted cross
+        # terms ∂²J/∂vₖ∂θⱼ = (R ⊙ rₖ)·wₖⱼ — accumulated, since several knots
+        # share the warp-parameter columns.
+        chain = WarpPlumbing.derived_row_chain(warp, traj.N)
+        warp_cols = WarpPlumbing.warp_param_indices(traj)
+        for t ∈ reg.times
+            zₖ = traj[t]
+            Δt = zₖ.timestep
+            v_indices = WarpPlumbing.packed_slice(traj, t, v_comps)
+            rₖ = zₖ[reg.name] - reg.baseline[:, t]
+
+            ∂²J[v_indices, v_indices] = Δt * spdiagm(reg.R)
+            for (j, col) in enumerate(warp_cols)
+                ∂²J[v_indices, col] .+= (reg.R .* rₖ) .* chain[t, j]
+            end
+        end
+        return ∂²J
+    end
+
     free_time = traj.timestep isa Symbol
     Δt_comp = free_time ? traj.components[traj.timestep][1] : 0
 
@@ -285,6 +349,30 @@ end
 
 function gradient!(∇::AbstractVector, reg::LinearRegularizer, traj::NamedTrajectory)
     v_comps = traj.components[reg.name]
+
+    warp = traj.warp
+    if warp !== nothing
+        # Phase 1b (DTO#149): single ∂J/∂T chain term replaces the per-knot scatter.
+        chain = WarpPlumbing.derived_row_chain(warp, traj.N)
+        warp_cols = WarpPlumbing.warp_param_indices(traj)
+        dJdΔt = zeros(length(reg.times))
+        for t ∈ reg.times
+            zₖ = traj[t]
+            Δtₖ = zₖ.timestep
+
+            # ∂J/∂v_{k,i} = R_i · Δt_k at the packed columns
+            v_indices = WarpPlumbing.packed_slice(traj, t, v_comps)
+            ∇[v_indices] .+= reg.R .* Δtₖ
+
+            # ∂J/∂Δt_k = Σ_i R_i · v_{k,i}
+            dJdΔt[findfirst(==(t), reg.times)] = dot(reg.R, zₖ[reg.name])
+        end
+        for (j, col) in enumerate(warp_cols)
+            ∇[col] += sum(dJdΔt[i] * chain[t, j] for (i, t) in enumerate(reg.times))
+        end
+        return nothing
+    end
+
     for t ∈ reg.times
         zₖ = traj[t]
         Δtₖ = zₖ.timestep
@@ -304,8 +392,19 @@ function gradient!(∇::AbstractVector, reg::LinearRegularizer, traj::NamedTraje
 end
 
 function hessian_structure(reg::LinearRegularizer, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     structure = spzeros(Z_dim, Z_dim)
+
+    if traj.warp !== nothing
+        # Phase 1b: only cross-terms ∂²J/∂v∂T at the packed columns.
+        v_comps = traj.components[reg.name]
+        warp_cols = WarpPlumbing.warp_param_indices(traj)
+        for k ∈ reg.times
+            v_indices = WarpPlumbing.packed_slice(traj, k, v_comps)
+            structure[v_indices, warp_cols] .= 1.0
+        end
+        return structure
+    end
 
     if !(traj.timestep isa Symbol)
         return structure
@@ -326,8 +425,23 @@ function hessian_structure(reg::LinearRegularizer, traj::NamedTrajectory)
 end
 
 function get_full_hessian(reg::LinearRegularizer, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     ∂²J = spzeros(Z_dim, Z_dim)
+
+    warp = traj.warp
+    if warp !== nothing
+        # Phase 1b: cross-terms ∂²J/∂vₖ∂θⱼ = R·wₖⱼ, accumulated.
+        chain = WarpPlumbing.derived_row_chain(warp, traj.N)
+        v_comps = traj.components[reg.name]
+        warp_cols = WarpPlumbing.warp_param_indices(traj)
+        for t ∈ reg.times
+            v_indices = WarpPlumbing.packed_slice(traj, t, v_comps)
+            for (j, col) in enumerate(warp_cols)
+                ∂²J[v_indices, col] .+= reg.R .* chain[t, j]
+            end
+        end
+        return ∂²J
+    end
 
     if !(traj.timestep isa Symbol)
         return ∂²J
@@ -487,23 +601,150 @@ end
     # while still (legitimately) declared, and this direction would flake.
     N = 4
     exact_traj = NamedTrajectory(
-        (
-            x = ones(2, N),
-            u = reshape(collect(1.0:(3N)), 3, N),
-            Δt = fill(0.1, 1, N),
-        );
+        (x = ones(2, N), u = reshape(collect(1.0:(3N)), 3, N), Δt = fill(0.1, 1, N));
         controls = (:u, :Δt),
         timestep = :Δt,
     )
-    EXACT_OBJ = QuadraticRegularizer(
-        :u,
-        exact_traj,
-        [0.3, 1.7, 0.9];
-        baseline = fill(-1.0, 3, N),
-    )
+    EXACT_OBJ =
+        QuadraticRegularizer(:u, exact_traj, [0.3, 1.7, 0.9]; baseline = fill(-1.0, 3, N))
 
     S_exact = DirectTrajOpt.Objectives.hessian_structure(EXACT_OBJ, exact_traj)
     H_exact = DirectTrajOpt.Objectives.get_full_hessian(EXACT_OBJ, exact_traj)
 
     @test Set(zip(findnz(S_exact)[1:2]...)) == Set(zip(findnz(H_exact)[1:2]...))
+end
+
+# ============================================================================ #
+# Phase 1b (DTO#149): derived-Δt weighting under a time warp
+# ============================================================================ #
+
+@testitem "QuadraticRegularizer under a warp: derived-Δt weight + single ∂J/∂T chain" begin
+    include("../../test/test_utils.jl")
+    using DirectTrajOpt.Objectives
+    using DirectTrajOpt.WarpPlumbing
+    using NamedTrajectories
+    using FiniteDiff
+    using Test
+
+    traj = warped_derivative_trajectory(N = 10, T = 1.3; seed = 7)
+    R = [0.7, 1.9]
+    baseline = randn(2, traj.N)
+    times = [1, 3, 4, 9]
+    reg = QuadraticRegularizer(:x, traj, R; baseline = baseline, times = times)
+
+    # value: ½Σ Δtₖ(T)‖R·Δvₖ‖² with the DERIVED row as weight — unchanged reader
+    Δv(t) = traj.x[:, t] - baseline[:, t]
+    J_expected = sum(0.5 * traj.Δt[t] * dot(Δv(t), R .* Δv(t)) for t in times)
+    @test objective_value(reg, traj) ≈ J_expected
+
+    # gradient FD parity over the packed vector (perturbs the warp parameter T too)
+    ∇ = zeros(length(traj))
+    gradient!(∇, reg, traj)
+    ∇_fd = FiniteDiff.finite_difference_gradient(collect(vec(traj))) do Z⃗
+        t2 = copy(traj)
+        unpack!(t2, Z⃗)
+        return objective_value(reg, t2)
+    end
+    @test all(isapprox.(∇, ∇_fd, atol = 1e-6, rtol = 1e-6))
+
+    # the single ∂J/∂T chain term replaces the per-knot ∂J/∂Δt scatter: the only
+    # nonzeros are the regularized components' columns and the T column itself
+    T_col = WarpPlumbing.warp_param_indices(traj)[1]
+    allowed = union(
+        [WarpPlumbing.packed_slice(traj, t, traj.components[:x]) for t in times]...,
+        [T_col],
+    )
+    @test ⊆(findall(!iszero, ∇), allowed)
+    # ...and it is exact for GlobalScale: Σₜ ½ΔvᵀRΔv · wₖ
+    @test ∇[T_col] ≈ sum(0.5 * dot(Δv(t), R .* Δv(t)) for t in times) * (1 / (traj.N - 1))
+
+    # Hessian FD parity + structure covers every nonzero the Hessian produces
+    H = get_full_hessian(reg, traj)
+    H_fd = FiniteDiff.finite_difference_hessian(collect(vec(traj))) do Z⃗
+        t2 = copy(traj)
+        unpack!(t2, Z⃗)
+        return objective_value(reg, t2)
+    end
+    @test all(isapprox.(triu(H), triu(H_fd), atol = 1e-5, rtol = 1e-5))
+    S = DirectTrajOpt.Objectives.hessian_structure(reg, traj)
+    rows, cols, _ = findnz(H)
+    @test all(!iszero(S[i, j]) for (i, j) in zip(rows, cols))
+end
+
+@testitem "QuadraticRegularizer under a warp is invariant to knot count" begin
+    include("../../test/test_utils.jl")
+    using DirectTrajOpt.Objectives
+    using NamedTrajectories
+    using Test
+
+    # The #122 lesson under a warp: the weight is the DERIVED Δt (a lattice
+    # fraction of T), so the value is a property of the pulse, not of the grid —
+    # structurally, not by careful bookkeeping.
+    T = 1.0
+    pulse(t) = exp(-((t - T / 2) / 0.2)^2) * sin(2π * t / T)
+
+    function objective_at(N)
+        traj = NamedTrajectory(
+            (
+                x = zeros(1, N),
+                u = reshape(pulse.(T .* ((0:(N-1)) ./ (N - 1))), 1, N),
+                Δt = fill(T / (N - 1), 1, N),
+            );
+            controls = (:u,),
+            timestep = :Δt,
+            warp = GlobalScale(T),
+        )
+        return objective_value(QuadraticRegularizer(:u, traj, 1.0), traj)
+    end
+
+    Ns = (25, 100, 400, 800)
+    Js = [objective_at(N) for N in Ns]
+    @test all(isapprox.(Js, Js[end], rtol = 1e-2))
+
+    # and the invariant value is the time integral it claims to be
+    N_ref = 20_000
+    ts_ref = ((0:(N_ref-1)) .+ 0.5) .* (T / N_ref)
+    J_exact = (T / N_ref) * sum(pulse.(ts_ref) .^ 2) / 2
+    @test all(isapprox.(Js, J_exact, rtol = 1e-2))
+end
+
+@testitem "LinearRegularizer under a warp: derived-Δt weight + single ∂J/∂T chain" begin
+    include("../../test/test_utils.jl")
+    using DirectTrajOpt.Objectives
+    using DirectTrajOpt.WarpPlumbing
+    using NamedTrajectories
+    using FiniteDiff
+    using Test
+
+    traj = warped_derivative_trajectory(N = 9, T = 2.1; seed = 3)
+    R = [0.4, 2.2]
+    times = [2, 4, 5, 8]
+    reg = LinearRegularizer(:x, traj, R; times = times)
+
+    Δt_row(t) = traj.Δt[t]
+    J_expected = sum(Δt_row(t) * dot(R, traj.x[:, t]) for t in times)
+    @test objective_value(reg, traj) ≈ J_expected
+
+    ∇ = zeros(length(traj))
+    gradient!(∇, reg, traj)
+    ∇_fd = FiniteDiff.finite_difference_gradient(collect(vec(traj))) do Z⃗
+        t2 = copy(traj)
+        unpack!(t2, Z⃗)
+        return objective_value(reg, t2)
+    end
+    @test all(isapprox.(∇, ∇_fd, atol = 1e-6, rtol = 1e-6))
+
+    T_col = WarpPlumbing.warp_param_indices(traj)[1]
+    @test ∇[T_col] ≈ sum(dot(R, traj.x[:, t]) for t in times) * (1 / (traj.N - 1))
+
+    H = get_full_hessian(reg, traj)
+    H_fd = FiniteDiff.finite_difference_hessian(collect(vec(traj))) do Z⃗
+        t2 = copy(traj)
+        unpack!(t2, Z⃗)
+        return objective_value(reg, t2)
+    end
+    @test all(isapprox.(triu(H), triu(H_fd), atol = 1e-5, rtol = 1e-5))
+    S = DirectTrajOpt.Objectives.hessian_structure(reg, traj)
+    rows, cols, _ = findnz(H)
+    @test all(!iszero(S[i, j]) for (i, j) in zip(rows, cols))
 end
