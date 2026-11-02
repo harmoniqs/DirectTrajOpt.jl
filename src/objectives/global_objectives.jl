@@ -73,7 +73,7 @@ function gradient!(∇::AbstractVector, obj::GlobalObjective, traj::NamedTraject
     g_vals = vcat(
         [traj.global_data[traj.global_components[name]] for name in obj.global_names]...,
     )
-    offset = traj.dim * traj.N
+    offset = WarpPlumbing.packed_globals_base(traj)
     global_indices =
         vcat([offset .+ traj.global_components[name] for name in obj.global_names]...)
 
@@ -87,11 +87,11 @@ function gradient!(∇::AbstractVector, obj::GlobalObjective, traj::NamedTraject
 end
 
 function hessian_structure(obj::GlobalObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     structure = spzeros(Z_dim, Z_dim)
 
     # Get global indices
-    offset = traj.dim * traj.N
+    offset = WarpPlumbing.packed_globals_base(traj)
     global_indices =
         vcat([offset .+ traj.global_components[name] for name in obj.global_names]...)
 
@@ -102,7 +102,7 @@ function hessian_structure(obj::GlobalObjective, traj::NamedTrajectory)
 end
 
 function get_full_hessian(obj::GlobalObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     ∂²L = spzeros(Z_dim, Z_dim)
 
     # Extract global components
@@ -111,7 +111,7 @@ function get_full_hessian(obj::GlobalObjective, traj::NamedTrajectory)
     )
 
     # Get global indices
-    offset = traj.dim * traj.N
+    offset = WarpPlumbing.packed_globals_base(traj)
     global_indices =
         vcat([offset .+ traj.global_components[name] for name in obj.global_names]...)
 
@@ -238,7 +238,7 @@ function gradient!(∇::AbstractVector, obj::GlobalKnotPointObjective, traj::Nam
     fill!(∇, 0.0)
 
     # Pre-compute global indices
-    global_offset = traj.dim * traj.N
+    global_offset = WarpPlumbing.packed_globals_base(traj)
     global_indices = vcat(
         [global_offset .+ traj.global_components[name] for name in obj.global_names]...,
     )
@@ -266,7 +266,7 @@ function gradient!(∇::AbstractVector, obj::GlobalKnotPointObjective, traj::Nam
         ∇ℓ_global = ∇ℓ_local[(n_knot+1):end]
 
         # Map to full gradient vector
-        knot_indices = slice(t, x_comps, traj.dim)
+        knot_indices = WarpPlumbing.packed_slice(traj, t, x_comps)
         ∇[knot_indices] .+= obj.Qs[i] .* ∇ℓ_knot
         ∇[global_indices] .+= obj.Qs[i] .* ∇ℓ_global
     end
@@ -275,11 +275,11 @@ function gradient!(∇::AbstractVector, obj::GlobalKnotPointObjective, traj::Nam
 end
 
 function hessian_structure(obj::GlobalKnotPointObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     structure = spzeros(Z_dim, Z_dim)
 
     # Pre-compute global indices
-    global_offset = traj.dim * traj.N
+    global_offset = WarpPlumbing.packed_globals_base(traj)
     global_indices = vcat(
         [global_offset .+ traj.global_components[name] for name in obj.global_names]...,
     )
@@ -288,7 +288,7 @@ function hessian_structure(obj::GlobalKnotPointObjective, traj::NamedTrajectory)
         zₖ = traj[t]
         # Get knot point indices
         x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
-        knot_indices = slice(t, x_comps, traj.dim)
+        knot_indices = WarpPlumbing.packed_slice(traj, t, x_comps)
 
         # All indices combined
         all_indices = vcat(knot_indices, global_indices)
@@ -301,11 +301,11 @@ function hessian_structure(obj::GlobalKnotPointObjective, traj::NamedTrajectory)
 end
 
 function get_full_hessian(obj::GlobalKnotPointObjective, traj::NamedTrajectory)
-    Z_dim = traj.dim * traj.N + traj.global_dim
+    Z_dim = WarpPlumbing.packed_length(traj)
     ∂²L = spzeros(Z_dim, Z_dim)
 
     # Pre-compute global indices
-    global_offset = traj.dim * traj.N
+    global_offset = WarpPlumbing.packed_globals_base(traj)
     global_indices = vcat(
         [global_offset .+ traj.global_components[name] for name in obj.global_names]...,
     )
@@ -328,7 +328,7 @@ function get_full_hessian(obj::GlobalKnotPointObjective, traj::NamedTrajectory)
 
         # Get knot point indices
         x_comps = vcat([zₖ.components[name] for name in obj.var_names]...)
-        knot_indices = slice(t, x_comps, traj.dim)
+        knot_indices = WarpPlumbing.packed_slice(traj, t, x_comps)
 
         # All indices combined
         all_indices = vcat(knot_indices, global_indices)

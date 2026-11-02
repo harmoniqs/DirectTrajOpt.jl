@@ -20,7 +20,7 @@ For pre-allocated optimization, see Piccolissimo.OptimizedNonlinearKnotPointCons
 - `equality::Bool`: If true, g(x) = 0; if false, g(x) ≤ 0
 - `times::Vector{Int}`: Time indices where constraint is applied
 - `params::Vector`: Parameters for each time index (e.g., time-varying targets)
-- `g_dim::Int`: Dimension of constraint output at each time step
+- `g_dim::Int`: Dimension of constraint output at each knot
 - `var_dim::Int`: Combined dimension of all constrained variables
 - `dim::Int`: Total constraint dimension (g_dim * length(times))
 """
@@ -56,7 +56,7 @@ struct NonlinearKnotPointConstraint{F} <: AbstractNonlinearConstraint
     # Keyword Arguments
     - `equality::Bool=true`: If `true`, the constraint is `g(x) = 0`. Otherwise, the constraint is `g(x) ≤ 0`.
     - `times::AbstractVector{Int}=1:traj.N`: Time indices at which the constraint is enforced.
-    - `params::AbstractVector=fill(nothing, length(times))`: Parameters for each time step (e.g., time-varying targets).
+    - `params::AbstractVector=fill(nothing, length(times))`: Parameters for each knot (e.g., time-varying targets).
 
     # Examples
     ```julia
@@ -216,10 +216,10 @@ function (constraint::NonlinearKnotPointConstraint)(
     # Extract the relevant variable values from the knot point
     x_vals = vcat([zₖ[name] for name in constraint.var_names]...)
 
-    # Find which index this timestep corresponds to in constraint.times
+    # Find which index this knot corresponds to in constraint.times
     time_idx = findfirst(==(k), constraint.times)
     if isnothing(time_idx)
-        error("Timestep $k not in constraint times $(constraint.times)")
+        error("Knot point $k not in constraint times $(constraint.times)")
     end
 
     δ[:] = constraint.g(x_vals, constraint.params[time_idx])
@@ -255,11 +255,11 @@ Compute and return the full Jacobian using automatic differentiation.
     K::NonlinearKnotPointConstraint,
     traj::NamedTrajectory,
 )
-    ∂K = spzeros(K.dim, traj.dim * traj.N + traj.global_dim)
+    ∂K = spzeros(K.dim, WarpPlumbing.packed_length(traj))
     x_comps = vcat([traj.components[name] for name ∈ K.var_names]...)
     for (i, k) ∈ enumerate(K.times)
         ForwardDiff.jacobian!(
-            ∂K[slice(i, K.g_dim), slice(k, x_comps, traj.dim)],
+            ∂K[slice(i, K.g_dim), WarpPlumbing.packed_slice(traj, k, x_comps)],
             x -> K.g(x, K.params[i]),
             vcat([traj[k][name] for name in K.var_names]...),
         )
@@ -277,12 +277,13 @@ Compute and return the full Hessian of the Lagrangian using automatic differenti
     traj::NamedTrajectory,
     μ::AbstractVector,
 )
-    μ∂²K = spzeros(traj.dim * traj.N + traj.global_dim, traj.dim * traj.N + traj.global_dim)
+    Z_dim = WarpPlumbing.packed_length(traj)
+    μ∂²K = spzeros(Z_dim, Z_dim)
     x_comps = vcat([traj.components[name] for name ∈ K.var_names]...)
 
     for (i, k) ∈ enumerate(K.times)
         μₖ = μ[slice(i, K.g_dim)]
-        block_range = slice(k, x_comps, traj.dim)
+        block_range = WarpPlumbing.packed_slice(traj, k, x_comps)
         ForwardDiff.hessian!(
             μ∂²K[block_range, block_range],
             x -> μₖ' * K.g(x, K.params[i]),
@@ -311,7 +312,8 @@ end
 end
 
 @testitem "NonlinearKnotPointConstraint - single variable with vector syntax" begin
-    using DirectTrajOpt: CommonInterface
+    using DirectTrajOpt: CommonInterface, NonlinearKnotPointConstraint
+    using DirectTrajOpt: test_constraint
     using Random
 
     include("../../../test/test_utils.jl")
@@ -323,7 +325,12 @@ end
     rng = MersenneTwister(0)
     _, traj = bilinear_dynamics_and_trajectory(; rng = rng)
 
-    g(a) = [norm(a) - 1.0]
+    # Test that [:u] syntax works the same as :u. The fixture is deliberately
+    # SMOOTH: the historical `norm(a) - 1.0` is kinky at zero, and a finite-
+    # difference Hessian across a kink is unstable — the test flaked on CI
+    # runners for exactly that reason (pre-existing; observed on main's own
+    # baseline run). The syntax-equivalence claim needs no kink.
+    g(a) = [sum(abs2, a) - 1.0]
 
     NLC1 = NonlinearKnotPointConstraint(g, :u, traj; equality = false)
     NLC2 = NonlinearKnotPointConstraint(g, [:u], traj; equality = false)
@@ -335,9 +342,9 @@ end
 
     @test δ1 ≈ δ2
 
-    # Test both with finite differences (seeded μ → deterministic Hessian check)
-    test_constraint(NLC1, traj; atol = 1e-3, rng = MersenneTwister(1))
-    test_constraint(NLC2, traj; atol = 1e-3, rng = MersenneTwister(1))
+    # Test both with finite differences (smooth fixture: tight tolerances hold)
+    test_constraint(NLC1, traj; atol = 1e-6)
+    test_constraint(NLC2, traj; atol = 1e-6)
 end
 
 @testitem "NonlinearKnotPointConstraint vector syntax robustness sweep" begin
@@ -502,7 +509,7 @@ end
 
     g(x) = [norm(x) - 1.0]
 
-    # Only constrain first and last time steps
+    # Only constrain first and last knots
     times = [1, traj.N]
 
     NLC = NonlinearKnotPointConstraint(g, [:x], traj; times = times, equality = false)
